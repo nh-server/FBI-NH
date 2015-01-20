@@ -1,0 +1,22 @@
+#-display text: enter your info between the quotes
+#-don't use unicode (i.e. weird characters) or program will barf
+#-not certain about string length limits so be conservative
+
+longtitle="FBI CIA Installer"
+shortitle="FBI"
+publisher="Steveice10"
+
+#-setting flags: don't change unless you know what you're doing
+#-1 is on, 0 is off
+#-for more info, visit http://3dbrew.org/wiki/SMDH#Flags
+
+visibility    =1
+autoBoot      =0
+use3D         =1
+requireEULA   =0
+autoSaveOnExit=0
+extendedBanner=0
+gameRatings   =0
+useSaveData   =1
+recordAppUsage=0
+disableSaveBU =0
