@@ -308,7 +308,7 @@ int screen_get_index(int x, int y) {
 }
 
 void screen_draw(int x, int y, u8 r, u8 g, u8 b) {
-	if(fb == NULL) {
+	if(fb == NULL || x < 0 || y < 0 || x >= screen_get_width() || y >= screen_get_height()) {
 		return;
 	}
 
