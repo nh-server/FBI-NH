@@ -308,13 +308,14 @@ UIResult uiSelectTitle(App* selected, MediaType* destination, Mode* mode) {
 }
 
 bool uiDisplayInstallProgress(int progress) {
-    char* msg = strdup("Installing: [                         ]");
+    char* msg = sdprintf("Installing: [                         ] %03d%%", progress);
     const char* cancel = "Press B to cancel.";
     for(int pos = 13; pos < 13 + (progress / 4); pos++) {
         msg[pos] = '|';
     }
 
     screen_begin_draw_info();
+    screen_clear(0, 0, 0);
     screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2, 255, 255, 255);
     screen_draw_string(cancel, (screen_get_width() - screen_get_str_width(cancel)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 + (screen_get_str_height(msg) * 2), 255, 255, 255);
     screen_end_draw();
@@ -329,6 +330,7 @@ bool uiDisplayInstallProgress(int progress) {
 void uiDisplayDeleting() {
     const char* msg = "Deleting title...";
     screen_begin_draw_info();
+    screen_clear(0, 0, 0);
     screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2, 255, 255, 255);
     screen_end_draw();
     screen_swap_buffers();
@@ -350,8 +352,8 @@ void uiDisplayResult(bool install, bool state) {
     }
 }
 
-bool uiPromptOperation(Mode mode, char* name) {
-    char* msg = sdprintf("%s %s?", mode == INSTALL ? "Install" : "Delete", name);
+bool uiPromptOperation(Mode mode) {
+    char* msg = sdprintf("%s the selected title?", mode == INSTALL ? "Install" : "Delete");
     const char* prompt = "Press A to confirm, B to cancel.";
     while(platform_is_running()) {
         input_poll();

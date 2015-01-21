@@ -21,6 +21,6 @@ UIResult uiSelectTitle(App* selected, MediaType* destination, Mode* mode);
 bool uiDisplayInstallProgress(int progress);
 void uiDisplayDeleting();
 void uiDisplayResult(bool install, bool state);
-bool uiPromptOperation(Mode mode, char* name);
+bool uiPromptOperation(Mode mode);
 
 #endif
