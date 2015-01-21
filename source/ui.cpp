@@ -316,7 +316,7 @@ bool uiDisplayInstallProgress(int progress) {
 
     screen_begin_draw_info();
     screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2, 255, 255, 255);
-    screen_draw_string(cancel, (screen_get_width() - screen_get_str_width(cancel)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 + screen_get_str_height(msg), 255, 255, 255);
+    screen_draw_string(cancel, (screen_get_width() - screen_get_str_width(cancel)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 + (screen_get_str_height(msg) * 2), 255, 255, 255);
     screen_end_draw();
     screen_swap_buffers_quick();
 
