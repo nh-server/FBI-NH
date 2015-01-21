@@ -28,16 +28,14 @@ int main(int argc, char **argv) {
 			}
 		} else {
 			if(mode == INSTALL) {
-				if(uiPromptOperation(mode, targetInstall)) {
-					screen_clear_all();
+				if(uiPromptOperation(mode)) {
 					uiDisplayResult(true, app_install(destination, targetInstall, &uiDisplayInstallProgress));
 				}
 
 				free(targetInstall);
 			} else {
 				char* str = sdprintf("%08lx - %s, %s, %s", targetDelete.uniqueId, targetDelete.productCode, app_get_platform_name(targetDelete.platform), app_get_category_name(targetDelete.category));
-				if(uiPromptOperation(mode, str)) {
-					screen_clear_all();
+				if(uiPromptOperation(mode)) {
 					uiDisplayDeleting();
 					uiDisplayResult(false, app_delete(destination, targetDelete));
 				}
