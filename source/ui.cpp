@@ -80,12 +80,15 @@ void uiFreeVectorContents(std::vector<char*>* contents) {
     }
 }
 
-UIResult uiDisplaySelector(char** selected, std::vector<char*>* contents, MediaType destination, Mode mode) {
+UIResult uiDisplaySelector(char** selected, std::vector<char*>* contents, const char* currDir, MediaType destination, Mode mode) {
     const char* selectCia = mode == INSTALL ? "Select a CIA to install." : "Select a CIA to delete.";
     const char* pressL = "Press L to switch destinations.";
     const char* pressR = "Press R to switch between installing and deleting.";
     const char* destString = destination == NAND ? "Destination: NAND" : "Destination: SD";
     const char* modeString = mode == INSTALL ? "Mode: Install" : "Mode: Delete";
+
+    char* freeSpace = sdprintf("Free space: %llu bytes", fs_get_free_space(destination));
+    char* requiredSpace = NULL;
 
     unsigned int cursor = 0;
     unsigned int scroll = 0;
@@ -115,6 +118,7 @@ UIResult uiDisplaySelector(char** selected, std::vector<char*>* contents, MediaT
             break;
         }
 
+        bool cursorChanged = false;
         if(input_is_pressed(BUTTON_DOWN) && cursor < contents->size() - 1) {
             cursor++;
             int diff = cursor - scroll;
@@ -124,6 +128,7 @@ UIResult uiDisplaySelector(char** selected, std::vector<char*>* contents, MediaT
 
             horizScroll = 0;
             horizEndTime = 0;
+            cursorChanged = true;
         }
 
         if(input_is_pressed(BUTTON_UP) && cursor > 0) {
@@ -135,6 +140,22 @@ UIResult uiDisplaySelector(char** selected, std::vector<char*>* contents, MediaT
 
             horizScroll = 0;
             horizEndTime = 0;
+            cursorChanged = true;
+        }
+
+        if(cursorChanged && currDir != NULL) {
+            char* currSelection = contents->at(cursor);
+            char* path = sdprintf("%s/%s", currDir, currSelection);
+            if(strcmp(currSelection, ".") != 0 && strcmp(currSelection, "..") != 0 && !uiIsDirectory(path)) {
+                struct stat st;
+                stat(path, &st);
+                requiredSpace = sdprintf("Required space: %lu bytes", st.st_size);
+            } else if(requiredSpace != NULL) {
+                free(requiredSpace);
+                requiredSpace = NULL;
+            }
+
+            free(path);
         }
 
         screen_begin_draw();
@@ -179,13 +200,22 @@ UIResult uiDisplaySelector(char** selected, std::vector<char*>* contents, MediaT
 
         screen_draw_string(selectCia, (screen_get_width() - screen_get_str_width(selectCia)) / 2, (screen_get_height() - screen_get_str_height(pressL)) / 2 - screen_get_str_height(selectCia), 255, 255, 255);
         screen_draw_string(pressL, (screen_get_width() - screen_get_str_width(pressL)) / 2, (screen_get_height() - screen_get_str_height(pressL)) / 2, 255, 255, 255);
-        screen_draw_string(pressR, (screen_get_width() - screen_get_str_width(pressR)) / 2, (screen_get_height() - screen_get_str_height(pressL)) / 2 + screen_get_str_height(pressR), 255, 255, 255);
+        screen_draw_string(pressR, (screen_get_width() - screen_get_str_width(pressR)) / 2, (screen_get_height() - screen_get_str_height(pressL)) / 2 + screen_get_str_height(pressL), 255, 255, 255);
+        screen_draw_string(freeSpace, (screen_get_width() - screen_get_str_width(freeSpace)) / 2, (screen_get_height() - screen_get_str_height(pressL)) / 2 + screen_get_str_height(pressL) * 4, 255, 255, 255);
+        if(requiredSpace != NULL) {
+            screen_draw_string(requiredSpace, (screen_get_width() - screen_get_str_width(requiredSpace)) / 2, (screen_get_height() - screen_get_str_height(pressL)) / 2 + screen_get_str_height(pressL) * 5, 255, 255, 255);
+        }
 
         screen_draw_string(destString, 0, screen_get_height() - screen_get_str_height(destString), 255, 255, 255);
         screen_draw_string(modeString, screen_get_width() - screen_get_str_width(modeString), screen_get_height() - screen_get_str_height(modeString), 255, 255, 255);
         screen_end_draw();
 
         screen_swap_buffers();
+    }
+
+    free(freeSpace);
+    if(requiredSpace != NULL) {
+        free(requiredSpace);
     }
 
     if(!platform_is_running()) {
@@ -200,7 +230,7 @@ UIResult uiSelectFile(char** selected, const char* directory, const char* extens
     UIResult result;
     while(true) {
         char* selectedEntry = NULL;
-        UIResult res = uiDisplaySelector(&selectedEntry, contents, *destination, *mode);
+        UIResult res = uiDisplaySelector(&selectedEntry, contents, directory, *destination, *mode);
         if(res == SWITCH_DEST) {
             if(*destination == NAND) {
                 *destination = SD;
@@ -225,8 +255,7 @@ UIResult uiSelectFile(char** selected, const char* directory, const char* extens
             continue;
         }
 
-        char* path = (char*) malloc(strlen(directory) + strlen(selectedEntry) + 2);
-        snprintf(path, strlen(directory) + strlen(selectedEntry) + 2, "%s/%s", directory, selectedEntry);
+        char* path = sdprintf("%s/%s", directory, selectedEntry);
         if(uiIsDirectory(path)) {
             char *select;
             UIResult dirRes = uiSelectFile(&select, path, extension, destination, mode);
@@ -257,7 +286,7 @@ UIResult uiSelectTitle(App* selected, MediaType* destination, Mode* mode) {
     UIResult result;
     while(true) {
         char* selectedEntry = NULL;
-        UIResult res = uiDisplaySelector(&selectedEntry, contents, *destination, *mode);
+        UIResult res = uiDisplaySelector(&selectedEntry, contents, NULL, *destination, *mode);
         if(selectedEntry != NULL && strcmp(selectedEntry, "None") == 0) {
             continue;
         }

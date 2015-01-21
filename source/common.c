@@ -645,6 +645,18 @@ bool app_launch(MediaType mediaType, App app) {
 	return NS_RebootToTitle(mediaType, app.titleId) == 0;
 }
 
+u64 fs_get_free_space(MediaType mediaType) {
+	u32 clusterSize;
+	u32 freeClusters;
+	if(mediaType == NAND) {
+		FSUSER_GetNandArchiveResource(NULL, NULL, &clusterSize, NULL, &freeClusters);
+	} else {
+		FSUSER_GetSdmcArchiveResource(NULL, NULL, &clusterSize, NULL, &freeClusters);
+	}
+
+	return clusterSize * freeClusters;
+}
+
 void platform_init() {
 	srvInit();
 	aptInit();
