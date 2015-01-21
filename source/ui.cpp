@@ -316,8 +316,8 @@ bool uiDisplayInstallProgress(int progress) {
 
     screen_begin_draw_info();
     screen_clear(0, 0, 0);
-    screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2, 255, 255, 255);
-    screen_draw_string(cancel, (screen_get_width() - screen_get_str_width(cancel)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 + (screen_get_str_height(msg) * 2), 255, 255, 255);
+    screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 - screen_get_str_height(msg), 255, 255, 255);
+    screen_draw_string(cancel, (screen_get_width() - screen_get_str_width(cancel)) / 2, (screen_get_height() - screen_get_str_height(cancel)) / 2 + screen_get_str_height(cancel), 255, 255, 255);
     screen_end_draw();
     screen_swap_buffers_quick();
 
@@ -369,8 +369,8 @@ bool uiPromptOperation(Mode mode) {
 
         screen_begin_draw_info();
         screen_clear(0, 0, 0);
-        screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2, 255, 255, 255);
-        screen_draw_string(prompt, (screen_get_width() - screen_get_str_width(prompt)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 + screen_get_str_height(msg), 255, 255, 255);
+        screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 - screen_get_str_height(msg), 255, 255, 255);
+        screen_draw_string(prompt, (screen_get_width() - screen_get_str_width(prompt)) / 2, (screen_get_height() - screen_get_str_height(prompt)) / 2 + screen_get_str_height(prompt), 255, 255, 255);
         screen_end_draw();
         screen_swap_buffers();
     }
