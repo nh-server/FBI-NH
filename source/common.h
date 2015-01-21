@@ -111,6 +111,8 @@ bool app_install(MediaType mediaType, const char* path, bool (*onProgress)(int p
 bool app_delete(MediaType mediaType, App app);
 bool app_launch(MediaType mediaType, App app);
 
+u64 fs_get_free_space(MediaType mediaType);
+
 void platform_init();
 void platform_cleanup();
 bool platform_is_running();
