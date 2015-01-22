@@ -173,7 +173,6 @@ AccessControlInfo:
    - $hostio0
    - $hostio1
    - ac:u
-   - am:u
    - boss:U
    - cam:u
    - cecd:u
@@ -199,6 +198,7 @@ AccessControlInfo:
    - ir:USER
    - ir:u
    - csnd:SND
+   - am:u
   
    
 SystemControlInfo:

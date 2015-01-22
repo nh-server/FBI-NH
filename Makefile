@@ -9,13 +9,11 @@ endif
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
-APP_ID = FBI
 APP_TITLE = FBI
 APP_DESCRIPTION = Open source CIA installer.
 APP_AUTHOR = Steveice10
 
 #---------------------------------------------------------------------------------
-# TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed
 # SOURCES is a list of directories containing source code
 # DATA is a list of directories containing data files
@@ -31,7 +29,6 @@ APP_AUTHOR = Steveice10
 #     - icon.png
 #     - <libctru folder>/default_icon.png
 #---------------------------------------------------------------------------------
-TARGET		:=	$(APP_ID)
 BUILD		:=	build
 SOURCES		:=	source
 DATA		:=	data
@@ -65,12 +62,9 @@ LIBS	:= -lctru -lm
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(CTRULIB) ./lib
 
-MAKEROM = $(TOPDIR)/resources/tools/makerom
-BANNER_TOOL = $(TOPDIR)/resources/tools/banner
-PREPARE_BANNER = python2 banner.py
-PREPARE_ICON24 = python2 icon.py
-PREPARE_ICON48 = python2 icon.py
-CREATE_BANNER = python2 create.py
+MAKEROM = $(TOPDIR)/tools/makerom
+BANNER_TOOL = $(TOPDIR)/tools/banner
+CREATE_BANNER = python create.py
 
 
 #---------------------------------------------------------------------------------
@@ -80,7 +74,10 @@ CREATE_BANNER = python2 create.py
 ifneq ($(BUILD),$(notdir $(CURDIR)))
 #---------------------------------------------------------------------------------
 
-export OUTPUT	:=	$(CURDIR)/$(TARGET)
+null            :=
+SPACE           :=      $(null) $(null)
+export OUTPUT_D	:=	$(CURDIR)/output
+export OUTPUT	:=	$(OUTPUT_D)/$(subst $(SPACE),,$(APP_TITLE))
 export TOPDIR	:=	$(CURDIR)
 
 export VPATH	:=	$(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) \
@@ -116,18 +113,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 
 export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib)
 
-ifeq ($(strip $(ICON)),)
-	icons := $(wildcard *.png)
-	ifneq (,$(findstring $(TARGET).png,$(icons)))
-		export APP_ICON := $(TOPDIR)/$(TARGET).png
-	else
-		ifneq (,$(findstring icon.png,$(icons)))
-			export APP_ICON := $(TOPDIR)/icon.png
-		endif
-	endif
-else
-	export APP_ICON := $(TOPDIR)/$(ICON)
-endif
+export APP_ICON := $(TOPDIR)/$(ICON)
 
 .PHONY: $(BUILD) clean all
 
@@ -141,7 +127,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(TARGET).3ds $(TARGET).cia $(BANNER_TOOL)/banner.bnr $(BANNER_TOOL)/icon.icn
+	@rm -fr $(BUILD) $(OUTPUT_D)
 
 
 #---------------------------------------------------------------------------------
@@ -154,40 +140,30 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
 .PHONY: all
-all	:	$(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia $(OUTPUT).3ds
+all	:	$(OUTPUT_D) $(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia $(OUTPUT).3ds
 endif
+$(OUTPUT_D)     :
+	@[ -d $@ ] || mkdir -p $@
+
 $(OUTPUT).3dsx	:	$(OUTPUT).elf
 $(OUTPUT).elf	:	$(OFILES)
 
-$(BANNER_TOOL)/banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/icon24.png $(TOPDIR)/resources/icon48.png
-	cp $(TOPDIR)/resources/banner.png $(BANNER_TOOL)/banner/banner.png
-	cp $(TOPDIR)/resources/icon24.png $(BANNER_TOOL)/icon24/icon24.png
-	cp $(TOPDIR)/resources/icon48.png $(BANNER_TOOL)/icon48/icon48.png
-	cd $(BANNER_TOOL)/banner; $(PREPARE_BANNER)
-	cd $(BANNER_TOOL)/icon24; $(PREPARE_ICON24)
-	cd $(BANNER_TOOL)/icon48; $(PREPARE_ICON48)
-	cd $(BANNER_TOOL); $(CREATE_BANNER)
-	rm $(BANNER_TOOL)/banner/banner.png
-	rm $(BANNER_TOOL)/banner/banner.cgfx
-	rm $(BANNER_TOOL)/banner/compressed.cgfx
-	rm $(BANNER_TOOL)/banner/banner.cbmd
-	rm $(BANNER_TOOL)/icon24/icon24.png
-	rm $(BANNER_TOOL)/icon24/icon24.ctpk
-	rm $(BANNER_TOOL)/icon48/icon48.png
-	rm $(BANNER_TOOL)/icon48/icon48.ctpk
+banner.bnr: $(TOPDIR)/resources/icon24.png $(TOPDIR)/resources/icon48.png $(TOPDIR)/resources/banner.png
+	cd $(BANNER_TOOL); $(CREATE_BANNER) "$(APP_TITLE)" "$(APP_TITLE)" "$(APP_AUTHOR)" $(TOPDIR)/resources/icon24.png $(TOPDIR)/resources/icon48.png $(TOPDIR)/resources/banner.png $(TOPDIR)/$(BUILD)/icon.icn $(TOPDIR)/$(BUILD)/banner.bnr
+	@echo "built ... banner files"
 	
-$(BANNER_TOOL)/icon.icn: $(BANNER_TOOL)/banner.bnr
+icon.icn: banner.bnr
 
-$(OUTPUT).cia: $(OUTPUT).elf $(TOPDIR)/resources/cia.rsf $(BANNER_TOOL)/banner.bnr $(BANNER_TOOL)/icon.icn
-	@cp $(OUTPUT).elf $(TARGET)_stripped.elf
-	@$(PREFIX)strip $(TARGET)_stripped.elf
-	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf $(TOPDIR)/resources/cia.rsf -target t -exefslogo -elf $(TARGET)_stripped.elf -icon $(BANNER_TOOL)/icon.icn -banner $(BANNER_TOOL)/banner.bnr
+stripped.elf: $(OUTPUT).elf
+	@cp $(OUTPUT).elf stripped.elf
+	@$(PREFIX)strip stripped.elf
+
+$(OUTPUT).cia: stripped.elf $(TOPDIR)/resources/cia.rsf banner.bnr icon.icn
+	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf $(TOPDIR)/resources/cia.rsf -target t -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
-$(OUTPUT).3ds: $(OUTPUT).elf $(TOPDIR)/resources/3ds.rsf $(BANNER_TOOL)/banner.bnr $(BANNER_TOOL)/icon.icn
-	@cp $(OUTPUT).elf $(TARGET)_stripped.elf
-	@$(PREFIX)strip $(TARGET)_stripped.elf
-	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf $(TOPDIR)/resources/3ds.rsf -target d -exefslogo -elf $(TARGET)_stripped.elf -icon $(BANNER_TOOL)/icon.icn -banner $(BANNER_TOOL)/banner.bnr
+$(OUTPUT).3ds: stripped.elf $(TOPDIR)/resources/3ds.rsf banner.bnr icon.icn
+	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf $(TOPDIR)/resources/3ds.rsf -target d -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
 #---------------------------------------------------------------------------------
