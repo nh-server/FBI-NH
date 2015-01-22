@@ -113,7 +113,7 @@ bool app_launch(MediaType mediaType, App app);
 
 u64 fs_get_free_space(MediaType mediaType);
 
-void platform_init();
+bool platform_init();
 void platform_cleanup();
 bool platform_is_running();
 u64 platform_get_time();

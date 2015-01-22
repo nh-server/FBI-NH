@@ -15,7 +15,7 @@ TitleInfo:
   Category                : Application
   
 CardInfo:
-  MediaSize               : 128MB # 128MB / 256MB / 512MB / 1GB / 2GB / 4GB
+  MediaSize               : 128MB # 128MB / 256MB / 512MB / 1GB / 2GB / 4GB / 8GB / 16GB / 32GB
   MediaType               : Card1 # Card1 / Card2
   CardDevice              : None # NorFlash(Pick this if you use savedata) / None
   
@@ -25,6 +25,7 @@ Option:
   MediaFootPadding        : false # If true CCI files are created with padding
   EnableCrypt             : true # Enables encryption for NCCH and CIA
   EnableCompress          : true # Compresses exefs code
+
 
 ExeFs: # these are the program segments from the ELF, check your elf for the appropriate segment names
   ReadOnly: 
@@ -42,10 +43,10 @@ PlainRegion: # only used with SDK ELFs
  - .module_id
   
 AccessControlInfo:
-  #UseExtSaveData : true
-  #ExtSaveDataId: 0xff3ff
-  #UseExtendedSaveDataAccessControl: true
-  #AccessibleSaveDataIds: [0x101, 0x202, 0x303, 0x404, 0x505, 0x606]
+  # UseExtSaveData : true
+  # ExtSaveDataId: 0xff3ff
+  # UseExtendedSaveDataAccessControl: true
+  # AccessibleSaveDataIds: [0x101, 0x202, 0x303, 0x404, 0x505, 0x606]
 
 SystemControlInfo:
   SaveDataSize: 128KB
@@ -138,7 +139,6 @@ AccessControlInfo:
    - $hostio0
    - $hostio1
    - ac:u
-   - am:u
    - boss:U
    - cam:u
    - cecd:u
@@ -162,6 +162,7 @@ AccessControlInfo:
    - y2r:u
    - ldr:ro
    - ir:USER
+   - am:u
   
    
 SystemControlInfo:

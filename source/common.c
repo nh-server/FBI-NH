@@ -547,13 +547,26 @@ App* app_list(MediaType mediaType, u32* count) {
 	}
 
 	u32 titleCount;
-	AM_GetTitleCount(app_mediatype_to_byte(mediaType), &titleCount);
+	if(AM_GetTitleCount(app_mediatype_to_byte(mediaType), &titleCount) != 0) {
+		if(count != NULL) {
+			*count = 0;
+		}
+
+		return (App*) malloc(0);
+	}
+
 	if(count != NULL) {
 		*count = titleCount;
 	}
 
 	u64 titleIds[titleCount];
-	AM_GetTitleList(app_mediatype_to_byte(mediaType), titleCount, titleIds);
+	if(AM_GetTitleList(app_mediatype_to_byte(mediaType), titleCount, titleIds) != 0) {
+		if(count != NULL) {
+			*count = 0;
+		}
+
+		return (App*) malloc(0);
+	}
 
 	App* titles = (App*) malloc(titleCount * sizeof(App));
 	for(int i = 0; i < titleCount; i++) {
@@ -581,23 +594,24 @@ bool app_install(MediaType mediaType, const char* path, bool (*onProgress)(int p
 		return false;
 	}
 
+	FILE* fd = fopen(path, "r");
+	if(!fd) {
+		return false;
+	}
+
+	fseek(fd, 0, SEEK_END);
+	u64 size = (u64) ftell(fd);
+	fseek(fd, 0, SEEK_SET);
+
 	if(onProgress != NULL) {
 		onProgress(0);
 	}
 
-	FS_archive sdmcArchive = (FS_archive) {ARCH_SDMC, (FS_path) {PATH_EMPTY, 1, (u8*) ""}};
-	FSUSER_OpenArchive(NULL, &sdmcArchive);
-	Handle fileHandle;
-	u64 size;
-
-	if(FSUSER_OpenFile(NULL, &fileHandle, sdmcArchive, FS_makePath(PATH_CHAR, path + 5), FS_OPEN_READ, FS_ATTRIBUTE_NONE) != 0) {
+	Handle ciaHandle;
+	if(AM_StartCiaInstall(app_mediatype_to_byte(mediaType), &ciaHandle) != 0) {
 		return false;
 	}
 
-	FSFILE_GetSize(fileHandle, &size);
-
-	Handle ciaHandle;
-	AM_StartCiaInstall(app_mediatype_to_byte(mediaType), &ciaHandle);
 	FSFILE_SetSize(ciaHandle, size);
 
 	u32 bufSize = 1024 * 256; // 256KB
@@ -610,23 +624,27 @@ bool app_install(MediaType mediaType, const char* path, bool (*onProgress)(int p
 			break;
 		}
 
-		u32 bytesRead;
-		FSFILE_Read(fileHandle, &bytesRead, pos, buf, bufSize);
+		u32 bytesRead = fread(buf, 1, bufSize, fd);
 		FSFILE_Write(ciaHandle, NULL, pos, buf, bytesRead, FS_WRITE_NOFLUSH);
 	}
 
-	if(!cancelled) {
-		if(onProgress != NULL) {
-			onProgress(100);
-		}
+	free(buf);
+	fclose(fd);
 
-		AM_FinishCiaInstall(app_mediatype_to_byte(mediaType), &ciaHandle);
+	if(cancelled) {
+		return false;
 	}
 
-	free(buf);
-	FSFILE_Close(fileHandle);
-	FSUSER_CloseArchive(NULL, &sdmcArchive);
-	return !cancelled;
+	if(onProgress != NULL) {
+		onProgress(100);
+	}
+
+	Result res = AM_FinishCiaInstall(app_mediatype_to_byte(mediaType), &ciaHandle);
+	if(res != 0 && res != 0xC8A044DC) { // Happens when already installed, but seems to have succeeded anyway...
+		return false;
+	}
+
+	return true;
 }
 
 bool app_delete(MediaType mediaType, App app) {
@@ -648,22 +666,27 @@ bool app_launch(MediaType mediaType, App app) {
 u64 fs_get_free_space(MediaType mediaType) {
 	u32 clusterSize;
 	u32 freeClusters;
+	Result res = 0;
 	if(mediaType == NAND) {
-		FSUSER_GetNandArchiveResource(NULL, NULL, &clusterSize, NULL, &freeClusters);
+		res = FSUSER_GetNandArchiveResource(NULL, NULL, &clusterSize, NULL, &freeClusters);
 	} else {
-		FSUSER_GetSdmcArchiveResource(NULL, NULL, &clusterSize, NULL, &freeClusters);
+		res = FSUSER_GetSdmcArchiveResource(NULL, NULL, &clusterSize, NULL, &freeClusters);
+	}
+
+	if(res != 0) {
+		return 0;
 	}
 
 	return clusterSize * freeClusters;
 }
 
-void platform_init() {
-	srvInit();
-	aptInit();
-	hidInit(NULL);
+bool platform_init() {
+	if(srvInit() != 0 || aptInit() != 0 || hidInit(NULL) != 0 || fsInit() != 0 || sdmcInit() != 0) {
+		return false;
+	}
+
 	gfxInitDefault();
-	fsInit();
-	sdmcInit();
+	return true;
 }
 
 void platform_cleanup() {

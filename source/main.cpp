@@ -4,7 +4,9 @@
 #include "ui.h"
 
 int main(int argc, char **argv) {
-	platform_init();
+	if(!platform_init()) {
+		return 0;
+	}
 
 	MediaType destination = SD;
 	Mode mode = INSTALL;
