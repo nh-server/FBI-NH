@@ -34,7 +34,7 @@ SOURCES		:=	source
 DATA		:=	data
 INCLUDES	:=	include
 
-ICON            :=      resources/icon48.png
+ICON            :=      resources/icon.png
 
 #---------------------------------------------------------------------------------
 # options for code generation
@@ -62,9 +62,8 @@ LIBS	:= -lctru -lm
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(CTRULIB) ./lib
 
-MAKEROM = $(TOPDIR)/tools/makerom
-BANNER_TOOL = $(TOPDIR)/tools/banner
-CREATE_BANNER = python create.py
+MAKEROM    = $(TOPDIR)/tools/makerom
+BANNERTOOL = $(TOPDIR)/tools/bannertool
 
 
 #---------------------------------------------------------------------------------
@@ -148,22 +147,20 @@ $(OUTPUT_D)     :
 $(OUTPUT).3dsx	:	$(OUTPUT).elf
 $(OUTPUT).elf	:	$(OFILES)
 
-banner.bnr: $(TOPDIR)/resources/icon24.png $(TOPDIR)/resources/icon48.png $(TOPDIR)/resources/banner.png
-	cd $(BANNER_TOOL); $(CREATE_BANNER) "$(APP_TITLE)" "$(APP_TITLE)" "$(APP_AUTHOR)" $(TOPDIR)/resources/icon24.png $(TOPDIR)/resources/icon48.png $(TOPDIR)/resources/banner.png $(TOPDIR)/$(BUILD)/icon.icn $(TOPDIR)/$(BUILD)/banner.bnr
-	@echo "built ... banner files"
-	
-icon.icn: banner.bnr
+banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.bcwav
+	$(BANNERTOOL) $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.bcwav $(TOPDIR)/$(BUILD)/banner.bnr
+	@echo "built ... banner"
 
 stripped.elf: $(OUTPUT).elf
 	@cp $(OUTPUT).elf stripped.elf
 	@$(PREFIX)strip stripped.elf
 
-$(OUTPUT).cia: stripped.elf $(TOPDIR)/resources/cia.rsf banner.bnr icon.icn
-	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf $(TOPDIR)/resources/cia.rsf -target t -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
+$(OUTPUT).cia: stripped.elf $(TOPDIR)/resources/cia.rsf banner.bnr $(OUTPUT).smdh
+	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf $(TOPDIR)/resources/cia.rsf -target t -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
-$(OUTPUT).3ds: stripped.elf $(TOPDIR)/resources/3ds.rsf banner.bnr icon.icn
-	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf $(TOPDIR)/resources/3ds.rsf -target d -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
+$(OUTPUT).3ds: stripped.elf $(TOPDIR)/resources/3ds.rsf banner.bnr $(OUTPUT).smdh
+	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf $(TOPDIR)/resources/3ds.rsf -target d -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
 #---------------------------------------------------------------------------------
