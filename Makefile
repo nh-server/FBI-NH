@@ -9,9 +9,7 @@ endif
 TOPDIR ?= $(CURDIR)
 include $(DEVKITARM)/3ds_rules
 
-APP_TITLE = FBI
-APP_DESCRIPTION = Open source CIA installer.
-APP_AUTHOR = Steveice10
+include $(TOPDIR)/resources/AppInfo
 
 #---------------------------------------------------------------------------------
 # BUILD is the directory where object files & intermediate files will be placed
@@ -147,21 +145,27 @@ $(OUTPUT_D)     :
 $(OUTPUT).3dsx	:	$(OUTPUT).elf
 $(OUTPUT).elf	:	$(OFILES)
 
-banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.bcwav
-	$(BANNERTOOL) $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.bcwav $(TOPDIR)/$(BUILD)/banner.bnr
+banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.wav
+	$(BANNERTOOL) makebanner -i $(TOPDIR)/resources/banner.png -a $(TOPDIR)/resources/audio.wav -o banner.bnr
 	@echo "built ... banner"
 
 stripped.elf: $(OUTPUT).elf
 	@cp $(OUTPUT).elf stripped.elf
 	@$(PREFIX)strip stripped.elf
 
-$(OUTPUT).cia: stripped.elf $(TOPDIR)/resources/cia.rsf banner.bnr $(OUTPUT).smdh
-	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf $(TOPDIR)/resources/cia.rsf -target t -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
+$(OUTPUT).cia: stripped.elf cia.rsf banner.bnr $(OUTPUT).smdh
+	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
-$(OUTPUT).3ds: stripped.elf $(TOPDIR)/resources/3ds.rsf banner.bnr $(OUTPUT).smdh
-	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf $(TOPDIR)/resources/3ds.rsf -target d -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
+$(OUTPUT).3ds: stripped.elf 3ds.rsf banner.bnr $(OUTPUT).smdh
+	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf 3ds.rsf -target d -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
 	@echo "built ... $(notdir $@)"
+	
+3ds.rsf:
+	cat $(TOPDIR)/tools/template-3ds.rsf | sed 's/{APP_TITLE}/$(APP_TITLE)/' | sed 's/{APP_PRODUCT_CODE}/$(APP_PRODUCT_CODE)/' | sed 's/{APP_UNIQUE_ID}/$(APP_UNIQUE_ID)/' > 3ds.rsf
+	
+cia.rsf:
+	cat $(TOPDIR)/tools/template-cia.rsf | sed 's/{APP_TITLE}/$(APP_TITLE)/' | sed 's/{APP_PRODUCT_CODE}/$(APP_PRODUCT_CODE)/' | sed 's/{APP_UNIQUE_ID}/$(APP_UNIQUE_ID)/' > cia.rsf
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
