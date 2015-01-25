@@ -153,11 +153,11 @@ stripped.elf: $(OUTPUT).elf
 	@cp $(OUTPUT).elf stripped.elf
 	@$(PREFIX)strip stripped.elf
 
-$(OUTPUT).cia: stripped.elf cia.rsf banner.bnr $(OUTPUT).smdh
+$(OUTPUT).cia: $(OUTPUT).smdh stripped.elf banner.bnr cia.rsf
 	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
-$(OUTPUT).3ds: stripped.elf 3ds.rsf banner.bnr $(OUTPUT).smdh
+$(OUTPUT).3ds: $(OUTPUT).smdh stripped.elf banner.bnr 3ds.rsf
 	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf 3ds.rsf -target d -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 	
