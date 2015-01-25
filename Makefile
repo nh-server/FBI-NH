@@ -63,6 +63,11 @@ LIBDIRS	:= $(CTRULIB) ./lib
 MAKEROM    = $(TOPDIR)/tools/makerom
 BANNERTOOL = $(TOPDIR)/tools/bannertool
 
+ifeq ($(OS),Windows_NT)
+	MAKEROM += .exe
+	BANNERTOOL += .exe
+endif
+
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
