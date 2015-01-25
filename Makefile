@@ -60,12 +60,12 @@ LIBS	:= -lctru -lm
 #---------------------------------------------------------------------------------
 LIBDIRS	:= $(CTRULIB) ./lib
 
-MAKEROM    = $(TOPDIR)/tools/makerom
-BANNERTOOL = $(TOPDIR)/tools/bannertool
-
 ifeq ($(OS),Windows_NT)
-	MAKEROM += .exe
-	BANNERTOOL += .exe
+	MAKEROM = $(TOPDIR)/tools/makerom.exe
+	BANNERTOOL = $(TOPDIR)/tools/bannertool.exe
+else
+	MAKEROM = $(TOPDIR)/tools/makerom
+	BANNERTOOL = $(TOPDIR)/tools/bannertool
 endif
 
 
