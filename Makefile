@@ -149,16 +149,20 @@ banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.wav
 	$(BANNERTOOL) makebanner -i $(TOPDIR)/resources/banner.png -a $(TOPDIR)/resources/audio.wav -o banner.bnr
 	@echo "built ... banner"
 
+icon.icn: $(TOPDIR)/resources/icon.png
+	$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i $(TOPDIR)/resources/icon.png -o icon.icn
+	@echo "built ... icon"
+
 stripped.elf: $(OUTPUT).elf
 	@cp $(OUTPUT).elf stripped.elf
 	@$(PREFIX)strip stripped.elf
 
-$(OUTPUT).cia: $(OUTPUT).smdh stripped.elf banner.bnr cia.rsf
-	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
+$(OUTPUT).cia: stripped.elf banner.bnr icon.icn cia.rsf
+	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 
-$(OUTPUT).3ds: $(OUTPUT).smdh stripped.elf banner.bnr 3ds.rsf
-	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf 3ds.rsf -target d -exefslogo -elf stripped.elf -icon $(OUTPUT).smdh -banner banner.bnr
+$(OUTPUT).3ds: stripped.elf banner.bnr icon.icn 3ds.rsf
+	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf 3ds.rsf -target d -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 	
 3ds.rsf:
