@@ -139,7 +139,6 @@ AccessControlInfo:
    - $hostio0
    - $hostio1
    - ac:u
-   - am:u
    - boss:U
    - cam:u
    - cecd:u
