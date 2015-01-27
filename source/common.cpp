@@ -3,10 +3,16 @@
 #include <sys/unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/dirent.h>
+
+#include <stack>
+#include <algorithm>
+#include <sstream>
+#include <iomanip>
 
 #include <3ds.h>
 
-#include "common.h"
+#include "common.hpp"
 
 static unsigned char asciiData[128][8] = {
 		{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
@@ -155,56 +161,16 @@ PAD_KEY buttonMap[13] = {
 		KEY_TOUCH
 };
 
-const int defaultBufferSize = 100;
-static char defaultBuffer[100];
-
-char* sdprintf(const char* format, ...) {
-	va_list args;
-	va_start(args, format);
-	char* ret = vsdprintf(format, args);
-	va_end(args);
-	return ret;
-}
-
-char* vsdprintf(const char* format, va_list args) {
-	va_list copy;
-	va_copy(copy, args);
-
-	char* ret = NULL;
-	int len = vsnprintf(defaultBuffer, defaultBufferSize, format, args);
-	if(len >= defaultBufferSize) {
-		char* buffer = (char*) malloc(len * sizeof(char));
-		vsnprintf(buffer, (size_t) len, format, copy);
-		ret = buffer;
-	} else {
-		char* buffer = (char*) malloc(defaultBufferSize * sizeof(char));
-		strcpy(buffer, defaultBuffer);
-		ret = buffer;
-	}
-
-	va_end(copy);
-	return ret;
-}
-
 u8* fb = NULL;
 u16 fbWidth = 0;
 u16 fbHeight = 0;
 
-bool screen_begin_draw() {
+bool screen_begin_draw(Screen screen) {
 	if(fb != NULL) {
 		return false;
 	}
 
-	fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, &fbWidth, &fbHeight);
-	return true;
-}
-
-bool screen_begin_draw_info() {
-	if(fb != NULL) {
-		return false;
-	}
-
-	fb = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, &fbWidth, &fbHeight);
+	fb = gfxGetFramebuffer(screen == TOP_SCREEN ? GFX_TOP : GFX_BOTTOM, GFX_LEFT, &fbWidth, &fbHeight);
 	return true;
 }
 
@@ -236,11 +202,7 @@ int screen_get_width() {
 		return fbHeight;
 	}
 
-	int width = 0;
-	screen_begin_draw();
-	width = fbHeight;
-	screen_end_draw();
-	return width;
+	return 0;
 }
 
 int screen_get_height() {
@@ -249,16 +211,12 @@ int screen_get_height() {
 		return fbWidth;
 	}
 
-	int height = 0;
-	screen_begin_draw();
-	height = fbWidth;
-	screen_end_draw();
-	return height;
+	return 0;
 }
 
 void screen_take_screenshot() {
 	u32 imageSize = 400 * 480 * 3;
-	u8* temp = (u8*) malloc(0x36 + imageSize);
+	u8 temp[0x36 + imageSize];
 	memset(temp, 0, 0x36 + imageSize);
 
 	*(u16*) &temp[0x0] = 0x4D42;
@@ -293,11 +251,10 @@ void screen_take_screenshot() {
 	}
 
 	char file[256];
-	snprintf(file, 256, "sdmc:/wo3ds_screenshot_%08d.bmp", (int) (svcGetSystemTick() / 446872));
+	snprintf(file, 256, "sdmc:/screenshot_%08d.bmp", (int) (svcGetSystemTick() / 446872));
 	int fd = open(file, O_WRONLY | O_CREAT | O_SYNC);
 	write(fd, temp, 0x36 + imageSize);
 	close(fd);
-	free(temp);
 }
 
 int screen_get_index(int x, int y) {
@@ -361,11 +318,11 @@ void screen_fill(int x, int y, int width, int height, u8 r, u8 g, u8 b) {
 	}
 }
 
-int screen_get_str_width(const char* str) {
-	return strlen(str) * 8;
+int screen_get_str_width(std::string str) {
+	return str.length() * 8;
 }
 
-int screen_get_str_height(const char* str) {
+int screen_get_str_height(std::string str) {
 	return 8;
 }
 
@@ -385,16 +342,16 @@ void screen_draw_char(char c, int x, int y, u8 r, u8 g, u8 b) {
 	}
 }
 
-void screen_draw_string(const char* string, int x, int y, u8 r, u8 g, u8 b) {
+void screen_draw_string(std::string str, int x, int y, u8 r, u8 g, u8 b) {
 	if(fb == NULL) {
 		return;
 	}
 
-	int len = (int) strlen(string);
+	int len = str.length();
 	int cx = x;
 	int cy = y;
 	for(int i = 0; i < len; i++) {
-		char c = string[i];
+		char c = str[i];
 		if(c == '\n') {
 			cx = x;
 			cy += 8;
@@ -409,18 +366,242 @@ void screen_clear(u8 r, u8 g, u8 b) {
 	screen_fill(0, 0, screen_get_width(), screen_get_height(), r, g, b);
 }
 
-void screen_clear_all() {
-	for(int i = 0; i < 2; i++) {
-		screen_begin_draw();
-		screen_clear(0, 0, 0);
-		screen_end_draw();
+typedef struct {
+    std::string id;
+    std::string name;
+    std::vector<std::string> details;
+} SelectableElement;
 
-		screen_begin_draw_info();
-		screen_clear(0, 0, 0);
-		screen_end_draw();
+SelectionResult ui_select(std::vector<SelectableElement> elements, SelectableElement* selected, bool enableBack, std::function<bool()> onLoop) {
+    u32 cursor = 0;
+    u32 scroll = 0;
 
-		screen_swap_buffers();
-	}
+    u32 selectionScroll = 0;
+    u64 selectionScrollEndTime = 0;
+
+    while(platform_is_running()) {
+        input_poll();
+        if(input_is_pressed(BUTTON_A)) {
+            *selected = elements.at(cursor);
+            return SELECTED;
+        }
+
+        if(enableBack && input_is_pressed(BUTTON_B)) {
+            return BACK;
+        }
+
+        if(input_is_pressed(BUTTON_DOWN) && cursor < elements.size() - 1) {
+            cursor++;
+            if(cursor >= scroll + 20) {
+                scroll++;
+            }
+
+            selectionScroll = 0;
+            selectionScrollEndTime = 0;
+        }
+
+        if(input_is_pressed(BUTTON_UP) && cursor > 0) {
+            cursor--;
+            if(cursor < scroll) {
+                scroll--;
+            }
+
+            selectionScroll = 0;
+            selectionScrollEndTime = 0;
+        }
+
+        screen_begin_draw(BOTTOM_SCREEN);
+        screen_clear(0, 0, 0);
+
+        u32 screenWidth = (u32) screen_get_width();
+        for(std::vector<SelectableElement>::iterator it = elements.begin() + scroll; it != elements.begin() + scroll + 20 && it != elements.end(); it++) {
+            SelectableElement element = *it;
+            u32 index = (u32) (it - elements.begin());
+            u8 color = 255;
+            int offset = 0;
+            if(index == cursor) {
+                color = 0;
+                screen_fill(0, (int) (index - scroll) * 12, (int) screenWidth, screen_get_str_height(element.name), 255, 255, 255);
+                u32 width = (u32) screen_get_str_width(element.name);
+                if(width > screenWidth) {
+                    if(selectionScroll + screenWidth >= width) {
+                        if(selectionScrollEndTime == 0) {
+                            selectionScrollEndTime = platform_get_time();
+                        } else if(platform_get_time() - selectionScrollEndTime >= 4000) {
+                            selectionScroll = 0;
+                            selectionScrollEndTime = 0;
+                        }
+                    } else {
+                        selectionScroll++;
+                    }
+                }
+
+                offset = -selectionScroll;
+            }
+
+            screen_draw_string(element.name, offset, (int) (index - scroll) * 12, color, color, color);
+        }
+
+        screen_end_draw();
+
+        screen_begin_draw(TOP_SCREEN);
+        screen_clear(0, 0, 0);
+
+        SelectableElement currSelected = elements.at(cursor);
+        if(currSelected.details.size() != 0) {
+            for(std::vector<std::string>::iterator it = currSelected.details.begin(); it != currSelected.details.end(); it++) {
+                std::string detail = *it;
+                u32 index = (u32) (it - currSelected.details.begin());
+                screen_draw_string(detail, 0, (int) index * 12, 255, 255, 255);
+            }
+        }
+
+        bool result = onLoop();
+
+        screen_end_draw();
+        screen_swap_buffers();
+        if(result) {
+            return MANUAL_BREAK;
+        }
+    }
+
+    return APP_CLOSING;
+}
+
+bool ui_is_directory(std::string path) {
+    DIR *dir = opendir(path.c_str());
+    if(!dir) {
+        return false;
+    }
+
+    closedir(dir);
+    return true;
+}
+
+struct ui_alphabetize {
+    inline bool operator() (SelectableElement a, SelectableElement b) {
+        return a.name.compare(b.name) < 0;
+    }
+};
+
+std::vector<SelectableElement> ui_get_dir_elements(std::string directory, std::string extension) {
+    std::vector<SelectableElement> elements;
+    elements.push_back({".", "."});
+    elements.push_back({"..", ".."});
+
+    DIR *dir = opendir(directory.c_str());
+    if(dir != NULL) {
+        while(true) {
+            struct dirent *ent = readdir(dir);
+            if(ent == NULL) {
+                break;
+            }
+
+            std::string dirName = std::string(ent->d_name);
+            std::string path = directory + "/" + dirName;
+            if(ui_is_directory(path)) {
+                elements.push_back({path, dirName});
+            } else {
+                std::string::size_type dotPos = path.rfind('.');
+                if(dotPos != std::string::npos && path.substr(dotPos + 1).compare(extension) == 0) {
+                    struct stat st;
+                    stat(path.c_str(), &st);
+
+                    std::vector<std::string> info;
+                    std::stringstream stream;
+                    stream << "File Size: " << st.st_size << " bytes (" << std::fixed << std::setprecision(2) << st.st_size / 1024.0f / 1024.0f << "MB)";
+                    info.push_back(stream.str());
+                    elements.push_back({path, dirName, info});
+                }
+            }
+        }
+
+        closedir(dir);
+    }
+
+    std::sort(elements.begin(), elements.end(), ui_alphabetize());
+    return elements;
+}
+
+bool ui_select_file(std::string rootDirectory, std::string extension, std::string* selectedFile, std::function<bool()> onLoop) {
+    std::stack<std::string> directoryStack;
+    std::string currDirectory = rootDirectory;
+    while(platform_is_running()) {
+        SelectableElement selected;
+        std::vector<SelectableElement> contents = ui_get_dir_elements(currDirectory, extension);
+        SelectionResult result = ui_select(contents, &selected, !directoryStack.empty(), onLoop);
+        if(result == APP_CLOSING || result == MANUAL_BREAK) {
+            break;
+        } else if(result == BACK) {
+            currDirectory = directoryStack.top();
+            directoryStack.pop();
+        } else if(result == SELECTED) {
+            if(selected.name.compare(".") == 0) {
+                continue;
+            } else if(selected.name.compare("..") == 0) {
+                if(directoryStack.empty()) {
+                    continue;
+                }
+
+                currDirectory = directoryStack.top();
+                directoryStack.pop();
+            } else {
+                if(ui_is_directory(selected.id)) {
+                    directoryStack.push(currDirectory);
+                    currDirectory = selected.id;
+                } else {
+                    *selectedFile = selected.id;
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+bool ui_select_app(MediaType mediaType, App* selectedApp, std::function<bool()> onLoop) {
+    std::vector<App> apps = app_list(mediaType);
+    std::vector<SelectableElement> elements;
+    for(std::vector<App>::iterator it = apps.begin(); it != apps.end(); it++) {
+        App app = *it;
+
+        std::stringstream titleId;
+        titleId << std::setfill('0') << std::setw(16) << std::hex << app.titleId;
+
+        std::stringstream uniqueId;
+        uniqueId << std::setfill('0') << std::setw(8) << std::hex << app.uniqueId;
+
+        std::vector<std::string> details;
+        details.push_back("Title ID: " + titleId.str());
+        details.push_back("Unique ID: " + uniqueId.str());
+        details.push_back("Product Code: " + std::string(app.productCode));
+        details.push_back("Platform: " + app_get_platform_name(app.platform));
+        details.push_back("Category: " + app_get_category_name(app.category));
+
+        elements.push_back({titleId.str(), app.productCode, details});
+    }
+
+    if(elements.size() == 0) {
+        elements.push_back({"None", "None"});
+    }
+
+    std::sort(elements.begin(), elements.end(), ui_alphabetize());
+
+    SelectableElement selected;
+    SelectionResult result = ui_select(elements, &selected, false, onLoop);
+    if(result != APP_CLOSING && result != MANUAL_BREAK && selected.id.compare("None") != 0) {
+        for(std::vector<App>::iterator it = apps.begin(); it != apps.end(); it++) {
+            App app = *it;
+            if(app.titleId == (u64) strtoll(selected.id.c_str(), NULL, 16)) {
+                *selectedApp = app;
+            }
+        }
+
+        return true;
+    }
+
+    return false;
 }
 
 void input_poll() {
@@ -509,7 +690,7 @@ AppCategory app_category_from_id(u16 id) {
 	return APP;
 }
 
-const char* app_get_platform_name(AppPlatform platform) {
+std::string app_get_platform_name(AppPlatform platform) {
 	switch(platform) {
 		case WII:
 			return "Wii";
@@ -524,7 +705,7 @@ const char* app_get_platform_name(AppPlatform platform) {
 	}
 }
 
-const char* app_get_category_name(AppCategory category) {
+std::string app_get_category_name(AppCategory category) {
 	switch(category) {
 		case APP:
 			return "App";
@@ -541,35 +722,23 @@ const char* app_get_category_name(AppCategory category) {
 	}
 }
 
-App* app_list(MediaType mediaType, u32* count) {
+std::vector<App> app_list(MediaType mediaType) {
+	std::vector<App> titles;
 	if(!am_prepare()) {
-		return NULL;
+		return titles;
 	}
 
 	u32 titleCount;
 	if(AM_GetTitleCount(app_mediatype_to_byte(mediaType), &titleCount) != 0) {
-		if(count != NULL) {
-			*count = 0;
-		}
-
-		return (App*) malloc(0);
-	}
-
-	if(count != NULL) {
-		*count = titleCount;
+		return titles;
 	}
 
 	u64 titleIds[titleCount];
 	if(AM_GetTitleList(app_mediatype_to_byte(mediaType), titleCount, titleIds) != 0) {
-		if(count != NULL) {
-			*count = 0;
-		}
-
-		return (App*) malloc(0);
+		return titles;
 	}
 
-	App* titles = (App*) malloc(titleCount * sizeof(App));
-	for(int i = 0; i < titleCount; i++) {
+	for(u32 i = 0; i < titleCount; i++) {
 		u64 titleId = titleIds[i];
 		App app;
 		app.titleId = titleId;
@@ -583,18 +752,18 @@ App* app_list(MediaType mediaType, u32* count) {
 		app.platform = app_platform_from_id(((u16*) &titleId)[3]);
 		app.category = app_category_from_id(((u16*) &titleId)[2]);
 
-		titles[i] = app;
+		titles.push_back(app);
 	}
 
 	return titles;
 }
 
-bool app_install(MediaType mediaType, const char* path, bool (*onProgress)(int progress)) {
+bool app_install(MediaType mediaType, std::string path, std::function<bool(int)> onProgress) {
 	if(!am_prepare()) {
 		return false;
 	}
 
-	FILE* fd = fopen(path, "r");
+	FILE* fd = fopen(path.c_str(), "r");
 	if(!fd) {
 		return false;
 	}
@@ -615,7 +784,7 @@ bool app_install(MediaType mediaType, const char* path, bool (*onProgress)(int p
 	FSFILE_SetSize(ciaHandle, size);
 
 	u32 bufSize = 1024 * 256; // 256KB
-	void* buf = malloc(bufSize);
+    void* buf = malloc(bufSize);
 	bool cancelled = false;
 	for(u64 pos = 0; pos < size; pos += bufSize) {
 		if(onProgress != NULL && !onProgress((int) ((pos / (float) size) * 100))) {
@@ -628,7 +797,7 @@ bool app_install(MediaType mediaType, const char* path, bool (*onProgress)(int p
 		FSFILE_Write(ciaHandle, NULL, pos, buf, bytesRead, FS_WRITE_NOFLUSH);
 	}
 
-	free(buf);
+    free(buf);
 	fclose(fd);
 
 	if(cancelled) {
@@ -640,27 +809,27 @@ bool app_install(MediaType mediaType, const char* path, bool (*onProgress)(int p
 	}
 
 	Result res = AM_FinishCiaInstall(app_mediatype_to_byte(mediaType), &ciaHandle);
-	if(res != 0 && res != 0xC8A044DC) { // Happens when already installed, but seems to have succeeded anyway...
+	if(res != 0 && (u32) res != 0xC8A044DC) { // Happens when already installed, but seems to have succeeded anyway...
 		return false;
 	}
 
 	return true;
 }
 
-bool app_delete(MediaType mediaType, App app) {
+bool app_delete(App app) {
 	if(!am_prepare()) {
 		return false;
 	}
 
-	return AM_DeleteAppTitle(app_mediatype_to_byte(mediaType), app.titleId) == 0;
+	return AM_DeleteAppTitle(app_mediatype_to_byte(app.mediaType), app.titleId) == 0;
 }
 
-bool app_launch(MediaType mediaType, App app) {
+bool app_launch(App app) {
 	if(!ns_prepare()) {
 		return false;
 	}
 
-	return NS_RebootToTitle(mediaType, app.titleId) == 0;
+	return NS_RebootToTitle(app.mediaType, app.titleId) == 0;
 }
 
 u64 fs_get_free_space(MediaType mediaType) {
@@ -720,15 +889,18 @@ void platform_delay(int ms) {
 	svcSleepThread(ms * 1000000);
 }
 
-void platform_print(const char* str) {
-	svcOutputDebugString(str, strlen(str));
-}
-
 void platform_printf(const char* format, ...) {
 	va_list args;
 	va_start(args, format);
-	char* str = vsdprintf(format, args);
-	va_end(args);
-	platform_print(str);
-	free(str);
+    int len = vsnprintf(NULL, 0, format, args);
+    va_end(args);
+
+    char str[len + 1];
+
+    va_list args2;
+    va_start(args2, format);
+    vsnprintf(str, (size_t) len + 1, format, args2);
+    va_end(args2);
+
+    svcOutputDebugString(str, strlen(str));
 }
