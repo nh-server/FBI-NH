@@ -39,7 +39,7 @@ ICON            :=      resources/icon.png
 #---------------------------------------------------------------------------------
 ARCH	:=	-march=armv6k -mtune=mpcore -mfloat-abi=softfp
 
-CFLAGS	:=	-g -Wall -O3 -mword-relocations \
+CFLAGS	:=	-g -Wall -Wno-strict-aliasing -O3 -mword-relocations \
 			-fomit-frame-pointer -ffast-math \
 			$(ARCH)
 
@@ -155,7 +155,7 @@ banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.wav
 	@echo "built ... banner"
 
 icon.icn: $(TOPDIR)/resources/icon.png
-	$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i $(TOPDIR)/resources/icon.png -o icon.icn
+	$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)" -i $(TOPDIR)/resources/icon.png -o icon.icn
 	@echo "built ... icon"
 
 stripped.elf: $(OUTPUT).elf
