@@ -100,12 +100,12 @@ int screen_get_width();
 int screen_get_height();
 void screen_draw(int x, int y, u8 r, u8 g, u8 b);
 void screen_fill(int x, int y, int width, int height, u8 r, u8 g, u8 b);
-int screen_get_str_width(std::string str);
-int screen_get_str_height(std::string str);
-void screen_draw_string(std::string str, int x, int y, u8 r, u8 g, u8 b);
+int screen_get_str_width(const std::string str);
+int screen_get_str_height(const std::string str);
+void screen_draw_string(const std::string str, int x, int y, u8 r, u8 g, u8 b);
 void screen_clear(u8 r, u8 g, u8 b);
 
-bool ui_select_file(std::string rootDirectory, std::string extension, std::string* selectedFile, std::function<bool()> onLoop);
+bool ui_select_file(const std::string rootDirectory, const std::string extension, std::string* selectedFile, std::function<bool()> onLoop);
 bool ui_select_app(MediaType mediaType, App* selectedApp, std::function<bool()> onLoop);
 
 void input_poll();
@@ -114,10 +114,10 @@ bool input_is_pressed(Button button);
 bool input_is_held(Button button);
 Touch input_get_touch();
 
-std::string app_get_platform_name(AppPlatform platform);
-std::string app_get_category_name(AppCategory category);
+const std::string app_get_platform_name(AppPlatform platform);
+const std::string app_get_category_name(AppCategory category);
 std::vector<App> app_list(MediaType mediaType);
-bool app_install(MediaType mediaType, std::string path, std::function<bool(int)> onProgress);
+bool app_install(MediaType mediaType, const std::string path, std::function<bool(int)> onProgress);
 bool app_delete(App app);
 bool app_launch(App app);
 
