@@ -480,15 +480,12 @@ bool ui_is_directory(const std::string path) {
 
 struct ui_alphabetize {
     inline bool operator() (SelectableElement a, SelectableElement b) {
-        return a.name.compare(b.name) < 0;
+        return strcasecmp(a.name.c_str(), b.name.c_str()) < 0;
     }
 };
 
 std::vector<SelectableElement> ui_get_dir_elements(const std::string directory, const std::string extension) {
     std::vector<SelectableElement> elements;
-    elements.push_back({".", "."});
-    elements.push_back({"..", ".."});
-
     DIR *dir = opendir(directory.c_str());
     if(dir != NULL) {
         while(true) {
@@ -520,6 +517,8 @@ std::vector<SelectableElement> ui_get_dir_elements(const std::string directory, 
     }
 
     std::sort(elements.begin(), elements.end(), ui_alphabetize());
+    elements.insert(elements.begin(), {"..", ".."});
+    elements.insert(elements.begin(), {".", "."});
     return elements;
 }
 
