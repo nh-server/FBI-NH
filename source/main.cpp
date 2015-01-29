@@ -1,4 +1,4 @@
-#include "common.hpp"
+#include <ctrcommon/common.hpp>
 
 #include <sstream>
 #include <iomanip>

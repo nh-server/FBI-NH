@@ -7,6 +7,4 @@ Video: https://www.youtube.com/watch?v=eb-QpeHQWWY
 
 Download: https://www.dropbox.com/s/ovfbpkrjq5anq25/FBI.cia?dl=0
 
-Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/) to build.
-
-Currently only compiles against a fork of ctrulib that adds two required functions.
+Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/) and [ctrcommon](https://github.com/Steveice10/ctrcommon) to build.
