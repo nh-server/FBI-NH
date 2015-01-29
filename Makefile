@@ -24,6 +24,7 @@ APP_UNIQUE_ID := $(shell echo $(APP_UNIQUE_ID) | cut -c1-7)
 # INCLUDES is a list of directories containing header files
 #
 # NO_SMDH: if set to anything, no SMDH file is generated.
+# NO_CTRCOMMON: Do not look for or include ctrcommon.
 # APP_TITLE is the name of the app stored in the SMDH file (Optional)
 # APP_DESCRIPTION is the description of the app stored in the SMDH file (Optional)
 # APP_AUTHOR is the author of the app stored in the SMDH file (Optional)
@@ -59,12 +60,11 @@ ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:= -lctru -lm
-
-#---------------------------------------------------------------------------------
-# list of directories containing libraries, this must be the top level containing
-# include and lib
-#---------------------------------------------------------------------------------
 LIBDIRS	:= $(CTRULIB) ./lib
+ifeq ($(NO_CTRCOMMON),)
+	LIBS	:= -lctrcommon -lctru -lm
+	LIBDIRS	:= $(DEVKITPRO)/ctrcommon $(CTRULIB) ./lib
+endif
 
 ifeq ($(OS),Windows_NT)
 	MAKEROM = $(TOPDIR)/tools/makerom.exe
