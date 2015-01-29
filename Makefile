@@ -11,6 +11,12 @@ include $(DEVKITARM)/3ds_rules
 
 include $(TOPDIR)/resources/AppInfo
 
+APP_TITLE := $(shell echo $(APP_TITLE) | cut -c1-128)
+APP_DESCRIPTION := $(shell echo $(APP_DESCRIPTION) | cut -c1-256)
+APP_AUTHOR := $(shell echo $(APP_AUTHOR) | cut -c1-128)
+APP_PRODUCT_CODE := $(shell echo $(APP_PRODUCT_CODE) | cut -c1-16)
+APP_UNIQUE_ID := $(shell echo $(APP_UNIQUE_ID) | cut -c1-7)
+
 #---------------------------------------------------------------------------------
 # BUILD is the directory where object files & intermediate files will be placed
 # SOURCES is a list of directories containing source code
@@ -142,7 +148,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
 .PHONY: all
-all	:	$(OUTPUT_D) $(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).cia $(OUTPUT).3ds
+all	:	$(OUTPUT_D) $(OUTPUT).3dsx $(OUTPUT).smdh $(OUTPUT).3ds $(OUTPUT).cia
 endif
 $(OUTPUT_D)     :
 	@[ -d $@ ] || mkdir -p $@
@@ -152,22 +158,20 @@ $(OUTPUT).elf	:	$(OFILES)
 
 banner.bnr: $(TOPDIR)/resources/banner.png $(TOPDIR)/resources/audio.wav
 	$(BANNERTOOL) makebanner -i $(TOPDIR)/resources/banner.png -a $(TOPDIR)/resources/audio.wav -o banner.bnr
-	@echo "built ... banner"
 
 icon.icn: $(TOPDIR)/resources/icon.png
 	$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)" -i $(TOPDIR)/resources/icon.png -o icon.icn
-	@echo "built ... icon"
 
 stripped.elf: $(OUTPUT).elf
 	@cp $(OUTPUT).elf stripped.elf
 	@$(PREFIX)strip stripped.elf
 
-$(OUTPUT).cia: stripped.elf banner.bnr icon.icn cia.rsf
-	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
-	@echo "built ... $(notdir $@)"
-
 $(OUTPUT).3ds: stripped.elf banner.bnr icon.icn 3ds.rsf
 	$(MAKEROM) -f cci -o $(OUTPUT).3ds -rsf 3ds.rsf -target d -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
+	@echo "built ... $(notdir $@)"
+
+$(OUTPUT).cia: stripped.elf banner.bnr icon.icn cia.rsf
+	$(MAKEROM) -f cia -o $(OUTPUT).cia -rsf cia.rsf -target t -exefslogo -elf stripped.elf -icon icon.icn -banner banner.bnr
 	@echo "built ... $(notdir $@)"
 	
 3ds.rsf:
