@@ -191,9 +191,8 @@ void screen_swap_buffers_quick() {
 }
 
 void screen_swap_buffers() {
-	gfxFlushBuffers();
-	gfxSwapBuffers();
 	gspWaitForVBlank();
+	screen_swap_buffers_quick();
 }
 
 int screen_get_width() {
