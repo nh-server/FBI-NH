@@ -355,6 +355,7 @@ void screen_draw_string(std::string str, int x, int y, u8 r, u8 g, u8 b) {
 		if(c == '\n') {
 			cx = x;
 			cy += 8;
+                        continue;
 		}
 
 		screen_draw_char(c, cx, cy, r, g, b);
