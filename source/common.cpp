@@ -318,11 +318,11 @@ void screen_fill(int x, int y, int width, int height, u8 r, u8 g, u8 b) {
 	}
 }
 
-int screen_get_str_width(std::string str) {
+int screen_get_str_width(const std::string str) {
 	return str.length() * 8;
 }
 
-int screen_get_str_height(std::string str) {
+int screen_get_str_height(const std::string str) {
 	return 8;
 }
 
@@ -342,7 +342,7 @@ void screen_draw_char(char c, int x, int y, u8 r, u8 g, u8 b) {
 	}
 }
 
-void screen_draw_string(std::string str, int x, int y, u8 r, u8 g, u8 b) {
+void screen_draw_string(const std::string str, int x, int y, u8 r, u8 g, u8 b) {
 	if(fb == NULL) {
 		return;
 	}
@@ -469,7 +469,7 @@ SelectionResult ui_select(std::vector<SelectableElement> elements, SelectableEle
     return APP_CLOSING;
 }
 
-bool ui_is_directory(std::string path) {
+bool ui_is_directory(const std::string path) {
     DIR *dir = opendir(path.c_str());
     if(!dir) {
         return false;
@@ -485,7 +485,7 @@ struct ui_alphabetize {
     }
 };
 
-std::vector<SelectableElement> ui_get_dir_elements(std::string directory, std::string extension) {
+std::vector<SelectableElement> ui_get_dir_elements(const std::string directory, const std::string extension) {
     std::vector<SelectableElement> elements;
     elements.push_back({".", "."});
     elements.push_back({"..", ".."});
@@ -498,8 +498,8 @@ std::vector<SelectableElement> ui_get_dir_elements(std::string directory, std::s
                 break;
             }
 
-            std::string dirName = std::string(ent->d_name);
-            std::string path = directory + "/" + dirName;
+            const std::string dirName = std::string(ent->d_name);
+            const std::string path = directory + "/" + dirName;
             if(ui_is_directory(path)) {
                 elements.push_back({path, dirName});
             } else {
@@ -524,7 +524,7 @@ std::vector<SelectableElement> ui_get_dir_elements(std::string directory, std::s
     return elements;
 }
 
-bool ui_select_file(std::string rootDirectory, std::string extension, std::string* selectedFile, std::function<bool()> onLoop) {
+bool ui_select_file(const std::string rootDirectory, const std::string extension, std::string* selectedFile, std::function<bool()> onLoop) {
     std::stack<std::string> directoryStack;
     std::string currDirectory = rootDirectory;
     while(platform_is_running()) {
@@ -691,7 +691,7 @@ AppCategory app_category_from_id(u16 id) {
 	return APP;
 }
 
-std::string app_get_platform_name(AppPlatform platform) {
+const std::string app_get_platform_name(AppPlatform platform) {
 	switch(platform) {
 		case WII:
 			return "Wii";
@@ -706,7 +706,7 @@ std::string app_get_platform_name(AppPlatform platform) {
 	}
 }
 
-std::string app_get_category_name(AppCategory category) {
+const std::string app_get_category_name(AppCategory category) {
 	switch(category) {
 		case APP:
 			return "App";
@@ -759,7 +759,7 @@ std::vector<App> app_list(MediaType mediaType) {
 	return titles;
 }
 
-bool app_install(MediaType mediaType, std::string path, std::function<bool(int)> onProgress) {
+bool app_install(MediaType mediaType, const std::string path, std::function<bool(int)> onProgress) {
 	if(!am_prepare()) {
 		return false;
 	}
