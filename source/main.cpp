@@ -97,6 +97,9 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	std::vector<std::string> extensions;
+	extensions.push_back("cia");
+
 	MediaType destination = SD;
 	Mode mode = INSTALL;
     u64 freeSpace = fs_get_free_space(destination);
@@ -126,15 +129,12 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)";
+        stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
+        stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL ? "Install" : "Delete") << "\n";
+        stream << "L - Switch Destination, R - Switch Mode" << "\n";
 
-        std::string space = stream.str();
-        std::string status = std::string("Destination: ") + (destination == NAND ? "NAND" : "SD") + ", Mode: " + (mode == INSTALL ? "Install" : "Delete");
-        std::string msg = "L - Switch Destination, R - Switch Mode";
-
-        screen_draw_string(space, (screen_get_width() - screen_get_str_width(space)) / 2, screen_get_height() - 4 - screen_get_str_height(msg) - screen_get_str_height(status) - screen_get_str_height(space), 255, 255, 255);
-        screen_draw_string(status, (screen_get_width() - screen_get_str_width(status)) / 2, screen_get_height() - 4 - screen_get_str_height(msg) - screen_get_str_height(status), 255, 255, 255);
-        screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, screen_get_height() - 4 - screen_get_str_height(msg), 255, 255, 255);
+        std::string str = stream.str();
+        screen_draw_string(str, (screen_get_width() - screen_get_str_width(str)) / 2, screen_get_height() - 4 - screen_get_str_height(str), 255, 255, 255);
 
         return breakLoop;
     };
@@ -144,9 +144,9 @@ int main(int argc, char **argv) {
 		App targetDelete;
         bool obtained = false;
 		if(mode == INSTALL) {
-			obtained = ui_select_file("sdmc:", "cia", &targetInstall, onLoop);
+			obtained = ui_select_file(&targetInstall, "sdmc:", extensions, onLoop);
 		} else if(mode == DELETE) {
-            obtained = ui_select_app(destination, &targetDelete, onLoop);
+            obtained = ui_select_app(&targetDelete, destination, onLoop);
 		}
 
         if(obtained) {
