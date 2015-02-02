@@ -24,15 +24,14 @@ bool ui_display_install_progress(int progress) {
     state.copyfmt(stream);
     stream << "] " << std::setfill('0') << std::setw(3) << progress;
     stream.copyfmt(state);
-    stream << "%";
+    stream << "%" << "\n";
+	stream << "Press B to cancel." << "\n";
 
-    std::string msg = stream.str();
-    std::string cancel = "Press B to cancel.";
+    std::string str = stream.str();
 
     screen_begin_draw(TOP_SCREEN);
     screen_clear(0, 0, 0);
-    screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 - screen_get_str_height(msg), 255, 255, 255);
-    screen_draw_string(cancel, (screen_get_width() - screen_get_str_width(cancel)) / 2, (screen_get_height() - screen_get_str_height(cancel)) / 2 + screen_get_str_height(cancel), 255, 255, 255);
+    screen_draw_string(str, (screen_get_width() - screen_get_str_width(str)) / 2, (screen_get_height() - screen_get_str_height(str)) / 2, 255, 255, 255);
     screen_end_draw();
     screen_swap_buffers_quick();;
 
@@ -67,9 +66,10 @@ void ui_display_result(bool install, bool state) {
 
 bool ui_prompt_operation(Mode mode, std::string name) {
     std::stringstream stream;
-    stream << (mode == INSTALL ? "Install" : "Delete") << " the selected title?";
-    std::string msg = stream.str();
-    std::string prompt = "Press A to confirm, B to cancel.";
+    stream << (mode == INSTALL ? "Install" : "Delete") << " the selected title?" << "\n";
+	stream << name << "\n";
+    stream << "Press A to confirm, B to cancel." << "\n";
+	std::string str = stream.str();
     while(platform_is_running()) {
         input_poll();
         if(input_is_pressed(BUTTON_A)) {
@@ -82,9 +82,7 @@ bool ui_prompt_operation(Mode mode, std::string name) {
 
         screen_begin_draw(TOP_SCREEN);
         screen_clear(0, 0, 0);
-        screen_draw_string(msg, (screen_get_width() - screen_get_str_width(msg)) / 2, (screen_get_height() - screen_get_str_height(msg)) / 2 - screen_get_str_height(msg), 255, 255, 255);
-        screen_draw_string(name, (screen_get_width() - screen_get_str_width(name)) / 2, (screen_get_height() - screen_get_str_height(name)) / 2, 255, 255, 255);
-        screen_draw_string(prompt, (screen_get_width() - screen_get_str_width(prompt)) / 2, (screen_get_height() - screen_get_str_height(prompt)) / 2 + screen_get_str_height(prompt), 255, 255, 255);
+        screen_draw_string(str, (screen_get_width() - screen_get_str_width(str)) / 2, (screen_get_height() - screen_get_str_height(str)) / 2, 255, 255, 255);
         screen_end_draw();
         screen_swap_buffers();
     }
@@ -160,6 +158,8 @@ int main(int argc, char **argv) {
                     ui_display_result(false, app_delete(targetDelete));
                 }
             }
+
+			freeSpace = fs_get_free_space(destination);
         }
 	}
 
