@@ -67,7 +67,6 @@ void ui_display_result(bool install, bool state) {
 bool ui_prompt_operation(Mode mode, std::string name) {
     std::stringstream stream;
     stream << (mode == INSTALL ? "Install" : "Delete") << " the selected title?" << "\n";
-	stream << name << "\n";
     stream << "Press A to confirm, B to cancel." << "\n";
 	std::string str = stream.str();
     while(platform_is_running()) {
