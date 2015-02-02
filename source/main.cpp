@@ -64,7 +64,7 @@ void ui_display_result(bool install, bool state) {
     }
 }
 
-bool ui_prompt_operation(Mode mode, std::string name) {
+bool ui_prompt_operation(Mode mode) {
     std::stringstream stream;
     stream << (mode == INSTALL ? "Install" : "Delete") << " the selected title?" << "\n";
     stream << "Press A to confirm, B to cancel." << "\n";
@@ -148,11 +148,11 @@ int main(int argc, char **argv) {
 
         if(obtained) {
             if(mode == INSTALL) {
-                if(ui_prompt_operation(mode, targetInstall)) {
+                if(ui_prompt_operation(mode)) {
                     ui_display_result(true, app_install(destination, targetInstall, &ui_display_install_progress));
                 }
             } else if(mode == DELETE) {
-                if(ui_prompt_operation(mode, targetDelete.productCode)) {
+                if(ui_prompt_operation(mode)) {
                     ui_display_deleting();
                     ui_display_result(false, app_delete(targetDelete));
                 }
