@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
 
 	MediaType destination = SD;
 	Mode mode = INSTALL;
+	bool netInstall = false;
     u64 freeSpace = fs_get_free_space(destination);
     auto onLoop = [&]() {
         bool breakLoop = false;
@@ -44,10 +45,16 @@ int main(int argc, char **argv) {
             breakLoop = true;
         }
 
+		if(input_is_pressed(BUTTON_Y)) {
+			netInstall = true;
+			breakLoop = true;
+		}
+
         std::stringstream stream;
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL ? "Install" : "Delete") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
+		stream << "Y - Receive an app over the network" << "\n";
 
         std::string str = stream.str();
         screen_draw_string(str, (screen_get_width() - screen_get_str_width(str)) / 2, screen_get_height() - 4 - screen_get_str_height(str), 255, 255, 255);
@@ -71,19 +78,80 @@ int main(int argc, char **argv) {
             obtained = ui_select_app(&targetDelete, destination, onLoop);
 		}
 
-        if(obtained) {
-            if(mode == INSTALL) {
-                if(ui_prompt("Install the selected title?", true)) {
-					ui_prompt(app_install(destination, targetInstall, onProgress) ? "Install succeeded!" : "Install failed!", false);
-                }
-            } else if(mode == DELETE) {
-                if(ui_prompt("Delete the selected title?", true)) {
-					ui_display_message("Deleting title...");
-					ui_prompt(app_delete(targetDelete) ? "Delete succeeded!" : "Delete failed!", false);
-                }
-            }
+		if(netInstall) {
+			netInstall = false;
 
-			freeSpace = fs_get_free_space(destination);
+			// Clear bottom screen on both buffers.
+			screen_begin_draw(BOTTOM_SCREEN);
+			screen_clear(0, 0, 0);
+			screen_end_draw();
+			screen_swap_buffers();
+
+			screen_begin_draw(BOTTOM_SCREEN);
+			screen_clear(0, 0, 0);
+			screen_end_draw();
+			screen_swap_buffers();
+
+			RemoteFile file = ui_accept_remote_file();
+			if(file.socket == -1) {
+				continue;
+			}
+
+			std::stringstream confirmStream;
+			confirmStream << "Install the received application?" << "\n";
+			confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
+			if(ui_prompt(confirmStream.str(), true)) {
+				int ret = app_install(destination, file.socket, true, file.fileSize, onProgress);
+				std::stringstream resultMsg;
+				resultMsg << "Install ";
+				if(ret == 0) {
+					resultMsg << "succeeded!";
+				} else {
+					resultMsg << "failed! Error: 0x" << std::hex << ret;
+				}
+
+				ui_prompt(resultMsg.str(), false);
+			}
+
+			socket_close(file.socket);
+			continue;
+		}
+
+        if(obtained) {
+			std::stringstream prompt;
+			if(mode == INSTALL) {
+				prompt << "Install ";
+			} else if(mode == DELETE) {
+				prompt << "Delete ";
+			}
+
+			prompt << "the selected title?";
+			if(ui_prompt(prompt.str(), true)) {
+				int ret = 0;
+				if(mode == INSTALL) {
+					ret = app_install_file(destination, targetInstall, onProgress);
+				} else if(mode == DELETE) {
+					ui_display_message("Deleting title...");
+					ret = app_delete(targetDelete);
+				}
+
+				std::stringstream resultMsg;
+				if(mode == INSTALL) {
+					resultMsg << "Install ";
+				} else if(mode == DELETE) {
+					resultMsg << "Delete ";
+				}
+
+				if(ret == 0) {
+					resultMsg << "succeeded!";
+				} else {
+					resultMsg << "failed! Error: 0x" << std::hex << ret;
+				}
+
+				ui_prompt(resultMsg.str(), false);
+
+				freeSpace = fs_get_free_space(destination);
+			}
         }
 	}
 
