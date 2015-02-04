@@ -106,6 +106,8 @@ int main(int argc, char **argv) {
                 resultMsg << "Install ";
                 if(ret == 0) {
                     resultMsg << "succeeded!";
+                } else if(ret == -2) {
+                    resultMsg << "cancelled!";
                 } else {
                     resultMsg << "failed! Error: 0x" << std::hex << ret;
                 }
@@ -144,6 +146,8 @@ int main(int argc, char **argv) {
 
                 if(ret == 0) {
                     resultMsg << "succeeded!";
+                } else if(ret == -2) {
+                    resultMsg << "cancelled!";
                 } else {
                     resultMsg << "failed! Error: 0x" << std::hex << ret;
                 }
