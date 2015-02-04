@@ -4,8 +4,8 @@
 #include <iomanip>
 
 typedef enum {
-    INSTALL,
-    DELETE
+	INSTALL,
+	DELETE
 } Mode;
 
 int main(int argc, char **argv) {
@@ -19,48 +19,48 @@ int main(int argc, char **argv) {
 	MediaType destination = SD;
 	Mode mode = INSTALL;
 	bool netInstall = false;
-    u64 freeSpace = fs_get_free_space(destination);
-    auto onLoop = [&]() {
-        bool breakLoop = false;
-        if(input_is_pressed(BUTTON_L)) {
-            if(destination == SD) {
-                destination = NAND;
-            } else {
-                destination = SD;
-            }
+	u64 freeSpace = fs_get_free_space(destination);
+	auto onLoop = [&]() {
+		bool breakLoop = false;
+		if(input_is_pressed(BUTTON_L)) {
+			if(destination == SD) {
+				destination = NAND;
+			} else {
+				destination = SD;
+			}
 
-            freeSpace = fs_get_free_space(destination);
-            if(mode == DELETE) {
-                breakLoop = true;
-            }
-        }
+			freeSpace = fs_get_free_space(destination);
+			if(mode == DELETE) {
+				breakLoop = true;
+			}
+		}
 
-        if(input_is_pressed(BUTTON_R)) {
-            if(mode == INSTALL) {
-                mode = DELETE;
-            } else {
-                mode = INSTALL;
-            }
+		if(input_is_pressed(BUTTON_R)) {
+			if(mode == INSTALL) {
+				mode = DELETE;
+			} else {
+				mode = INSTALL;
+			}
 
-            breakLoop = true;
-        }
+			breakLoop = true;
+		}
 
 		if(input_is_pressed(BUTTON_Y)) {
 			netInstall = true;
 			breakLoop = true;
 		}
 
-        std::stringstream stream;
-        stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
-        stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL ? "Install" : "Delete") << "\n";
-        stream << "L - Switch Destination, R - Switch Mode" << "\n";
+		std::stringstream stream;
+		stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
+		stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL ? "Install" : "Delete") << "\n";
+		stream << "L - Switch Destination, R - Switch Mode" << "\n";
 		stream << "Y - Receive an app over the network" << "\n";
 
-        std::string str = stream.str();
-        screen_draw_string(str, (screen_get_width() - screen_get_str_width(str)) / 2, screen_get_height() - 4 - screen_get_str_height(str), 255, 255, 255);
+		std::string str = stream.str();
+		screen_draw_string(str, (screen_get_width() - screen_get_str_width(str)) / 2, screen_get_height() - 4 - screen_get_str_height(str), 255, 255, 255);
 
-        return breakLoop;
-    };
+		return breakLoop;
+	};
 
 	auto onProgress = [&](int progress) {
 		ui_display_progress("Installing", "Press B to cancel.", true, progress);
@@ -69,13 +69,13 @@ int main(int argc, char **argv) {
 	};
 
 	while(platform_is_running()) {
-        std::string targetInstall;
+		std::string targetInstall;
 		App targetDelete;
-        bool obtained = false;
+		bool obtained = false;
 		if(mode == INSTALL) {
 			obtained = ui_select_file(&targetInstall, "sdmc:", extensions, onLoop);
 		} else if(mode == DELETE) {
-            obtained = ui_select_app(&targetDelete, destination, onLoop);
+			obtained = ui_select_app(&targetDelete, destination, onLoop);
 		}
 
 		if(netInstall) {
@@ -117,7 +117,7 @@ int main(int argc, char **argv) {
 			continue;
 		}
 
-        if(obtained) {
+		if(obtained) {
 			std::stringstream prompt;
 			if(mode == INSTALL) {
 				prompt << "Install ";
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 
 				freeSpace = fs_get_free_space(destination);
 			}
-        }
+		}
 	}
 
 	platform_cleanup();
