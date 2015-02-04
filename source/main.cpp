@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
             confirmStream << "Install the received application?" << "\n";
             confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
             if(ui_prompt(confirmStream.str(), true)) {
-                int ret = app_install(destination, file.socket, true, file.fileSize, onProgress);
+                int ret = app_install_socket(destination, file.socket, file.fileSize, onProgress);
                 std::stringstream resultMsg;
                 resultMsg << "Install ";
                 if(ret == 0) {
