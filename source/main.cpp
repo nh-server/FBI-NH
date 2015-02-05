@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include <iomanip>
+#include <stdio.h>
 
 typedef enum {
     INSTALL,
@@ -93,7 +94,7 @@ int main(int argc, char **argv) {
             screen_swap_buffers();
 
             RemoteFile file = ui_accept_remote_file();
-            if(file.socket == -1) {
+            if(file.fd == NULL) {
                 continue;
             }
 
@@ -101,7 +102,7 @@ int main(int argc, char **argv) {
             confirmStream << "Install the received application?" << "\n";
             confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
             if(ui_prompt(confirmStream.str(), true)) {
-                int ret = app_install_socket(destination, file.socket, file.fileSize, onProgress);
+                int ret = app_install(destination, file.fd, file.fileSize, onProgress);
                 std::stringstream resultMsg;
                 resultMsg << "Install ";
                 if(ret == 0) {
@@ -115,7 +116,7 @@ int main(int argc, char **argv) {
                 ui_prompt(resultMsg.str(), false);
             }
 
-            socket_close(file.socket);
+            fclose(file.fd);
             continue;
         }
 
