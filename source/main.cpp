@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iomanip>
 #include <stdio.h>
+#include <sys/errno.h>
 
 typedef enum {
     INSTALL,
@@ -104,13 +105,17 @@ int main(int argc, char **argv) {
             if(ui_prompt(confirmStream.str(), true)) {
                 int ret = app_install(destination, file.fd, file.fileSize, onProgress);
                 std::stringstream resultMsg;
-                resultMsg << "Install ";
-                if(ret == 0) {
+                if(mode == INSTALL) {
+                    resultMsg << "Install ";
+                } else if(mode == DELETE) {
+                    resultMsg << "Delete ";
+                }
+
+                if(ret == APP_SUCCESS) {
                     resultMsg << "succeeded!";
-                } else if(ret == -2) {
-                    resultMsg << "cancelled!";
                 } else {
-                    resultMsg << "failed! Error: 0x" << std::hex << ret;
+                    resultMsg << "failed!" << "\n";
+                    resultMsg << app_get_result_string(ret);
                 }
 
                 ui_prompt(resultMsg.str(), false);
@@ -145,12 +150,11 @@ int main(int argc, char **argv) {
                     resultMsg << "Delete ";
                 }
 
-                if(ret == 0) {
+                if(ret == APP_SUCCESS) {
                     resultMsg << "succeeded!";
-                } else if(ret == -2) {
-                    resultMsg << "cancelled!";
                 } else {
-                    resultMsg << "failed! Error: 0x" << std::hex << ret;
+                    resultMsg << "failed!" << "\n";
+                    resultMsg << app_get_result_string(ret);
                 }
 
                 ui_prompt(resultMsg.str(), false);
