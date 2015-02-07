@@ -11,9 +11,9 @@ include $(DEVKITARM)/3ds_rules
 
 include $(TOPDIR)/resources/AppInfo
 
-APP_TITLE := $(shell echo $(APP_TITLE) | cut -c1-128)
-APP_DESCRIPTION := $(shell echo $(APP_DESCRIPTION) | cut -c1-256)
-APP_AUTHOR := $(shell echo $(APP_AUTHOR) | cut -c1-128)
+APP_TITLE := $(shell echo "$(APP_TITLE)" | cut -c1-128)
+APP_DESCRIPTION := $(shell echo "$(APP_DESCRIPTION)" | cut -c1-256)
+APP_AUTHOR := $(shell echo "$(APP_AUTHOR)" | cut -c1-128)
 APP_PRODUCT_CODE := $(shell echo $(APP_PRODUCT_CODE) | cut -c1-16)
 APP_UNIQUE_ID := $(shell echo $(APP_UNIQUE_ID) | cut -c1-7)
 
