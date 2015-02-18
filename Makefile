@@ -70,8 +70,15 @@ ifeq ($(OS),Windows_NT)
 	MAKEROM = $(TOPDIR)/tools/makerom.exe
 	BANNERTOOL = $(TOPDIR)/tools/bannertool.exe
 else
-	MAKEROM = $(TOPDIR)/tools/makerom
-	BANNERTOOL = $(TOPDIR)/tools/bannertool
+	UNAME_S := $(shell uname -s)
+	ifeq ($(UNAME_S),Linux)
+		MAKEROM = $(TOPDIR)/tools/makerom-linux
+		BANNERTOOL = $(TOPDIR)/tools/bannertool-linux
+	endif
+	ifeq ($(UNAME_S),Darwin)
+		MAKEROM = $(TOPDIR)/tools/makerom-mac
+		BANNERTOOL = $(TOPDIR)/tools/bannertool-mac
+	endif
 endif
 
 
