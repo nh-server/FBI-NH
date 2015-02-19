@@ -75,7 +75,9 @@ int main(int argc, char **argv) {
         App targetDelete;
         bool obtained = false;
         if(mode == INSTALL) {
-            obtained = ui_select_file(&targetInstall, "sdmc:", extensions, onLoop);
+            obtained = ui_select_file(&targetInstall, "sdmc:", extensions, [&](bool inRoot) {
+                return onLoop();
+            });
         } else if(mode == DELETE) {
             obtained = ui_select_app(&targetDelete, destination, onLoop);
         }
