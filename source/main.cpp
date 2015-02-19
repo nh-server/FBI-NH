@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
     };
 
     auto onProgress = [&](int progress) {
-        ui_display_progress("Installing", "Press B to cancel.", true, progress);
+        ui_display_progress(TOP_SCREEN, "Installing", "Press B to cancel.", true, progress);
         input_poll();
         return !input_is_pressed(BUTTON_B);
     };
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
             screen_end_draw();
             screen_swap_buffers();
 
-            RemoteFile file = ui_accept_remote_file();
+            RemoteFile file = ui_accept_remote_file(TOP_SCREEN);
             if(file.fd == NULL) {
                 continue;
             }
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
             std::stringstream confirmStream;
             confirmStream << "Install the received application?" << "\n";
             confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
-            if(ui_prompt(confirmStream.str(), true)) {
+            if(ui_prompt(TOP_SCREEN, confirmStream.str(), true)) {
                 int ret = app_install(destination, file.fd, file.fileSize, onProgress);
                 std::stringstream resultMsg;
                 if(mode == INSTALL) {
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
                     resultMsg << app_get_result_string(ret);
                 }
 
-                ui_prompt(resultMsg.str(), false);
+                ui_prompt(TOP_SCREEN, resultMsg.str(), false);
             }
 
             fclose(file.fd);
@@ -136,12 +136,12 @@ int main(int argc, char **argv) {
             }
 
             prompt << "the selected title?";
-            if(ui_prompt(prompt.str(), true)) {
+            if(ui_prompt(TOP_SCREEN, prompt.str(), true)) {
                 int ret = 0;
                 if(mode == INSTALL) {
                     ret = app_install_file(destination, targetInstall, onProgress);
                 } else if(mode == DELETE) {
-                    ui_display_message("Deleting title...");
+                    ui_display_message(TOP_SCREEN, "Deleting title...");
                     ret = app_delete(targetDelete);
                 }
 
@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
                     resultMsg << app_get_result_string(ret);
                 }
 
-                ui_prompt(resultMsg.str(), false);
+                ui_prompt(TOP_SCREEN, resultMsg.str(), false);
 
                 freeSpace = fs_get_free_space(destination);
             }
