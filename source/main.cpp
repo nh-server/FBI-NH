@@ -85,16 +85,7 @@ int main(int argc, char **argv) {
         if(netInstall) {
             netInstall = false;
 
-            // Clear bottom screen on both buffers.
-            screen_begin_draw(BOTTOM_SCREEN);
-            screen_clear(0, 0, 0);
-            screen_end_draw();
-            screen_swap_buffers();
-
-            screen_begin_draw(BOTTOM_SCREEN);
-            screen_clear(0, 0, 0);
-            screen_end_draw();
-            screen_swap_buffers();
+            screen_clear_buffers(BOTTOM_SCREEN, 0, 0, 0);
 
             RemoteFile file = ui_accept_remote_file(TOP_SCREEN);
             if(file.fd == NULL) {
@@ -105,7 +96,7 @@ int main(int argc, char **argv) {
             confirmStream << "Install the received application?" << "\n";
             confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
             if(ui_prompt(TOP_SCREEN, confirmStream.str(), true)) {
-                int ret = app_install(destination, file.fd, file.fileSize, onProgress);
+                AppResult ret = app_install(destination, file.fd, file.fileSize, onProgress);
                 std::stringstream resultMsg;
                 if(mode == INSTALL) {
                     resultMsg << "Install ";
@@ -137,7 +128,7 @@ int main(int argc, char **argv) {
 
             prompt << "the selected title?";
             if(ui_prompt(TOP_SCREEN, prompt.str(), true)) {
-                int ret = 0;
+                AppResult ret = APP_SUCCESS;
                 if(mode == INSTALL) {
                     ret = app_install_file(destination, targetInstall, onProgress);
                 } else if(mode == DELETE) {
