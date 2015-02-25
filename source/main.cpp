@@ -3,7 +3,6 @@
 #include <sstream>
 #include <iomanip>
 #include <stdio.h>
-#include <sys/errno.h>
 
 typedef enum {
     INSTALL,
@@ -108,7 +107,7 @@ int main(int argc, char **argv) {
                     resultMsg << "succeeded!";
                 } else {
                     resultMsg << "failed!" << "\n";
-                    resultMsg << app_get_result_string(ret);
+                    resultMsg << app_get_result_string(ret) << "\n";
                 }
 
                 ui_prompt(TOP_SCREEN, resultMsg.str(), false);
@@ -147,7 +146,7 @@ int main(int argc, char **argv) {
                     resultMsg << "succeeded!";
                 } else {
                     resultMsg << "failed!" << "\n";
-                    resultMsg << app_get_result_string(ret);
+                    resultMsg << app_get_result_string(ret) << "\n";
                 }
 
                 ui_prompt(TOP_SCREEN, resultMsg.str(), false);
