@@ -12,7 +12,7 @@ typedef enum {
 } Mode;
 
 int main(int argc, char **argv) {
-    if(!platform_init()) {
+    if(!platformInit()) {
         return 0;
     }
 
@@ -22,23 +22,23 @@ int main(int argc, char **argv) {
     MediaType destination = SD;
     Mode mode = INSTALL;
     bool netInstall = false;
-    u64 freeSpace = fs_get_free_space(destination);
+    u64 freeSpace = fsGetFreeSpace(destination);
     auto onLoop = [&]() {
         bool breakLoop = false;
-        if(input_is_pressed(BUTTON_L)) {
+        if(inputIsPressed(BUTTON_L)) {
             if(destination == SD) {
                 destination = NAND;
             } else {
                 destination = SD;
             }
 
-            freeSpace = fs_get_free_space(destination);
+            freeSpace = fsGetFreeSpace(destination);
             if(mode == DELETE) {
                 breakLoop = true;
             }
         }
 
-        if(input_is_pressed(BUTTON_R)) {
+        if(inputIsPressed(BUTTON_R)) {
             if(mode == INSTALL) {
                 mode = DELETE;
             } else {
@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
             breakLoop = true;
         }
 
-        if(input_is_pressed(BUTTON_Y)) {
+        if(inputIsPressed(BUTTON_Y)) {
             netInstall = true;
             breakLoop = true;
         }
@@ -60,35 +60,35 @@ int main(int argc, char **argv) {
         stream << "Y - Receive an app over the network" << "\n";
 
         std::string str = stream.str();
-        screen_draw_string(str, (screen_get_width() - screen_get_str_width(str)) / 2, screen_get_height() - 4 - screen_get_str_height(str), 255, 255, 255);
+        screenDrawString(str, (screenGetWidth() - screenGetStrWidth(str)) / 2, screenGetHeight() - 4 - screenGetStrHeight(str), 255, 255, 255);
 
         return breakLoop;
     };
 
     auto onProgress = [&](int progress) {
-        ui_display_progress(TOP_SCREEN, "Installing", "Press B to cancel.", true, progress);
-        input_poll();
-        return !input_is_pressed(BUTTON_B);
+        uiDisplayProgress(TOP_SCREEN, "Installing", "Press B to cancel.", true, progress);
+        inputPoll();
+        return !inputIsPressed(BUTTON_B);
     };
 
-    while(platform_is_running()) {
+    while(platformIsRunning()) {
         std::string targetInstall;
         App targetDelete;
         bool obtained = false;
         if(mode == INSTALL) {
-            obtained = ui_select_file(&targetInstall, "sdmc:", extensions, [&](bool inRoot) {
+            obtained = uiSelectFile(&targetInstall, "sdmc:", extensions, [&](bool inRoot) {
                 return onLoop();
             });
         } else if(mode == DELETE) {
-            obtained = ui_select_app(&targetDelete, destination, onLoop);
+            obtained = uiSelectApp(&targetDelete, destination, onLoop);
         }
 
         if(netInstall) {
             netInstall = false;
 
-            screen_clear_buffers(BOTTOM_SCREEN, 0, 0, 0);
+            screenClearBuffers(BOTTOM_SCREEN, 0, 0, 0);
 
-            RemoteFile file = ui_accept_remote_file(TOP_SCREEN);
+            RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN);
             if(file.fd == NULL) {
                 continue;
             }
@@ -96,8 +96,8 @@ int main(int argc, char **argv) {
             std::stringstream confirmStream;
             confirmStream << "Install the received application?" << "\n";
             confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
-            if(ui_prompt(TOP_SCREEN, confirmStream.str(), true)) {
-                AppResult ret = app_install(destination, file.fd, file.fileSize, onProgress);
+            if(uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
+                AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
                 std::stringstream resultMsg;
                 if(mode == INSTALL) {
                     resultMsg << "Install ";
@@ -109,10 +109,10 @@ int main(int argc, char **argv) {
                     resultMsg << "succeeded!";
                 } else {
                     resultMsg << "failed!" << "\n";
-                    resultMsg << app_get_result_string(ret) << "\n";
+                    resultMsg << appGetResultString(ret) << "\n";
                 }
 
-                ui_prompt(TOP_SCREEN, resultMsg.str(), false);
+                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
             }
 
             fclose(file.fd);
@@ -128,13 +128,13 @@ int main(int argc, char **argv) {
             }
 
             prompt << "the selected title?";
-            if(ui_prompt(TOP_SCREEN, prompt.str(), true)) {
+            if(uiPrompt(TOP_SCREEN, prompt.str(), true)) {
                 AppResult ret = APP_SUCCESS;
                 if(mode == INSTALL) {
-                    ret = app_install_file(destination, targetInstall, onProgress);
+                    ret = appInstallFile(destination, targetInstall, onProgress);
                 } else if(mode == DELETE) {
-                    ui_display_message(TOP_SCREEN, "Deleting title...");
-                    ret = app_delete(targetDelete);
+                    uiDisplayMessage(TOP_SCREEN, "Deleting title...");
+                    ret = appDelete(targetDelete);
                 }
 
                 std::stringstream resultMsg;
@@ -148,16 +148,16 @@ int main(int argc, char **argv) {
                     resultMsg << "succeeded!";
                 } else {
                     resultMsg << "failed!" << "\n";
-                    resultMsg << app_get_result_string(ret) << "\n";
+                    resultMsg << appGetResultString(ret) << "\n";
                 }
 
-                ui_prompt(TOP_SCREEN, resultMsg.str(), false);
+                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
 
-                freeSpace = fs_get_free_space(destination);
+                freeSpace = fsGetFreeSpace(destination);
             }
         }
     }
 
-    platform_cleanup();
+    platformCleanup();
     return 0;
 }
