@@ -1,4 +1,6 @@
-#include <ctrcommon/common.hpp>
+#include <ctrcommon/input.hpp>
+#include <ctrcommon/platform.hpp>
+#include <ctrcommon/ui.hpp>
 
 #include <sstream>
 #include <iomanip>
