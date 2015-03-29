@@ -55,7 +55,7 @@ AccessControlInfo:
   FileSystemAccess:
    # - CategorySystemApplication
    # - CategoryHardwareCheck
-   # - CategoryFileSystemTool
+   - CategoryFileSystemTool
    - Debug
    # - TwlCardBackup
    # - TwlNandData
