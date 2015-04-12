@@ -16,15 +16,24 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    bool ninjhax = platformIsNinjhax();
+
     std::vector<std::string> extensions;
     extensions.push_back("cia");
 
     MediaType destination = SD;
     Mode mode = INSTALL;
+    bool exit = false;
     bool netInstall = false;
     u64 freeSpace = fsGetFreeSpace(destination);
     auto onLoop = [&]() {
+        if(ninjhax && inputIsPressed(BUTTON_START)) {
+            exit = true;
+            return true;
+        }
+
         bool breakLoop = false;
+
         if(inputIsPressed(BUTTON_L)) {
             if(destination == SD) {
                 destination = NAND;
@@ -58,6 +67,9 @@ int main(int argc, char **argv) {
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL ? "Install" : "Delete") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
         stream << "Y - Receive an app over the network" << "\n";
+        if(ninjhax) {
+            stream << "START - Exit to launcher" << "\n";
+        }
 
         std::string str = stream.str();
         screenDrawString(str, (screenGetWidth() - screenGetStrWidth(str)) / 2, screenGetHeight() - 4 - screenGetStrHeight(str), 255, 255, 255);
@@ -122,7 +134,7 @@ int main(int argc, char **argv) {
             });
         }
 
-        if(netInstall) {
+        if(netInstall && !exit) {
             netInstall = false;
 
             screenClearBuffers(BOTTOM_SCREEN, 0, 0, 0);
@@ -156,6 +168,10 @@ int main(int argc, char **argv) {
 
             fclose(file.fd);
             continue;
+        }
+
+        if(exit) {
+            break;
         }
     }
 
