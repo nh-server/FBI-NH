@@ -74,13 +74,52 @@ int main(int argc, char **argv) {
     while(platformIsRunning()) {
         std::string targetInstall;
         App targetDelete;
-        bool obtained = false;
         if(mode == INSTALL) {
-            obtained = uiSelectFile(&targetInstall, "sdmc:", extensions, [&](bool inRoot) {
+            uiSelectFile(&targetInstall, "sdmc:", extensions, [&](bool inRoot) {
                 return onLoop();
+            }, [&](std::string path, bool &updateList) {
+                if(uiPrompt(TOP_SCREEN, "Install the selected title?", true)) {
+                    AppResult ret = appInstallFile(destination, path, onProgress);
+                    std::stringstream resultMsg;
+
+                    resultMsg << "Install ";
+                    if(ret == APP_SUCCESS) {
+                        resultMsg << "succeeded!";
+                    } else {
+                        resultMsg << "failed!" << "\n";
+                        resultMsg << appGetResultString(ret) << "\n";
+                    }
+
+                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+                    freeSpace = fsGetFreeSpace(destination);
+                }
+
+                return false;
             });
         } else if(mode == DELETE) {
-            obtained = uiSelectApp(&targetDelete, destination, onLoop);
+            uiSelectApp(&targetDelete, destination, onLoop, [&](App app, bool &updateList) {
+                if(uiPrompt(TOP_SCREEN, "Delete the selected title?", true)) {
+                    updateList = true;
+                    uiDisplayMessage(TOP_SCREEN, "Deleting title...");
+                    AppResult ret = appDelete(app);
+
+                    std::stringstream resultMsg;
+                    resultMsg << "Delete ";
+                    if(ret == APP_SUCCESS) {
+                        resultMsg << "succeeded!";
+                    } else {
+                        resultMsg << "failed!" << "\n";
+                        resultMsg << appGetResultString(ret) << "\n";
+                    }
+
+                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+                    freeSpace = fsGetFreeSpace(destination);
+                }
+
+                return false;
+            });
         }
 
         if(netInstall) {
@@ -117,44 +156,6 @@ int main(int argc, char **argv) {
 
             fclose(file.fd);
             continue;
-        }
-
-        if(obtained) {
-            std::stringstream prompt;
-            if(mode == INSTALL) {
-                prompt << "Install ";
-            } else if(mode == DELETE) {
-                prompt << "Delete ";
-            }
-
-            prompt << "the selected title?";
-            if(uiPrompt(TOP_SCREEN, prompt.str(), true)) {
-                AppResult ret = APP_SUCCESS;
-                if(mode == INSTALL) {
-                    ret = appInstallFile(destination, targetInstall, onProgress);
-                } else if(mode == DELETE) {
-                    uiDisplayMessage(TOP_SCREEN, "Deleting title...");
-                    ret = appDelete(targetDelete);
-                }
-
-                std::stringstream resultMsg;
-                if(mode == INSTALL) {
-                    resultMsg << "Install ";
-                } else if(mode == DELETE) {
-                    resultMsg << "Delete ";
-                }
-
-                if(ret == APP_SUCCESS) {
-                    resultMsg << "succeeded!";
-                } else {
-                    resultMsg << "failed!" << "\n";
-                    resultMsg << appGetResultString(ret) << "\n";
-                }
-
-                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-
-                freeSpace = fsGetFreeSpace(destination);
-            }
         }
     }
 
