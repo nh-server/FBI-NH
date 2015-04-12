@@ -53,7 +53,7 @@ int main(int argc, char **argv) {
     bool netInstall = false;
     u64 freeSpace = fsGetFreeSpace(destination);
     auto onLoop = [&]() {
-        if(ninjhax && inputIsPressed(BUTTON_SELECT)) {
+        if(ninjhax && inputIsPressed(BUTTON_START)) {
             exit = true;
             return true;
         }
@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
 
         stream << "Y - Receive an app over the network" << "\n";
         if(ninjhax) {
-            stream << "SELECT - Exit to launcher" << "\n";
+            stream << "START - Exit to launcher" << "\n";
         }
 
         std::string str = stream.str();
