@@ -78,11 +78,11 @@ int main(int argc, char **argv) {
                 mode = DELETE_CIA;
             } else if(mode == DELETE_CIA) {
                 mode = DELETE_TITLE;
+                breakLoop = true;
             } else {
                 mode = INSTALL_CIA;
+                breakLoop = true;
             }
-
-            breakLoop = true;
         }
 
         if(inputIsPressed(BUTTON_Y)) {
@@ -120,25 +120,44 @@ int main(int argc, char **argv) {
     while(platformIsRunning()) {
         std::string fileTarget;
         App appTarget;
-        if(mode == INSTALL_CIA) {
+        if(mode == INSTALL_CIA || mode == DELETE_CIA) {
             uiSelectFile(&fileTarget, "/", extensions, [&](const std::string currDirectory, bool inRoot, bool &updateList) {
                 if(inputIsPressed(BUTTON_X)) {
-                    if(uiPrompt(TOP_SCREEN, "Install all CIAs in the current directory?", true)) {
+                    std::stringstream confirmMsg;
+                    if(mode == INSTALL_CIA) {
+                        confirmMsg << "Install ";
+                    } else {
+                        confirmMsg << "Delete ";
+                    }
+
+                    confirmMsg << "all CIAs in the current directory?";
+                    if(uiPrompt(TOP_SCREEN, confirmMsg.str(), true)) {
                         bool failed = false;
                         std::vector<FileInfo> contents = fsGetDirectoryContents(currDirectory);
                         for(std::vector<FileInfo>::iterator it = contents.begin(); it != contents.end(); it++) {
                             std::string path = (*it).path;
                             std::string fileName = (*it).name;
                             if(!fsIsDirectory(path) && fsHasExtensions(path, extensions)) {
-                                AppResult ret = appInstallFile(destination, path, onProgress);
-                                if(ret != APP_SUCCESS) {
-                                    std::stringstream resultMsg;
-                                    resultMsg << "Install failed!" << "\n";
-                                    resultMsg << fileName << "\n";
-                                    resultMsg << appGetResultString(ret) << "\n";
-                                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                                    failed = true;
-                                    break;
+                                if(mode == INSTALL_CIA) {
+                                    AppResult ret = appInstallFile(destination, path, onProgress);
+                                    if(ret != APP_SUCCESS) {
+                                        std::stringstream resultMsg;
+                                        resultMsg << "Install failed!" << "\n";
+                                        resultMsg << fileName << "\n";
+                                        resultMsg << appGetResultString(ret) << "\n";
+                                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                                        failed = true;
+                                        break;
+                                    }
+                                } else {
+                                    if(!fsDelete(path)) {
+                                        std::stringstream resultMsg;
+                                        resultMsg << "Delete failed!" << "\n";
+                                        resultMsg << fileName << "\n";
+                                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                                        failed = true;
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -153,65 +172,36 @@ int main(int argc, char **argv) {
 
                 return onLoop();
             }, [&](const std::string path, bool &updateList) {
-                if(uiPrompt(TOP_SCREEN, "Install the selected CIA?", true)) {
-                    AppResult ret = appInstallFile(destination, path, onProgress);
-
-                    std::stringstream resultMsg;
-                    resultMsg << "Install ";
-                    if(ret == APP_SUCCESS) {
-                        resultMsg << "succeeded!";
-                    } else {
-                        resultMsg << "failed!" << "\n";
-                        resultMsg << appGetResultString(ret) << "\n";
-                    }
-
-                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-
-                    freeSpace = fsGetFreeSpace(destination);
+                std::stringstream confirmMsg;
+                if(mode == INSTALL_CIA) {
+                    confirmMsg << "Install ";
+                } else {
+                    confirmMsg << "Delete ";
                 }
 
-                return false;
-            });
-        } else if(mode == DELETE_CIA) {
-            uiSelectFile(&fileTarget, "/", extensions, [&](const std::string currDirectory, bool inRoot, bool &updateList) {
-                if(inputIsPressed(BUTTON_X)) {
-                    if(uiPrompt(TOP_SCREEN, "Delete all CIAs in the current directory?", true)) {
-                        updateList = true;
-                        bool failed = false;
-                        std::vector<FileInfo> contents = fsGetDirectoryContents(currDirectory);
-                        for(std::vector<FileInfo>::iterator it = contents.begin(); it != contents.end(); it++) {
-                            std::string path = (*it).path;
-                            std::string fileName = (*it).name;
-                            if(!fsIsDirectory(path) && fsHasExtensions(path, extensions)) {
-                                if(!fsDelete(path)) {
-                                    std::stringstream resultMsg;
-                                    resultMsg << "Delete failed!" << "\n";
-                                    resultMsg << fileName << "\n";
-                                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                                    failed = true;
-                                    break;
-                                }
-                            }
-                        }
-
-                        if(!failed) {
-                            uiPrompt(TOP_SCREEN, "Delete succeeded!\n", false);
-                        }
-
-                        freeSpace = fsGetFreeSpace(destination);
-                    }
-                }
-
-                return onLoop();
-            }, [&](const std::string path, bool &updateList) {
-                if(uiPrompt(TOP_SCREEN, "Delete the selected CIA?", true)) {
-                    updateList = true;
+                confirmMsg << "the selected CIA?";
+                if(uiPrompt(TOP_SCREEN, confirmMsg.str(), true)) {
                     std::stringstream resultMsg;
-                    resultMsg << "Delete ";
-                    if(fsDelete(path)) {
-                        resultMsg << "succeeded!";
+                    if(mode == INSTALL_CIA) {
+                        resultMsg << "Install ";
                     } else {
-                        resultMsg << "failed!" << "\n";
+                        resultMsg << "Delete ";
+                    }
+
+                    if(mode == INSTALL_CIA) {
+                        AppResult ret = appInstallFile(destination, path, onProgress);
+                        if(ret == APP_SUCCESS) {
+                            resultMsg << "succeeded!";
+                        } else {
+                            resultMsg << "failed!" << "\n";
+                            resultMsg << appGetResultString(ret) << "\n";
+                        }
+                    } else {
+                        if(fsDelete(path)) {
+                            resultMsg << "succeeded!";
+                        } else {
+                            resultMsg << "failed!" << "\n";
+                        }
                     }
 
                     uiPrompt(TOP_SCREEN, resultMsg.str(), false);
