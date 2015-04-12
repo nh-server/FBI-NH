@@ -8,6 +8,7 @@
 #include <iomanip>
 
 #include <sys/dirent.h>
+#include <3ds.h>
 
 typedef enum {
     INSTALL_CIA,
@@ -21,28 +22,17 @@ int main(int argc, char **argv) {
     }
 
     bool ninjhax = platformIsNinjhax();
-    /* if(ninjhax) {
-        consoleInit(GFX_BOTTOM, NULL);
-        consoleClear();
-
+    if(ninjhax) {
         AcquireResult result = platformAcquireServices();
         if(result != ACQUIRE_SUCCESS) {
-            //std::stringstream errorStream;
-            //errorStream << "Failed to acquire services." << "\n";
-            //errorStream << platformGetAcquireResultString(result) << "\n";
-            //uiPrompt(TOP_SCREEN, errorStream.str(), false);
-
-            while(true) {
-                inputPoll();
-                if(inputIsPressed(BUTTON_START)) {
-                    break;
-                }
-            }
-
+            std::stringstream errorStream;
+            errorStream << "Failed to acquire services." << "\n";
+            errorStream << platformGetAcquireResultString(result) << "\n";
+            uiPrompt(TOP_SCREEN, errorStream.str(), false);
             platformCleanup();
             return 0;
         }
-    } */
+    }
 
     std::vector<std::string> extensions;
     extensions.push_back("cia");
