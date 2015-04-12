@@ -154,6 +154,7 @@ int main(int argc, char **argv) {
                                         std::stringstream resultMsg;
                                         resultMsg << "Delete failed!" << "\n";
                                         resultMsg << fileName << "\n";
+                                        resultMsg << platformGetErrorString(platformGetError()) << "\n";
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                                         failed = true;
                                         break;
@@ -201,6 +202,7 @@ int main(int argc, char **argv) {
                             resultMsg << "succeeded!";
                         } else {
                             resultMsg << "failed!" << "\n";
+                            resultMsg << platformGetErrorString(platformGetError()) << "\n";
                         }
                     }
 
