@@ -158,6 +158,8 @@ int main(int argc, char **argv) {
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                                         failed = true;
                                         break;
+                                    } else {
+                                        updateList = true;
                                     }
                                 }
                             }
@@ -199,6 +201,7 @@ int main(int argc, char **argv) {
                         }
                     } else {
                         if(fsDelete(path)) {
+                            updateList = true;
                             resultMsg << "succeeded!";
                         } else {
                             resultMsg << "failed!" << "\n";
