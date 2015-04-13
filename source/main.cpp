@@ -23,17 +23,6 @@ int main(int argc, char **argv) {
     }
 
     bool ninjhax = platformIsNinjhax();
-    if(ninjhax) {
-        KernelResult result = platformAcquireServices();
-        if(result != KERNEL_SUCCESS) {
-            std::stringstream errorStream;
-            errorStream << "Failed to acquire services." << "\n";
-            errorStream << platformGetKernelResultString(result) << "\n";
-            uiPrompt(TOP_SCREEN, errorStream.str(), false);
-            platformCleanup();
-            return 0;
-        }
-    }
 
     std::vector<std::string> extensions;
     extensions.push_back("cia");
