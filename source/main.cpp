@@ -24,11 +24,11 @@ int main(int argc, char **argv) {
 
     bool ninjhax = platformIsNinjhax();
     if(ninjhax) {
-        AcquireResult result = platformAcquireServices();
-        if(result != ACQUIRE_SUCCESS) {
+        KernelResult result = platformAcquireServices();
+        if(result != KERNEL_SUCCESS) {
             std::stringstream errorStream;
             errorStream << "Failed to acquire services." << "\n";
-            errorStream << platformGetAcquireResultString(result) << "\n";
+            errorStream << platformGetKernelResultString(result) << "\n";
             uiPrompt(TOP_SCREEN, errorStream.str(), false);
             platformCleanup();
             return 0;
