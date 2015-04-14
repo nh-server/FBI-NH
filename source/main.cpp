@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
             }
 
             freeSpace = fsGetFreeSpace(destination);
-            if(mode == DELETE_TITLE) {
+            if(mode == DELETE_TITLE || mode == LAUNCH_TITLE) {
                 breakLoop = true;
             }
         }
