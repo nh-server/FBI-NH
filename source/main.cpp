@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
             }
         }
 
-        if(inputIsPressed(BUTTON_Y)) {
+        if(mode == INSTALL_CIA && inputIsPressed(BUTTON_Y)) {
             netInstall = true;
             breakLoop = true;
         }
@@ -79,11 +79,11 @@ int main(int argc, char **argv) {
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
         if(mode == INSTALL_CIA) {
             stream << "X - Install all CIAs in the current directory" << "\n";
+            stream << "Y - Receive an app over the network" << "\n";
         } else if(mode == DELETE_CIA) {
             stream << "X - Delete all CIAs in the current directory" << "\n";
         }
 
-        stream << "Y - Receive an app over the network" << "\n";
         if(ninjhax) {
             stream << "START - Exit to launcher" << "\n";
         }
