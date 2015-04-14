@@ -14,7 +14,8 @@
 typedef enum {
     INSTALL_CIA,
     DELETE_CIA,
-    DELETE_TITLE
+    DELETE_TITLE,
+    LAUNCH_TITLE
 } Mode;
 
 int main(int argc, char **argv) {
@@ -59,7 +60,9 @@ int main(int argc, char **argv) {
             } else if(mode == DELETE_CIA) {
                 mode = DELETE_TITLE;
                 breakLoop = true;
-            } else {
+            } else if(mode == DELETE_TITLE) {
+                mode = LAUNCH_TITLE;
+            } else if(mode == LAUNCH_TITLE) {
                 mode = INSTALL_CIA;
                 breakLoop = true;
             }
@@ -72,7 +75,7 @@ int main(int argc, char **argv) {
 
         std::stringstream stream;
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
-        stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : "Delete Title") << "\n";
+        stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
         if(mode == INSTALL_CIA) {
             stream << "X - Install all CIAs in the current directory" << "\n";
@@ -201,27 +204,45 @@ int main(int argc, char **argv) {
 
                 return false;
             });
-        } else if(mode == DELETE_TITLE) {
+        } else if(mode == DELETE_TITLE || mode == LAUNCH_TITLE) {
             uiSelectApp(&appTarget, destination, [&](bool &updateList) {
                 return onLoop();
             }, [&](App app, bool &updateList) {
-                if(uiPrompt(TOP_SCREEN, "Delete the selected title?", true)) {
-                    updateList = true;
-                    uiDisplayMessage(TOP_SCREEN, "Deleting title...");
-                    AppResult ret = appDelete(app);
+                if(mode == DELETE_TITLE) {
+                    if(uiPrompt(TOP_SCREEN, "Delete the selected title?", true)) {
+                        updateList = true;
+                        uiDisplayMessage(TOP_SCREEN, "Deleting title...");
+                        AppResult ret = appDelete(app);
 
-                    std::stringstream resultMsg;
-                    resultMsg << "Delete ";
-                    if(ret == APP_SUCCESS) {
-                        resultMsg << "succeeded!";
-                    } else {
-                        resultMsg << "failed!" << "\n";
-                        resultMsg << appGetResultString(ret) << "\n";
+                        std::stringstream resultMsg;
+                        resultMsg << "Delete ";
+                        if(ret == APP_SUCCESS) {
+                            resultMsg << "succeeded!";
+                        } else {
+                            resultMsg << "failed!" << "\n";
+                            resultMsg << appGetResultString(ret) << "\n";
+                        }
+
+                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+                        freeSpace = fsGetFreeSpace(destination);
                     }
+                } else if(mode == LAUNCH_TITLE) {
+                    if(uiPrompt(TOP_SCREEN, "Launch the selected title?", true)) {
+                        updateList = true;
+                        uiDisplayMessage(TOP_SCREEN, "Launching title...");
+                        AppResult ret = appLaunch(app);
 
-                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-
-                    freeSpace = fsGetFreeSpace(destination);
+                        if(ret != APP_SUCCESS) {
+                            std::stringstream resultMsg;
+                            resultMsg << "Launch failed!" << "\n";
+                            resultMsg << appGetResultString(ret) << "\n";
+                            uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                        } else {
+                            while(true) {
+                            }
+                        }
+                    }
                 }
 
                 return false;
