@@ -1,3 +1,4 @@
+#include <ctrcommon/app.hpp>
 #include <ctrcommon/input.hpp>
 #include <ctrcommon/platform.hpp>
 #include <ctrcommon/ui.hpp>
@@ -8,8 +9,6 @@
 #include <iomanip>
 
 #include <sys/dirent.h>
-#include <3ds.h>
-#include <ctrcommon/app.hpp>
 
 typedef enum {
     INSTALL_CIA,
@@ -205,6 +204,7 @@ int main(int argc, char **argv) {
                 return false;
             });
         } else if(mode == DELETE_TITLE || mode == LAUNCH_TITLE) {
+            uiDisplayMessage(BOTTOM_SCREEN, "Loading title list...");
             uiSelectApp(&appTarget, destination, [&](bool &updateList) {
                 return onLoop();
             }, [&](App app, bool &updateList) {
