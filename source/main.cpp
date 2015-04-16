@@ -108,6 +108,36 @@ int main(int argc, char **argv) {
         std::string fileTarget;
         App appTarget;
         if(mode == INSTALL_CIA || mode == DELETE_CIA) {
+            if(netInstall && !exit) {
+                screenClearBuffers(BOTTOM_SCREEN, 0, 0, 0);
+
+                RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN);
+                if(file.fd == NULL) {
+                    netInstall = false;
+                    continue;
+                }
+
+                std::stringstream confirmStream;
+                confirmStream << "Install the received application?" << "\n";
+                confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
+                if(uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
+                    AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
+                    std::stringstream resultMsg;
+                    resultMsg << "Install ";
+                    if(ret == APP_SUCCESS) {
+                        resultMsg << "succeeded!";
+                    } else {
+                        resultMsg << "failed!" << "\n";
+                        resultMsg << appGetResultString(ret) << "\n";
+                    }
+
+                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                }
+
+                fclose(file.fd);
+                continue;
+            }
+
             uiSelectFile(&fileTarget, "/", extensions, [&](const std::string currDirectory, bool inRoot, bool &updateList) {
                 if(inputIsPressed(BUTTON_X)) {
                     std::stringstream confirmMsg;
@@ -209,7 +239,7 @@ int main(int argc, char **argv) {
                 return onLoop();
             }, [&](App app, bool &updateList) {
                 if(mode == DELETE_TITLE) {
-                    if(uiPrompt(TOP_SCREEN, "Delete the selected title?", true)) {
+                    if(uiPrompt(TOP_SCREEN, "Delete the selected title?", true) && (destination != NAND || uiPrompt(TOP_SCREEN, "You are about to delete a title from the NAND.\nTHIS HAS THE POTENTIAL TO BRICK YOUR 3DS!\nAre you sure you wish to continue?", true))) {
                         updateList = true;
                         uiDisplayMessage(TOP_SCREEN, "Deleting title...");
                         AppResult ret = appDelete(app);
@@ -247,37 +277,6 @@ int main(int argc, char **argv) {
 
                 return false;
             });
-        }
-
-        if(netInstall && !exit) {
-            netInstall = false;
-
-            screenClearBuffers(BOTTOM_SCREEN, 0, 0, 0);
-
-            RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN);
-            if(file.fd == NULL) {
-                continue;
-            }
-
-            std::stringstream confirmStream;
-            confirmStream << "Install the received application?" << "\n";
-            confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
-            if(uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
-                AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
-                std::stringstream resultMsg;
-                resultMsg << "Install ";
-                if(ret == APP_SUCCESS) {
-                    resultMsg << "succeeded!";
-                } else {
-                    resultMsg << "failed!" << "\n";
-                    resultMsg << appGetResultString(ret) << "\n";
-                }
-
-                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-            }
-
-            fclose(file.fd);
-            continue;
         }
 
         if(exit) {
