@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "FBI v1.3.2" << "\n";
+        stream << "FBI v1.3.3" << "\n";
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -94,8 +94,11 @@ int main(int argc, char **argv) {
         return breakLoop;
     };
 
+    std::string batchInfo = "";
+
     auto onProgress = [&](u64 pos, u64 totalSize) {
         std::stringstream details;
+        details << batchInfo;
         details << "(" << std::fixed << std::setprecision(2) << ((double) pos / 1024.0 / 1024.0) << "MB / " << std::fixed << std::setprecision(2) << ((double) totalSize / 1024.0 / 1024.0) << "MB)" << "\n";
         details << "Press B to cancel.";
 
@@ -152,12 +155,18 @@ int main(int argc, char **argv) {
                     if(uiPrompt(TOP_SCREEN, confirmMsg.str(), true)) {
                         bool failed = false;
                         std::vector<FileInfo> contents = fsGetDirectoryContents(currDirectory);
+                        u32 currItem = 0;
                         for(std::vector<FileInfo>::iterator it = contents.begin(); it != contents.end(); it++) {
                             std::string path = (*it).path;
                             std::string fileName = (*it).name;
                             if(!fsIsDirectory(path) && fsHasExtensions(path, extensions)) {
                                 if(mode == INSTALL_CIA) {
+                                    std::stringstream batchInstallStream;
+                                    batchInstallStream << fileName << " (" << currItem << ")" << "\n";
+
+                                    batchInfo = batchInstallStream.str();
                                     AppResult ret = appInstallFile(destination, path, onProgress);
+                                    batchInfo = "";
                                     if(ret != APP_SUCCESS) {
                                         std::stringstream resultMsg;
                                         resultMsg << "Install failed!" << "\n";
@@ -168,6 +177,11 @@ int main(int argc, char **argv) {
                                         break;
                                     }
                                 } else {
+                                    std::stringstream deleteStream;
+                                    deleteStream << "Deleting CIA..." << "\n";
+                                    deleteStream << fileName << " (" << currItem << ")" << "\n";
+
+                                    uiDisplayMessage(TOP_SCREEN, deleteStream.str());
                                     if(!fsDelete(path)) {
                                         std::stringstream resultMsg;
                                         resultMsg << "Delete failed!" << "\n";
@@ -181,6 +195,8 @@ int main(int argc, char **argv) {
                                     }
                                 }
                             }
+
+                            currItem++;
                         }
 
                         if(!failed) {
@@ -218,6 +234,7 @@ int main(int argc, char **argv) {
                             resultMsg << appGetResultString(ret) << "\n";
                         }
                     } else {
+                        uiDisplayMessage(TOP_SCREEN, "Deleting CIA...");
                         if(fsDelete(path)) {
                             updateList = true;
                             resultMsg << "succeeded!";
