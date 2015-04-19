@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "FBI v1.3.3" << "\n";
+        stream << "FBI v1.3.4" << "\n";
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -168,13 +168,18 @@ int main(int argc, char **argv) {
                                     AppResult ret = appInstallFile(destination, path, onProgress);
                                     batchInfo = "";
                                     if(ret != APP_SUCCESS) {
+                                        Error error = platformGetError();
+                                        platformSetError(error);
+
                                         std::stringstream resultMsg;
                                         resultMsg << "Install failed!" << "\n";
                                         resultMsg << fileName << "\n";
                                         resultMsg << appGetResultString(ret) << "\n";
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                                        failed = true;
-                                        break;
+                                        if(error.module != MODULE_AM || error.description != DESCRIPTION_ALREADY_EXISTS) {
+                                            failed = true;
+                                            break;
+                                        }
                                     }
                                 } else {
                                     std::stringstream deleteStream;
