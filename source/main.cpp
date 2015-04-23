@@ -99,11 +99,10 @@ int main(int argc, char **argv) {
     auto onProgress = [&](u64 pos, u64 totalSize) {
         std::stringstream details;
         details << batchInfo;
-        details << "(" << std::fixed << std::setprecision(2) << ((double) pos / 1024.0 / 1024.0) << "MB / " << std::fixed << std::setprecision(2) << ((double) totalSize / 1024.0 / 1024.0) << "MB)" << "\n";
+        details << "(" << pos << " / " << totalSize << ")" << "\n";
         details << "Press B to cancel.";
 
-        u32 progress = (u32) (((double) pos / (double) totalSize) * 100);
-        uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, progress);
+        uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, (u32) ((pos * 100) / totalSize));
         inputPoll();
         return !inputIsPressed(BUTTON_B);
     };
