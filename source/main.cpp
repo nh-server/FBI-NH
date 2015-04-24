@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "FBI v1.3.4" << "\n";
+        stream << "FBI v1.3.5" << "\n";
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -107,6 +107,8 @@ int main(int argc, char **argv) {
         return !inputIsPressed(BUTTON_B);
     };
 
+    bool showNetworkPrompts = true;
+
     while(platformIsRunning()) {
         std::string fileTarget;
         App appTarget;
@@ -114,7 +116,16 @@ int main(int argc, char **argv) {
             if(netInstall && !exit) {
                 screenClearBuffers(BOTTOM_SCREEN, 0, 0, 0);
 
-                RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN);
+                RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN, [&](std::stringstream& infoStream) {
+                    if(inputIsPressed(BUTTON_A)) {
+                        showNetworkPrompts = !showNetworkPrompts;
+                    }
+
+                    infoStream << "\n";
+                    infoStream << "Prompts: " << (showNetworkPrompts ? "Enabled" : "Disabled") << "\n";
+                    infoStream << "Press A to toggle prompts." << "\n";
+                });
+
                 if(file.fd == NULL) {
                     netInstall = false;
                     continue;
@@ -123,18 +134,20 @@ int main(int argc, char **argv) {
                 std::stringstream confirmStream;
                 confirmStream << "Install the received application?" << "\n";
                 confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
-                if(uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
+                if(!showNetworkPrompts || uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
                     AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
-                    std::stringstream resultMsg;
-                    resultMsg << "Install ";
-                    if(ret == APP_SUCCESS) {
-                        resultMsg << "succeeded!";
-                    } else {
-                        resultMsg << "failed!" << "\n";
-                        resultMsg << appGetResultString(ret) << "\n";
-                    }
+                    if(showNetworkPrompts || ret != APP_SUCCESS) {
+                        std::stringstream resultMsg;
+                        resultMsg << "Install ";
+                        if(ret == APP_SUCCESS) {
+                            resultMsg << "succeeded!";
+                        } else {
+                            resultMsg << "failed!" << "\n";
+                            resultMsg << appGetResultString(ret) << "\n";
+                        }
 
-                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                    }
                 }
 
                 fclose(file.fd);
