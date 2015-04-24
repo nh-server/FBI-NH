@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "FBI v1.3.5" << "\n";
+        stream << "FBI v1.3.6" << "\n";
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -96,13 +96,19 @@ int main(int argc, char **argv) {
 
     std::string batchInfo = "";
 
+    int prevProgress = -1;
     auto onProgress = [&](u64 pos, u64 totalSize) {
-        std::stringstream details;
-        details << batchInfo;
-        details << "(" << pos << " / " << totalSize << ")" << "\n";
-        details << "Press B to cancel.";
+        u32 progress = (u32) ((pos * 100) / totalSize);
+        if(prevProgress != (int) progress) {
+            prevProgress = (int) progress;
 
-        uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, (u32) ((pos * 100) / totalSize));
+            std::stringstream details;
+            details << batchInfo;
+            details << "Press B to cancel.";
+
+            uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, progress);
+        }
+
         inputPoll();
         return !inputIsPressed(BUTTON_B);
     };
@@ -136,6 +142,7 @@ int main(int argc, char **argv) {
                 confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
                 if(!showNetworkPrompts || uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
                     AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
+                    prevProgress = -1;
                     if(showNetworkPrompts || ret != APP_SUCCESS) {
                         std::stringstream resultMsg;
                         resultMsg << "Install ";
@@ -178,6 +185,7 @@ int main(int argc, char **argv) {
 
                                     batchInfo = batchInstallStream.str();
                                     AppResult ret = appInstallFile(destination, path, onProgress);
+                                    prevProgress = -1;
                                     batchInfo = "";
                                     if(ret != APP_SUCCESS) {
                                         Error error = platformGetError();
@@ -244,6 +252,7 @@ int main(int argc, char **argv) {
 
                     if(mode == INSTALL_CIA) {
                         AppResult ret = appInstallFile(destination, path, onProgress);
+                        prevProgress = -1;
                         if(ret == APP_SUCCESS) {
                             resultMsg << "succeeded!";
                         } else {
