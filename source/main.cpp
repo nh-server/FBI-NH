@@ -73,7 +73,7 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "FBI v1.3.6" << "\n";
+        stream << "FBI v1.3.7" << "\n";
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -177,11 +177,16 @@ int main(int argc, char **argv) {
                         u32 currItem = 0;
                         for(std::vector<FileInfo>::iterator it = contents.begin(); it != contents.end(); it++) {
                             std::string path = (*it).path;
-                            std::string fileName = (*it).name;
                             if(!fsIsDirectory(path) && fsHasExtensions(path, extensions)) {
+                                std::string displayFileName = (*it).name;
+                                if(displayFileName.length() > 40) {
+                                    displayFileName.resize(40);
+                                    displayFileName += "...";
+                                }
+
                                 if(mode == INSTALL_CIA) {
                                     std::stringstream batchInstallStream;
-                                    batchInstallStream << fileName << " (" << currItem << ")" << "\n";
+                                    batchInstallStream << displayFileName << " (" << currItem << ")" << "\n";
 
                                     batchInfo = batchInstallStream.str();
                                     AppResult ret = appInstallFile(destination, path, onProgress);
@@ -193,7 +198,7 @@ int main(int argc, char **argv) {
 
                                         std::stringstream resultMsg;
                                         resultMsg << "Install failed!" << "\n";
-                                        resultMsg << fileName << "\n";
+                                        resultMsg << displayFileName << "\n";
                                         resultMsg << appGetResultString(ret) << "\n";
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                                         if(error.module != MODULE_AM || error.description != DESCRIPTION_ALREADY_EXISTS) {
@@ -204,13 +209,13 @@ int main(int argc, char **argv) {
                                 } else {
                                     std::stringstream deleteStream;
                                     deleteStream << "Deleting CIA..." << "\n";
-                                    deleteStream << fileName << " (" << currItem << ")" << "\n";
+                                    deleteStream << displayFileName << " (" << currItem << ")" << "\n";
 
                                     uiDisplayMessage(TOP_SCREEN, deleteStream.str());
                                     if(!fsDelete(path)) {
                                         std::stringstream resultMsg;
                                         resultMsg << "Delete failed!" << "\n";
-                                        resultMsg << fileName << "\n";
+                                        resultMsg << displayFileName << "\n";
                                         resultMsg << platformGetErrorString(platformGetError()) << "\n";
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                                         failed = true;
