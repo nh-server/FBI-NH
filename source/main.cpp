@@ -3,12 +3,13 @@
 #include <ctrcommon/platform.hpp>
 #include <ctrcommon/ui.hpp>
 
+#include <sys/dirent.h>
+#include <sys/errno.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <sstream>
 #include <iomanip>
-
-#include <sys/dirent.h>
 
 typedef enum {
     INSTALL_CIA,
@@ -73,7 +74,7 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "FBI v1.3.7" << "\n";
+        stream << "FBI v1.3.8" << "\n";
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -212,11 +213,11 @@ int main(int argc, char **argv) {
                                     deleteStream << displayFileName << " (" << currItem << ")" << "\n";
 
                                     uiDisplayMessage(TOP_SCREEN, deleteStream.str());
-                                    if(!fsDelete(path)) {
+                                    if(remove(path.c_str()) != 0) {
                                         std::stringstream resultMsg;
                                         resultMsg << "Delete failed!" << "\n";
                                         resultMsg << displayFileName << "\n";
-                                        resultMsg << platformGetErrorString(platformGetError()) << "\n";
+                                        resultMsg << strerror(errno) << "\n";
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                                         failed = true;
                                         break;
@@ -266,12 +267,12 @@ int main(int argc, char **argv) {
                         }
                     } else {
                         uiDisplayMessage(TOP_SCREEN, "Deleting CIA...");
-                        if(fsDelete(path)) {
+                        if(remove(path.c_str()) != 0) {
                             updateList = true;
                             resultMsg << "succeeded!";
                         } else {
                             resultMsg << "failed!" << "\n";
-                            resultMsg << platformGetErrorString(platformGetError()) << "\n";
+                            resultMsg << strerror(errno) << "\n";
                         }
                     }
 
