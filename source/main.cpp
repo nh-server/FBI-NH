@@ -1,4 +1,5 @@
 #include <ctrcommon/app.hpp>
+#include <ctrcommon/gpu.hpp>
 #include <ctrcommon/input.hpp>
 #include <ctrcommon/platform.hpp>
 #include <ctrcommon/ui.hpp>
@@ -74,7 +75,6 @@ int main(int argc, char **argv) {
         }
 
         std::stringstream stream;
-        stream << "FBI v1.3.8" << "\n";
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -90,7 +90,9 @@ int main(int argc, char **argv) {
         }
 
         std::string str = stream.str();
-        screenDrawString(str, (screenGetWidth() - screenGetStrWidth(str)) / 2, screenGetHeight() - 4 - screenGetStrHeight(str), 255, 255, 255);
+        const std::string title = "FBI v1.3.8";
+        gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 2)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 2) + gputGetStringHeight(str)) / 2, 2);
+        gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str)) / 2, 4);
 
         return breakLoop;
     };
@@ -121,7 +123,7 @@ int main(int argc, char **argv) {
         App appTarget;
         if(mode == INSTALL_CIA || mode == DELETE_CIA) {
             if(netInstall && !exit) {
-                screenClearBuffers(BOTTOM_SCREEN, 0, 0, 0);
+                gpuClearScreens();
 
                 RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN, [&](std::stringstream& infoStream) {
                     if(inputIsPressed(BUTTON_A)) {
