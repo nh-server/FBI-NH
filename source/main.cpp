@@ -91,8 +91,8 @@ int main(int argc, char **argv) {
 
         std::string str = stream.str();
         const std::string title = "FBI v1.3.8";
-        gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 2)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 2) + gputGetStringHeight(str)) / 2, 2);
-        gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str)) / 2, 4);
+        gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
+        gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
 
         return breakLoop;
     };
