@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
                                         resultMsg << displayFileName << "\n";
                                         resultMsg << appGetResultString(ret) << "\n";
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                                        if(error.module != MODULE_AM || error.description != DESCRIPTION_ALREADY_EXISTS) {
+                                        if(error.module != MODULE_NN_AM || error.description != DESCRIPTION_ALREADY_EXISTS) {
                                             failed = true;
                                             break;
                                         }
