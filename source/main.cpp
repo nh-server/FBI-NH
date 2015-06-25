@@ -9,6 +9,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <3ds.h>
+#include <3ds/services/cfgnor.h>
+#include "ropdata.h" 
+
 #include <sstream>
 #include <iomanip>
 
@@ -33,6 +37,7 @@ int main(int argc, char **argv) {
     Mode mode = INSTALL_CIA;
     bool exit = false;
     bool netInstall = false;
+    int ropinstalled = 0;
     u64 freeSpace = fsGetFreeSpace(destination);
     auto onLoop = [&]() {
         if(ninjhax && inputIsPressed(BUTTON_START)) {
@@ -73,6 +78,21 @@ int main(int argc, char **argv) {
             netInstall = true;
             breakLoop = true;
         }
+        
+        if(inputIsPressed(BUTTON_SELECT) && ropinstalled==0){
+            Result result=0;
+			
+			CFGNOR_Initialize( (u8)1 );
+			result=CFGNOR_WriteData(0x1FE00, (u32*)mset4x, 0x200);
+			CFGNOR_Shutdown();
+			
+			if(result){       // 1 is fail install 2 is success install
+				ropinstalled=1;
+			}
+			else{
+				ropinstalled=2;
+			}
+		}
 
         std::stringstream stream;
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
@@ -88,6 +108,7 @@ int main(int argc, char **argv) {
         if(ninjhax) {
             stream << "START - Exit to launcher" << "\n";
         }
+        stream <<  (ropinstalled == 0 ?  "SELECT - Install rxTools mset: NOT INSTALLED\n" : ropinstalled == 2 ? "SELECT - Install rxTools mset: INSTALLED\n" : "SELECT - Install rxTools mset: FAILED\n");
 
         std::string str = stream.str();
         const std::string title = "FBI v1.3.8";
