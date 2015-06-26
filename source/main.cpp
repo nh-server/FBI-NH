@@ -139,6 +139,26 @@ int main(int argc, char **argv) {
 		}
 
         std::stringstream stream;
+        stream << "Battery: ";
+        if(platformIsBatteryCharging()) {
+            stream << "Charging";
+        } else {
+            for(u32 i = 0; i < platformGetBatteryLevel(); i++) {
+                stream << "|";
+            }
+        }
+
+        stream << ", WiFi: ";
+        if(!platformIsWifiConnected()) {
+            stream << "Disconnected";
+        } else {
+            for(u32 i = 0; i < platformGetWifiLevel(); i++) {
+                stream << "|";
+            }
+        }
+
+        stream << "\n";
+
         stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
         stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
         stream << "L - Switch Destination, R - Switch Mode" << "\n";
@@ -156,7 +176,7 @@ int main(int argc, char **argv) {
         }
 
         std::string str = stream.str();
-        const std::string title = "FBI v1.3.8";
+        const std::string title = "FBI v1.4";
         gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
         gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
 
