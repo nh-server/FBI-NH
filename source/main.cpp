@@ -34,8 +34,27 @@ int main(int argc, char **argv) {
     MediaType destination = SD;
     Mode mode = INSTALL_CIA;
     bool exit = false;
-    bool netInstall = false;
+    bool showNetworkPrompts = true;
     u64 freeSpace = fsGetFreeSpace(destination);
+
+    std::string batchInfo = "";
+    int prevProgress = -1;
+    auto onProgress = [&](u64 pos, u64 totalSize) {
+        u32 progress = (u32) ((pos * 100) / totalSize);
+        if(prevProgress != (int) progress) {
+            prevProgress = (int) progress;
+
+            std::stringstream details;
+            details << batchInfo;
+            details << "Press B to cancel.";
+
+            uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, progress);
+        }
+
+        inputPoll();
+        return !inputIsPressed(BUTTON_B);
+    };
+
     auto onLoop = [&]() {
         if(ninjhax && inputIsPressed(BUTTON_START)) {
             exit = true;
@@ -72,8 +91,45 @@ int main(int argc, char **argv) {
         }
 
         if(mode == INSTALL_CIA && inputIsPressed(BUTTON_Y)) {
-            netInstall = true;
-            breakLoop = true;
+            while(platformIsRunning()) {
+                gpuClearScreens();
+
+                RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN, [&](std::stringstream& infoStream) {
+                    if(inputIsPressed(BUTTON_A)) {
+                        showNetworkPrompts = !showNetworkPrompts;
+                    }
+
+                    infoStream << "\n";
+                    infoStream << "Prompts: " << (showNetworkPrompts ? "Enabled" : "Disabled") << "\n";
+                    infoStream << "Press A to toggle prompts.";
+                });
+
+                if(file.fd == NULL) {
+                    break;
+                }
+
+                std::stringstream confirmStream;
+                confirmStream << "Install the received application?" << "\n";
+                confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)";
+                if(!showNetworkPrompts || uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
+                    AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
+                    prevProgress = -1;
+                    if(showNetworkPrompts || ret != APP_SUCCESS) {
+                        std::stringstream resultMsg;
+                        resultMsg << "Install ";
+                        if(ret == APP_SUCCESS) {
+                            resultMsg << "succeeded!";
+                        } else {
+                            resultMsg << "failed!" << "\n";
+                            resultMsg << appGetResultString(ret);
+                        }
+
+                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                    }
+                }
+
+                fclose(file.fd);
+            }
         }
 
         if(inputIsPressed(BUTTON_SELECT)) {
@@ -104,8 +160,9 @@ int main(int argc, char **argv) {
                         }
 
                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                        break;
                     }
+
+                    dirty = true;
                 }
 
                 if(inputIsPressed(BUTTON_LEFT)) {
@@ -176,80 +233,18 @@ int main(int argc, char **argv) {
         }
 
         std::string str = stream.str();
-        const std::string title = "FBI v1.4";
+        const std::string title = "FBI v1.4.1";
         gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
         gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
 
         return breakLoop;
     };
 
-    std::string batchInfo = "";
-
-    int prevProgress = -1;
-    auto onProgress = [&](u64 pos, u64 totalSize) {
-        u32 progress = (u32) ((pos * 100) / totalSize);
-        if(prevProgress != (int) progress) {
-            prevProgress = (int) progress;
-
-            std::stringstream details;
-            details << batchInfo;
-            details << "Press B to cancel.";
-
-            uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, progress);
-        }
-
-        inputPoll();
-        return !inputIsPressed(BUTTON_B);
-    };
-
-    bool showNetworkPrompts = true;
-
     while(platformIsRunning()) {
-        std::string fileTarget;
-        App appTarget;
         if(mode == INSTALL_CIA || mode == DELETE_CIA) {
-            if(netInstall && !exit) {
-                gpuClearScreens();
+            uiDisplayMessage(BOTTOM_SCREEN, "Loading file list...");
 
-                RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN, [&](std::stringstream& infoStream) {
-                    if(inputIsPressed(BUTTON_A)) {
-                        showNetworkPrompts = !showNetworkPrompts;
-                    }
-
-                    infoStream << "\n";
-                    infoStream << "Prompts: " << (showNetworkPrompts ? "Enabled" : "Disabled") << "\n";
-                    infoStream << "Press A to toggle prompts.";
-                });
-
-                if(file.fd == NULL) {
-                    netInstall = false;
-                    continue;
-                }
-
-                std::stringstream confirmStream;
-                confirmStream << "Install the received application?" << "\n";
-                confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)";
-                if(!showNetworkPrompts || uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
-                    AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
-                    prevProgress = -1;
-                    if(showNetworkPrompts || ret != APP_SUCCESS) {
-                        std::stringstream resultMsg;
-                        resultMsg << "Install ";
-                        if(ret == APP_SUCCESS) {
-                            resultMsg << "succeeded!";
-                        } else {
-                            resultMsg << "failed!" << "\n";
-                            resultMsg << appGetResultString(ret);
-                        }
-
-                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                    }
-                }
-
-                fclose(file.fd);
-                continue;
-            }
-
+            std::string fileTarget;
             uiSelectFile(&fileTarget, "/", extensions, [&](const std::string currDirectory, bool inRoot, bool &updateList) {
                 if(inputIsPressed(BUTTON_X)) {
                     std::stringstream confirmMsg;
@@ -373,6 +368,8 @@ int main(int argc, char **argv) {
             });
         } else if(mode == DELETE_TITLE || mode == LAUNCH_TITLE) {
             uiDisplayMessage(BOTTOM_SCREEN, "Loading title list...");
+
+            App appTarget;
             uiSelectApp(&appTarget, destination, [&](bool &updateList) {
                 return onLoop();
             }, [&](App app, bool &updateList) {
