@@ -77,18 +77,65 @@ int main(int argc, char **argv) {
         }
 
         if(inputIsPressed(BUTTON_SELECT)) {
-            bool result = norWrite(0x1FE00, rxToolsMset4x, sizeof(rxToolsMset4x));
+            u32 selected = 0;
+            bool dirty = true;
+            while(platformIsRunning()) {
+                inputPoll();
+                if(inputIsPressed(BUTTON_B)) {
+                    break;
+                }
 
-            std::stringstream resultMsg;
-            resultMsg << "ROP installation ";
-            if(result) {
-                resultMsg << "succeeded!";
-            } else {
-                resultMsg << "failed!" << "\n";
-                resultMsg << platformGetErrorString(platformGetError()) << "\n";
+                if(inputIsPressed(BUTTON_A)) {
+                    std::stringstream stream;
+                    stream << "Install the selected ROP?" << "\n";
+                    stream << ropNames[selected];
+
+                    if(uiPrompt(TOP_SCREEN, stream.str(), true)) {
+                        u16 userSettingsOffset = 0;
+                        bool result = norRead(0x20, &userSettingsOffset, 2) && norWrite(userSettingsOffset << 3, rops[selected], ROP_SIZE);
+
+                        std::stringstream resultMsg;
+                        resultMsg << "ROP installation ";
+                        if(result) {
+                            resultMsg << "succeeded!";
+                        } else {
+                            resultMsg << "failed!" << "\n";
+                            resultMsg << platformGetErrorString(platformGetError());
+                        }
+
+                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                        break;
+                    }
+                }
+
+                if(inputIsPressed(BUTTON_LEFT)) {
+                    if(selected == 0) {
+                        selected = ROP_COUNT - 1;
+                    } else {
+                        selected--;
+                    }
+
+                    dirty = true;
+                }
+
+                if(inputIsPressed(BUTTON_RIGHT)) {
+                    if(selected >= ROP_COUNT - 1) {
+                        selected = 0;
+                    } else {
+                        selected++;
+                    }
+
+                    dirty = true;
+                }
+
+                if(dirty) {
+                    std::stringstream stream;
+                    stream << "Select a ROP to install." << "\n";
+                    stream << "< " << ropNames[selected] << " >" << "\n";
+                    stream << "Press A to install, B to cancel.";
+                    uiDisplayMessage(TOP_SCREEN, stream.str());
+                }
             }
-
-            uiPrompt(TOP_SCREEN, resultMsg.str(), false);
 		}
 
         std::stringstream stream;
@@ -102,10 +149,10 @@ int main(int argc, char **argv) {
             stream << "X - Delete all CIAs in the current directory" << "\n";
         }
 
-        stream << "SELECT - Install rxTools MSET ROP\n";
+        stream << "SELECT - Install MSET ROP";
 
         if(ninjhax) {
-            stream << "START - Exit to launcher" << "\n";
+            stream << "\n" << "START - Exit to launcher";
         }
 
         std::string str = stream.str();
@@ -151,7 +198,7 @@ int main(int argc, char **argv) {
 
                     infoStream << "\n";
                     infoStream << "Prompts: " << (showNetworkPrompts ? "Enabled" : "Disabled") << "\n";
-                    infoStream << "Press A to toggle prompts." << "\n";
+                    infoStream << "Press A to toggle prompts.";
                 });
 
                 if(file.fd == NULL) {
@@ -161,7 +208,7 @@ int main(int argc, char **argv) {
 
                 std::stringstream confirmStream;
                 confirmStream << "Install the received application?" << "\n";
-                confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)" << "\n";
+                confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)";
                 if(!showNetworkPrompts || uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
                     AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
                     prevProgress = -1;
@@ -172,7 +219,7 @@ int main(int argc, char **argv) {
                             resultMsg << "succeeded!";
                         } else {
                             resultMsg << "failed!" << "\n";
-                            resultMsg << appGetResultString(ret) << "\n";
+                            resultMsg << appGetResultString(ret);
                         }
 
                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
@@ -221,7 +268,7 @@ int main(int argc, char **argv) {
                                         std::stringstream resultMsg;
                                         resultMsg << "Install failed!" << "\n";
                                         resultMsg << displayFileName << "\n";
-                                        resultMsg << appGetResultString(ret) << "\n";
+                                        resultMsg << appGetResultString(ret);
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                                         if(error.module != MODULE_NN_AM || error.description != DESCRIPTION_ALREADY_EXISTS) {
                                             failed = true;
@@ -231,14 +278,14 @@ int main(int argc, char **argv) {
                                 } else {
                                     std::stringstream deleteStream;
                                     deleteStream << "Deleting CIA..." << "\n";
-                                    deleteStream << displayFileName << " (" << currItem << ")" << "\n";
+                                    deleteStream << displayFileName << " (" << currItem << ")";
 
                                     uiDisplayMessage(TOP_SCREEN, deleteStream.str());
                                     if(remove(path.c_str()) != 0) {
                                         std::stringstream resultMsg;
                                         resultMsg << "Delete failed!" << "\n";
                                         resultMsg << displayFileName << "\n";
-                                        resultMsg << strerror(errno) << "\n";
+                                        resultMsg << strerror(errno);
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                                         failed = true;
                                         break;
@@ -284,7 +331,7 @@ int main(int argc, char **argv) {
                             resultMsg << "succeeded!";
                         } else {
                             resultMsg << "failed!" << "\n";
-                            resultMsg << appGetResultString(ret) << "\n";
+                            resultMsg << appGetResultString(ret);
                         }
                     } else {
                         uiDisplayMessage(TOP_SCREEN, "Deleting CIA...");
@@ -293,7 +340,7 @@ int main(int argc, char **argv) {
                             resultMsg << "succeeded!";
                         } else {
                             resultMsg << "failed!" << "\n";
-                            resultMsg << strerror(errno) << "\n";
+                            resultMsg << strerror(errno);
                         }
                     }
 
@@ -321,7 +368,7 @@ int main(int argc, char **argv) {
                             resultMsg << "succeeded!";
                         } else {
                             resultMsg << "failed!" << "\n";
-                            resultMsg << appGetResultString(ret) << "\n";
+                            resultMsg << appGetResultString(ret);
                         }
 
                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
@@ -337,7 +384,7 @@ int main(int argc, char **argv) {
                         if(ret != APP_SUCCESS) {
                             std::stringstream resultMsg;
                             resultMsg << "Launch failed!" << "\n";
-                            resultMsg << appGetResultString(ret) << "\n";
+                            resultMsg << appGetResultString(ret);
                             uiPrompt(TOP_SCREEN, resultMsg.str(), false);
                         } else {
                             while(true) {
