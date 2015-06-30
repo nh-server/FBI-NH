@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
         }
 
         std::string str = stream.str();
-        const std::string title = "FBI v1.4.1";
+        const std::string title = "FBI v1.4.2";
         gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
         gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
 
@@ -269,6 +269,28 @@ int main(int argc, char **argv) {
                                 }
 
                                 if(mode == INSTALL_CIA) {
+                                    App app = appGetCiaInfo(path, destination);
+                                    if(appIsInstalled(app)) {
+                                        std::stringstream overwriteMsg;
+                                        overwriteMsg << "Title already installed, overwrite?" << "\n";
+                                        overwriteMsg << displayFileName;
+                                        if(uiPrompt(TOP_SCREEN, overwriteMsg.str(), true)) {
+                                            uiDisplayMessage(TOP_SCREEN, "Deleting title...");
+                                            AppResult ret = appDelete(app);
+                                            if(ret != APP_SUCCESS) {
+                                                std::stringstream resultMsg;
+                                                resultMsg << "Delete failed!" << "\n";
+                                                resultMsg << appGetResultString(ret);
+                                                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+                                                failed = true;
+                                                break;
+                                            }
+                                        } else {
+                                            continue;
+                                        }
+                                    }
+
                                     std::stringstream batchInstallStream;
                                     batchInstallStream << displayFileName << " (" << currItem << ")" << "\n";
 
@@ -340,6 +362,26 @@ int main(int argc, char **argv) {
                     }
 
                     if(mode == INSTALL_CIA) {
+                        App app = appGetCiaInfo(path, destination);
+                        if(appIsInstalled(app)) {
+                            std::stringstream overwriteMsg;
+                            overwriteMsg << "Title already installed, overwrite?";
+                            if(uiPrompt(TOP_SCREEN, overwriteMsg.str(), true)) {
+                                uiDisplayMessage(TOP_SCREEN, "Deleting title...");
+                                AppResult ret = appDelete(app);
+                                if(ret != APP_SUCCESS) {
+                                    std::stringstream deleteResultMsg;
+                                    deleteResultMsg << "Delete failed!" << "\n";
+                                    deleteResultMsg << appGetResultString(ret);
+                                    uiPrompt(TOP_SCREEN, deleteResultMsg.str(), false);
+
+                                    return false;
+                                }
+                            } else {
+                                return false;
+                            }
+                        }
+
                         AppResult ret = appInstallFile(destination, path, onProgress);
                         prevProgress = -1;
                         if(ret == APP_SUCCESS) {
