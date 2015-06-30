@@ -280,6 +280,7 @@ int main(int argc, char **argv) {
                                             if(ret != APP_SUCCESS) {
                                                 std::stringstream resultMsg;
                                                 resultMsg << "Delete failed!" << "\n";
+                                                resultMsg << displayFileName << "\n";
                                                 resultMsg << appGetResultString(ret);
                                                 uiPrompt(TOP_SCREEN, resultMsg.str(), false);
 
@@ -299,18 +300,14 @@ int main(int argc, char **argv) {
                                     prevProgress = -1;
                                     batchInfo = "";
                                     if(ret != APP_SUCCESS) {
-                                        Error error = platformGetError();
-                                        platformSetError(error);
-
                                         std::stringstream resultMsg;
                                         resultMsg << "Install failed!" << "\n";
                                         resultMsg << displayFileName << "\n";
                                         resultMsg << appGetResultString(ret);
                                         uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                                        if(error.module != MODULE_NN_AM || error.description != DESCRIPTION_ALREADY_EXISTS) {
-                                            failed = true;
-                                            break;
-                                        }
+
+                                        failed = true;
+                                        break;
                                     }
                                 } else {
                                     std::stringstream deleteStream;
