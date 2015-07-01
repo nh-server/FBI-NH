@@ -333,7 +333,15 @@ int main(int argc, char **argv) {
                         }
 
                         if(!failed) {
-                            uiPrompt(TOP_SCREEN, "Install succeeded!\n", false);
+                            std::stringstream successMsg;
+                            if(mode == INSTALL_CIA) {
+                                successMsg << "Install ";
+                            } else {
+                                successMsg << "Delete ";
+                            }
+
+                            successMsg << "succeeded!";
+                            uiPrompt(TOP_SCREEN, successMsg.str(), false);
                         }
 
                         freeSpace = fsGetFreeSpace(destination);
