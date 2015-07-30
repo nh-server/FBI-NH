@@ -1,4 +1,5 @@
 #include <ctrcommon/app.hpp>
+#include <ctrcommon/fs.hpp>
 #include <ctrcommon/gpu.hpp>
 #include <ctrcommon/input.hpp>
 #include <ctrcommon/nor.hpp>
@@ -21,224 +22,346 @@ typedef enum {
     LAUNCH_TITLE
 } Mode;
 
+std::vector<std::string> extensions = {"cia"};
+
+bool exit = false;
+bool showNetworkPrompts = true;
+u64 freeSpace = 0;
+MediaType destination = SD;
+Mode mode = INSTALL_CIA;
+
+int prevProgress = -1;
+std::string installInfo = "";
+
+bool onProgress(u64 pos, u64 totalSize) {
+    u32 progress = (u32) ((pos * 100) / totalSize);
+    if(prevProgress != (int) progress) {
+        prevProgress = (int) progress;
+
+        std::stringstream details;
+        details << installInfo;
+        details << "Press B to cancel.";
+
+        uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, progress);
+    }
+
+    inputPoll();
+    return !inputIsPressed(BUTTON_B);
+}
+
+void networkInstall() {
+    while(platformIsRunning()) {
+        gpuClearScreens();
+
+        RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN, [&](std::stringstream& infoStream) {
+            if(inputIsPressed(BUTTON_A)) {
+                showNetworkPrompts = !showNetworkPrompts;
+            }
+
+            infoStream << "\n";
+            infoStream << "Prompts: " << (showNetworkPrompts ? "Enabled" : "Disabled") << "\n";
+            infoStream << "Press A to toggle prompts.";
+        });
+
+        if(file.fd == NULL) {
+            break;
+        }
+
+        std::stringstream confirmStream;
+        confirmStream << "Install the received application?" << "\n";
+        confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)";
+        if(!showNetworkPrompts || uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
+            AppResult ret = appInstall(destination, file.fd, file.fileSize, &onProgress);
+            prevProgress = -1;
+            if(showNetworkPrompts || ret != APP_SUCCESS) {
+                std::stringstream resultMsg;
+                resultMsg << "Install ";
+                if(ret == APP_SUCCESS) {
+                    resultMsg << "succeeded!";
+                } else {
+                    resultMsg << "failed!" << "\n";
+                    resultMsg << appGetResultString(ret);
+                }
+
+                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+            }
+        }
+
+        fclose(file.fd);
+    }
+}
+
+void installROP() {
+    u32 selected = 0;
+    bool dirty = true;
+    while(platformIsRunning()) {
+        inputPoll();
+        if(inputIsPressed(BUTTON_B)) {
+            break;
+        }
+
+        if(inputIsPressed(BUTTON_A)) {
+            std::stringstream stream;
+            stream << "Install the selected ROP?" << "\n";
+            stream << ropNames[selected];
+
+            if(uiPrompt(TOP_SCREEN, stream.str(), true)) {
+                u16 userSettingsOffset = 0;
+                bool result = norRead(0x20, &userSettingsOffset, 2) && norWrite(userSettingsOffset << 3, rops[selected], ROP_SIZE);
+
+                std::stringstream resultMsg;
+                resultMsg << "ROP installation ";
+                if(result) {
+                    resultMsg << "succeeded!";
+                } else {
+                    resultMsg << "failed!" << "\n";
+                    resultMsg << platformGetErrorString(platformGetError());
+                }
+
+                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+            }
+
+            dirty = true;
+        }
+
+        if(inputIsPressed(BUTTON_LEFT)) {
+            if(selected == 0) {
+                selected = ROP_COUNT - 1;
+            } else {
+                selected--;
+            }
+
+            dirty = true;
+        }
+
+        if(inputIsPressed(BUTTON_RIGHT)) {
+            if(selected >= ROP_COUNT - 1) {
+                selected = 0;
+            } else {
+                selected++;
+            }
+
+            dirty = true;
+        }
+
+        if(dirty) {
+            std::stringstream stream;
+            stream << "Select a ROP to install." << "\n";
+            stream << "< " << ropNames[selected] << " >" << "\n";
+            stream << "Press A to install, B to cancel.";
+            uiDisplayMessage(TOP_SCREEN, stream.str());
+        }
+    }
+}
+
+bool installCIA(MediaType destination, const std::string path, const std::string fileName) {
+    std::string name = fileName;
+    if(name.length() > 40) {
+        name.resize(40);
+        name += "...";
+    }
+
+    std::stringstream batchInstallStream;
+    batchInstallStream << name << "\n";
+    installInfo = batchInstallStream.str();
+
+    AppResult ret = appInstallFile(destination, path, &onProgress);
+    prevProgress = -1;
+    installInfo = "";
+
+    if(ret != APP_SUCCESS && platformHasError()) {
+        Error error = platformGetError();
+        if(error.module == MODULE_NN_AM && error.description == DESCRIPTION_ALREADY_EXISTS) {
+            std::stringstream overwriteMsg;
+            overwriteMsg << "Title already installed, overwrite?" << "\n";
+            overwriteMsg << name;
+            if(uiPrompt(TOP_SCREEN, overwriteMsg.str(), true)) {
+                uiDisplayMessage(TOP_SCREEN, "Deleting title...");
+                AppResult deleteRet = appDelete(appGetCiaInfo(path, destination));
+                if(deleteRet != APP_SUCCESS) {
+                    std::stringstream resultMsg;
+                    resultMsg << "Delete failed!" << "\n";
+                    resultMsg << name << "\n";
+                    resultMsg << appGetResultString(deleteRet);
+                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+                    return false;
+                }
+
+                ret = appInstallFile(destination, path, &onProgress);
+                prevProgress = -1;
+                installInfo = "";
+            } else {
+                platformSetError(error);
+            }
+        } else {
+            platformSetError(error);
+        }
+    }
+
+    if(ret != APP_SUCCESS) {
+        std::stringstream resultMsg;
+        resultMsg << "Install failed!" << "\n";
+        resultMsg << name << "\n";
+        resultMsg << appGetResultString(ret);
+        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool deleteCIA(const std::string path, const std::string fileName) {
+    std::string name = fileName;
+    if(name.length() > 40) {
+        name.resize(40);
+        name += "...";
+    }
+
+    std::stringstream deleteStream;
+    deleteStream << "Deleting CIA..." << "\n";
+    deleteStream << name;
+    uiDisplayMessage(TOP_SCREEN, deleteStream.str());
+
+    if(remove(path.c_str()) != 0) {
+        std::stringstream resultMsg;
+        resultMsg << "Delete failed!" << "\n";
+        resultMsg << name << "\n";
+        resultMsg << strerror(errno);
+        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool deleteTitle(App app) {
+    uiDisplayMessage(TOP_SCREEN, "Deleting title...");
+    AppResult ret = appDelete(app);
+
+    if(ret != APP_SUCCESS) {
+        std::stringstream resultMsg;
+        resultMsg << "Delete failed!" << "\n";
+        resultMsg << appGetResultString(ret);
+        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool launchTitle(App app) {
+    uiDisplayMessage(TOP_SCREEN, "Launching title...");
+    AppResult ret = appLaunch(app);
+
+    if(ret != APP_SUCCESS) {
+        std::stringstream resultMsg;
+        resultMsg << "Launch failed!" << "\n";
+        resultMsg << appGetResultString(ret);
+        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+        return false;
+    }
+
+    return true;
+}
+
+bool onLoop() {
+    bool ninjhax = platformIsNinjhax();
+    if(ninjhax && inputIsPressed(BUTTON_START)) {
+        exit = true;
+        return true;
+    }
+
+    bool breakLoop = false;
+
+    if(inputIsPressed(BUTTON_L)) {
+        if(destination == SD) {
+            destination = NAND;
+        } else {
+            destination = SD;
+        }
+
+        freeSpace = fsGetFreeSpace(destination);
+        if(mode == DELETE_TITLE || mode == LAUNCH_TITLE) {
+            breakLoop = true;
+        }
+    }
+
+    if(inputIsPressed(BUTTON_R)) {
+        if(mode == INSTALL_CIA) {
+            mode = DELETE_CIA;
+        } else if(mode == DELETE_CIA) {
+            mode = DELETE_TITLE;
+            breakLoop = true;
+        } else if(mode == DELETE_TITLE) {
+            mode = LAUNCH_TITLE;
+        } else if(mode == LAUNCH_TITLE) {
+            mode = INSTALL_CIA;
+            breakLoop = true;
+        }
+    }
+
+    if(mode == INSTALL_CIA && inputIsPressed(BUTTON_Y)) {
+        networkInstall();
+    }
+
+    if(inputIsPressed(BUTTON_SELECT)) {
+        installROP();
+    }
+
+    std::stringstream stream;
+    stream << "Battery: ";
+    if(platformIsBatteryCharging()) {
+        stream << "Charging";
+    } else {
+        for(u32 i = 0; i < platformGetBatteryLevel(); i++) {
+            stream << "|";
+        }
+    }
+
+    stream << ", WiFi: ";
+    if(!platformIsWifiConnected()) {
+        stream << "Disconnected";
+    } else {
+        for(u32 i = 0; i < platformGetWifiLevel(); i++) {
+            stream << "|";
+        }
+    }
+
+    stream << "\n";
+
+    stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
+    stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
+    stream << "L - Switch Destination, R - Switch Mode" << "\n";
+    if(mode == INSTALL_CIA) {
+        stream << "X - Install all CIAs in the current directory" << "\n";
+        stream << "Y - Receive an app over the network" << "\n";
+    } else if(mode == DELETE_CIA) {
+        stream << "X - Delete all CIAs in the current directory" << "\n";
+    }
+
+    stream << "SELECT - Install MSET ROP";
+
+    if(ninjhax) {
+        stream << "\n" << "START - Exit to launcher";
+    }
+
+    std::string str = stream.str();
+    const std::string title = "FBI v1.4.3";
+    gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
+    gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
+
+    return breakLoop;
+}
+
 int main(int argc, char **argv) {
     if(!platformInit()) {
         return 0;
     }
-
-    bool ninjhax = platformIsNinjhax();
-
-    std::vector<std::string> extensions;
-    extensions.push_back("cia");
-
-    MediaType destination = SD;
-    Mode mode = INSTALL_CIA;
-    bool exit = false;
-    bool showNetworkPrompts = true;
-    u64 freeSpace = fsGetFreeSpace(destination);
-
-    std::string batchInfo = "";
-    int prevProgress = -1;
-    auto onProgress = [&](u64 pos, u64 totalSize) {
-        u32 progress = (u32) ((pos * 100) / totalSize);
-        if(prevProgress != (int) progress) {
-            prevProgress = (int) progress;
-
-            std::stringstream details;
-            details << batchInfo;
-            details << "Press B to cancel.";
-
-            uiDisplayProgress(TOP_SCREEN, "Installing", details.str(), true, progress);
-        }
-
-        inputPoll();
-        return !inputIsPressed(BUTTON_B);
-    };
-
-    auto onLoop = [&]() {
-        if(ninjhax && inputIsPressed(BUTTON_START)) {
-            exit = true;
-            return true;
-        }
-
-        bool breakLoop = false;
-
-        if(inputIsPressed(BUTTON_L)) {
-            if(destination == SD) {
-                destination = NAND;
-            } else {
-                destination = SD;
-            }
-
-            freeSpace = fsGetFreeSpace(destination);
-            if(mode == DELETE_TITLE || mode == LAUNCH_TITLE) {
-                breakLoop = true;
-            }
-        }
-
-        if(inputIsPressed(BUTTON_R)) {
-            if(mode == INSTALL_CIA) {
-                mode = DELETE_CIA;
-            } else if(mode == DELETE_CIA) {
-                mode = DELETE_TITLE;
-                breakLoop = true;
-            } else if(mode == DELETE_TITLE) {
-                mode = LAUNCH_TITLE;
-            } else if(mode == LAUNCH_TITLE) {
-                mode = INSTALL_CIA;
-                breakLoop = true;
-            }
-        }
-
-        if(mode == INSTALL_CIA && inputIsPressed(BUTTON_Y)) {
-            while(platformIsRunning()) {
-                gpuClearScreens();
-
-                RemoteFile file = uiAcceptRemoteFile(TOP_SCREEN, [&](std::stringstream& infoStream) {
-                    if(inputIsPressed(BUTTON_A)) {
-                        showNetworkPrompts = !showNetworkPrompts;
-                    }
-
-                    infoStream << "\n";
-                    infoStream << "Prompts: " << (showNetworkPrompts ? "Enabled" : "Disabled") << "\n";
-                    infoStream << "Press A to toggle prompts.";
-                });
-
-                if(file.fd == NULL) {
-                    break;
-                }
-
-                std::stringstream confirmStream;
-                confirmStream << "Install the received application?" << "\n";
-                confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)";
-                if(!showNetworkPrompts || uiPrompt(TOP_SCREEN, confirmStream.str(), true)) {
-                    AppResult ret = appInstall(destination, file.fd, file.fileSize, onProgress);
-                    prevProgress = -1;
-                    if(showNetworkPrompts || ret != APP_SUCCESS) {
-                        std::stringstream resultMsg;
-                        resultMsg << "Install ";
-                        if(ret == APP_SUCCESS) {
-                            resultMsg << "succeeded!";
-                        } else {
-                            resultMsg << "failed!" << "\n";
-                            resultMsg << appGetResultString(ret);
-                        }
-
-                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                    }
-                }
-
-                fclose(file.fd);
-            }
-        }
-
-        if(inputIsPressed(BUTTON_SELECT)) {
-            u32 selected = 0;
-            bool dirty = true;
-            while(platformIsRunning()) {
-                inputPoll();
-                if(inputIsPressed(BUTTON_B)) {
-                    break;
-                }
-
-                if(inputIsPressed(BUTTON_A)) {
-                    std::stringstream stream;
-                    stream << "Install the selected ROP?" << "\n";
-                    stream << ropNames[selected];
-
-                    if(uiPrompt(TOP_SCREEN, stream.str(), true)) {
-                        u16 userSettingsOffset = 0;
-                        bool result = norRead(0x20, &userSettingsOffset, 2) && norWrite(userSettingsOffset << 3, rops[selected], ROP_SIZE);
-
-                        std::stringstream resultMsg;
-                        resultMsg << "ROP installation ";
-                        if(result) {
-                            resultMsg << "succeeded!";
-                        } else {
-                            resultMsg << "failed!" << "\n";
-                            resultMsg << platformGetErrorString(platformGetError());
-                        }
-
-                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                    }
-
-                    dirty = true;
-                }
-
-                if(inputIsPressed(BUTTON_LEFT)) {
-                    if(selected == 0) {
-                        selected = ROP_COUNT - 1;
-                    } else {
-                        selected--;
-                    }
-
-                    dirty = true;
-                }
-
-                if(inputIsPressed(BUTTON_RIGHT)) {
-                    if(selected >= ROP_COUNT - 1) {
-                        selected = 0;
-                    } else {
-                        selected++;
-                    }
-
-                    dirty = true;
-                }
-
-                if(dirty) {
-                    std::stringstream stream;
-                    stream << "Select a ROP to install." << "\n";
-                    stream << "< " << ropNames[selected] << " >" << "\n";
-                    stream << "Press A to install, B to cancel.";
-                    uiDisplayMessage(TOP_SCREEN, stream.str());
-                }
-            }
-		}
-
-        std::stringstream stream;
-        stream << "Battery: ";
-        if(platformIsBatteryCharging()) {
-            stream << "Charging";
-        } else {
-            for(u32 i = 0; i < platformGetBatteryLevel(); i++) {
-                stream << "|";
-            }
-        }
-
-        stream << ", WiFi: ";
-        if(!platformIsWifiConnected()) {
-            stream << "Disconnected";
-        } else {
-            for(u32 i = 0; i < platformGetWifiLevel(); i++) {
-                stream << "|";
-            }
-        }
-
-        stream << "\n";
-
-        stream << "Free Space: " << freeSpace << " bytes (" << std::fixed << std::setprecision(2) << freeSpace / 1024.0f / 1024.0f << "MB)" << "\n";
-        stream << "Destination: " << (destination == NAND ? "NAND" : "SD") << ", Mode: " << (mode == INSTALL_CIA ? "Install CIA" : mode == DELETE_CIA ? "Delete CIA" : mode == DELETE_TITLE ? "Delete Title" : "Launch Title") << "\n";
-        stream << "L - Switch Destination, R - Switch Mode" << "\n";
-        if(mode == INSTALL_CIA) {
-            stream << "X - Install all CIAs in the current directory" << "\n";
-            stream << "Y - Receive an app over the network" << "\n";
-        } else if(mode == DELETE_CIA) {
-            stream << "X - Delete all CIAs in the current directory" << "\n";
-        }
-
-        stream << "SELECT - Install MSET ROP";
-
-        if(ninjhax) {
-            stream << "\n" << "START - Exit to launcher";
-        }
-
-        std::string str = stream.str();
-        const std::string title = "FBI v1.4.2";
-        gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
-        gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
-
-        return breakLoop;
-    };
 
     while(platformIsRunning()) {
         if(mode == INSTALL_CIA || mode == DELETE_CIA) {
@@ -258,78 +381,24 @@ int main(int argc, char **argv) {
                     if(uiPrompt(TOP_SCREEN, confirmMsg.str(), true)) {
                         bool failed = false;
                         std::vector<FileInfo> contents = fsGetDirectoryContents(currDirectory);
-                        u32 currItem = 0;
                         for(std::vector<FileInfo>::iterator it = contents.begin(); it != contents.end(); it++) {
                             std::string path = (*it).path;
-                            if(!fsIsDirectory(path) && fsHasExtensions(path, extensions)) {
-                                std::string displayFileName = (*it).name;
-                                if(displayFileName.length() > 40) {
-                                    displayFileName.resize(40);
-                                    displayFileName += "...";
-                                }
-
+                            std::string name = (*it).name;
+                            if(!fsIsDirectory(name) && fsHasExtensions(name, extensions)) {
                                 if(mode == INSTALL_CIA) {
-                                    App app = appGetCiaInfo(path, destination);
-                                    if(appIsInstalled(app)) {
-                                        std::stringstream overwriteMsg;
-                                        overwriteMsg << "Title already installed, overwrite?" << "\n";
-                                        overwriteMsg << displayFileName;
-                                        if(uiPrompt(TOP_SCREEN, overwriteMsg.str(), true)) {
-                                            uiDisplayMessage(TOP_SCREEN, "Deleting title...");
-                                            AppResult ret = appDelete(app);
-                                            if(ret != APP_SUCCESS) {
-                                                std::stringstream resultMsg;
-                                                resultMsg << "Delete failed!" << "\n";
-                                                resultMsg << displayFileName << "\n";
-                                                resultMsg << appGetResultString(ret);
-                                                uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-
-                                                failed = true;
-                                                break;
-                                            }
-                                        } else {
-                                            continue;
-                                        }
-                                    }
-
-                                    std::stringstream batchInstallStream;
-                                    batchInstallStream << displayFileName << " (" << currItem << ")" << "\n";
-
-                                    batchInfo = batchInstallStream.str();
-                                    AppResult ret = appInstallFile(destination, path, onProgress);
-                                    prevProgress = -1;
-                                    batchInfo = "";
-                                    if(ret != APP_SUCCESS) {
-                                        std::stringstream resultMsg;
-                                        resultMsg << "Install failed!" << "\n";
-                                        resultMsg << displayFileName << "\n";
-                                        resultMsg << appGetResultString(ret);
-                                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-
+                                    if(!installCIA(destination, path, name)) {
                                         failed = true;
                                         break;
                                     }
                                 } else {
-                                    std::stringstream deleteStream;
-                                    deleteStream << "Deleting CIA..." << "\n";
-                                    deleteStream << displayFileName << " (" << currItem << ")";
-
-                                    uiDisplayMessage(TOP_SCREEN, deleteStream.str());
-                                    if(remove(path.c_str()) != 0) {
-                                        std::stringstream resultMsg;
-                                        resultMsg << "Delete failed!" << "\n";
-                                        resultMsg << displayFileName << "\n";
-                                        resultMsg << strerror(errno);
-                                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+                                    if(deleteCIA(path, name)) {
+                                        updateList = true;
+                                    } else {
                                         failed = true;
                                         break;
-                                    } else {
-                                        updateList = true;
                                     }
                                 }
                             }
-
-                            currItem++;
                         }
 
                         if(!failed) {
@@ -359,54 +428,24 @@ int main(int argc, char **argv) {
 
                 confirmMsg << "the selected CIA?";
                 if(uiPrompt(TOP_SCREEN, confirmMsg.str(), true)) {
-                    std::stringstream resultMsg;
+                    bool success = false;
                     if(mode == INSTALL_CIA) {
-                        resultMsg << "Install ";
+                        success = installCIA(destination, path, fsGetFileName(path));
                     } else {
-                        resultMsg << "Delete ";
+                        success = deleteCIA(path, fsGetFileName(path));
                     }
 
-                    if(mode == INSTALL_CIA) {
-                        App app = appGetCiaInfo(path, destination);
-                        if(appIsInstalled(app)) {
-                            std::stringstream overwriteMsg;
-                            overwriteMsg << "Title already installed, overwrite?";
-                            if(uiPrompt(TOP_SCREEN, overwriteMsg.str(), true)) {
-                                uiDisplayMessage(TOP_SCREEN, "Deleting title...");
-                                AppResult ret = appDelete(app);
-                                if(ret != APP_SUCCESS) {
-                                    std::stringstream deleteResultMsg;
-                                    deleteResultMsg << "Delete failed!" << "\n";
-                                    deleteResultMsg << appGetResultString(ret);
-                                    uiPrompt(TOP_SCREEN, deleteResultMsg.str(), false);
-
-                                    return false;
-                                }
-                            } else {
-                                return false;
-                            }
+                    if(success) {
+                        std::stringstream successMsg;
+                        if(mode == INSTALL_CIA) {
+                            successMsg << "Install ";
+                        } else {
+                            successMsg << "Delete ";
                         }
 
-                        AppResult ret = appInstallFile(destination, path, onProgress);
-                        prevProgress = -1;
-                        if(ret == APP_SUCCESS) {
-                            resultMsg << "succeeded!";
-                        } else {
-                            resultMsg << "failed!" << "\n";
-                            resultMsg << appGetResultString(ret);
-                        }
-                    } else {
-                        uiDisplayMessage(TOP_SCREEN, "Deleting CIA...");
-                        if(remove(path.c_str()) != 0) {
-                            updateList = true;
-                            resultMsg << "succeeded!";
-                        } else {
-                            resultMsg << "failed!" << "\n";
-                            resultMsg << strerror(errno);
-                        }
+                        successMsg << "succeeded!";
+                        uiPrompt(TOP_SCREEN, successMsg.str(), false);
                     }
-
-                    uiPrompt(TOP_SCREEN, resultMsg.str(), false);
 
                     freeSpace = fsGetFreeSpace(destination);
                 }
@@ -422,35 +461,16 @@ int main(int argc, char **argv) {
             }, [&](App app, bool &updateList) {
                 if(mode == DELETE_TITLE) {
                     if(uiPrompt(TOP_SCREEN, "Delete the selected title?", true) && (destination != NAND || uiPrompt(TOP_SCREEN, "You are about to delete a title from the NAND.\nTHIS HAS THE POTENTIAL TO BRICK YOUR 3DS!\nAre you sure you wish to continue?", true))) {
-                        updateList = true;
-                        uiDisplayMessage(TOP_SCREEN, "Deleting title...");
-                        AppResult ret = appDelete(app);
-
-                        std::stringstream resultMsg;
-                        resultMsg << "Delete ";
-                        if(ret == APP_SUCCESS) {
-                            resultMsg << "succeeded!";
-                        } else {
-                            resultMsg << "failed!" << "\n";
-                            resultMsg << appGetResultString(ret);
+                        if(deleteTitle(app)) {
+                            uiPrompt(TOP_SCREEN, "Delete succeeded!", false);
                         }
 
-                        uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-
+                        updateList = true;
                         freeSpace = fsGetFreeSpace(destination);
                     }
                 } else if(mode == LAUNCH_TITLE) {
                     if(uiPrompt(TOP_SCREEN, "Launch the selected title?", true)) {
-                        updateList = true;
-                        uiDisplayMessage(TOP_SCREEN, "Launching title...");
-                        AppResult ret = appLaunch(app);
-
-                        if(ret != APP_SUCCESS) {
-                            std::stringstream resultMsg;
-                            resultMsg << "Launch failed!" << "\n";
-                            resultMsg << appGetResultString(ret);
-                            uiPrompt(TOP_SCREEN, resultMsg.str(), false);
-                        } else {
+                        if(launchTitle(app)) {
                             while(true) {
                             }
                         }
