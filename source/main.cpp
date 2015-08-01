@@ -84,6 +84,8 @@ void networkInstall() {
                 }
 
                 uiPrompt(TOP_SCREEN, resultMsg.str(), false);
+
+                freeSpace = fsGetFreeSpace(destination);
             }
         }
 
@@ -351,7 +353,7 @@ bool onLoop() {
     }
 
     std::string str = stream.str();
-    const std::string title = "FBI v1.4.3";
+    const std::string title = "FBI v1.4.4";
     gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
     gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
 
@@ -363,6 +365,7 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    freeSpace = fsGetFreeSpace(destination);
     while(platformIsRunning()) {
         if(mode == INSTALL_CIA || mode == DELETE_CIA) {
             uiDisplayMessage(BOTTOM_SCREEN, "Loading file list...");
