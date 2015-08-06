@@ -272,8 +272,8 @@ bool launchTitle(App app) {
 }
 
 bool onLoop() {
-    bool ninjhax = platformIsNinjhax();
-    if(ninjhax && inputIsPressed(BUTTON_START)) {
+    bool launcher = platformHasLauncher();
+    if(launcher && inputIsPressed(BUTTON_START)) {
         exit = true;
         return true;
     }
@@ -348,12 +348,12 @@ bool onLoop() {
 
     stream << "SELECT - Install MSET ROP";
 
-    if(ninjhax) {
+    if(launcher) {
         stream << "\n" << "START - Exit to launcher";
     }
 
     std::string str = stream.str();
-    const std::string title = "FBI v1.4.4";
+    const std::string title = "FBI v1.4.5";
     gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
     gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
 
@@ -361,7 +361,7 @@ bool onLoop() {
 }
 
 int main(int argc, char **argv) {
-    if(!platformInit()) {
+    if(!platformInit(argc)) {
         return 0;
     }
 
