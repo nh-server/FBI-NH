@@ -353,7 +353,7 @@ bool onLoop() {
     }
 
     std::string str = stream.str();
-    const std::string title = "FBI v1.4.6";
+    const std::string title = "FBI v1.4.7";
     gputDrawString(title, (gpuGetViewportWidth() - gputGetStringWidth(title, 16)) / 2, (gpuGetViewportHeight() - gputGetStringHeight(title, 16) + gputGetStringHeight(str, 8)) / 2, 16, 16);
     gputDrawString(str, (gpuGetViewportWidth() - gputGetStringWidth(str, 8)) / 2, 4, 8, 8);
 
