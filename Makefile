@@ -4,8 +4,8 @@ endif
 
 #---------------------------------------------------------------------------------
 # BUILD_FLAGS: List of extra build flags to add.
-# NO_CTRCOMMON: Do not include ctrcommon.
 # ENABLE_EXCEPTIONS: Enable C++ exceptions.
+# NO_CITRUS: Do not include citrus.
 #---------------------------------------------------------------------------------
 
-include $(DEVKITPRO)/ctrcommon/tools/make_base
+include $(DEVKITPRO)/citrus/tools/make_base
