@@ -76,16 +76,21 @@ void networkInstall() {
         confirmStream << "Install the received application?" << "\n";
         confirmStream << "Size: " << file.fileSize << " bytes (" << std::fixed << std::setprecision(2) << file.fileSize / 1024.0f / 1024.0f << "MB)";
         if(!showNetworkPrompts || uiPrompt(gpu::SCREEN_TOP, confirmStream.str(), true)) {
-            app::AppResult ret = app::install(destination, file.fd, file.fileSize, &onProgress);
+            app::install(destination, file.fd, file.fileSize, &onProgress);
             prevProgress = -1;
-            if(showNetworkPrompts || ret != app::APP_SUCCESS) {
+            if(showNetworkPrompts || err::has()) {
                 std::stringstream resultMsg;
                 resultMsg << "Install ";
-                if(ret == app::APP_SUCCESS) {
+                if(!err::has()) {
                     resultMsg << "succeeded!";
                 } else {
-                    resultMsg << "failed!" << "\n";
-                    resultMsg << app::resultString(ret);
+                    err::Error error = err::get();
+                    if(error.source == err::SOURCE_OPERATION_CANCELLED) {
+                        resultMsg << "cancelled!";
+                    } else {
+                        resultMsg << "failed!" << "\n";
+                        resultMsg << err::toString(error);
+                    }
                 }
 
                 uiPrompt(gpu::SCREEN_TOP, resultMsg.str(), false);
@@ -114,11 +119,14 @@ void installROP() {
 
             if(uiPrompt(gpu::SCREEN_TOP, stream.str(), true)) {
                 u16 userSettingsOffset = 0;
-                bool result = nor::read(0x20, &userSettingsOffset, 2) && nor::write(userSettingsOffset << 3, rops[selected], ROP_SIZE);
+                nor::read(0x20, &userSettingsOffset, 2);
+                if(!err::has()) {
+                    nor::write(userSettingsOffset << 3, rops[selected], ROP_SIZE);
+                }
 
                 std::stringstream resultMsg;
                 resultMsg << "ROP installation ";
-                if(result) {
+                if(!err::has()) {
                     resultMsg << "succeeded!";
                 } else {
                     resultMsg << "failed!" << "\n";
@@ -187,11 +195,11 @@ bool installCIA(fs::MediaType destination, const std::string path, const std::st
     batchInstallStream << name << "\n";
     installInfo = batchInstallStream.str();
 
-    app::AppResult ret = app::install(destination, fd, (u64) st.st_size, &onProgress);
+    app::install(destination, fd, (u64) st.st_size, &onProgress);
     prevProgress = -1;
     installInfo = "";
 
-    if(ret != app::APP_SUCCESS && err::has()) {
+    if(err::has()) {
         err::Error error = err::get();
         if(error.module == err::MODULE_NN_AM && error.description == err::DESCRIPTION_ALREADY_EXISTS) {
             std::stringstream overwriteMsg;
@@ -200,21 +208,18 @@ bool installCIA(fs::MediaType destination, const std::string path, const std::st
             if(uiPrompt(gpu::SCREEN_TOP, overwriteMsg.str(), true)) {
                 uiDisplayMessage(gpu::SCREEN_TOP, "Deleting title...");
 
-                app::App app;
-                app::ciaInfo(&app, path, destination);
-
-                app::AppResult deleteRet = app::uninstall(app);
-                if(deleteRet != app::APP_SUCCESS) {
+                app::uninstall(app::ciaInfo(path, destination));
+                if(err::has()) {
                     std::stringstream resultMsg;
                     resultMsg << "Delete failed!" << "\n";
                     resultMsg << name << "\n";
-                    resultMsg << app::resultString(deleteRet);
+                    resultMsg << err::toString(err::get());
                     uiPrompt(gpu::SCREEN_TOP, resultMsg.str(), false);
 
                     return false;
                 }
 
-                ret = app::install(destination, fd, (u64) st.st_size, &onProgress);
+                app::install(destination, fd, (u64) st.st_size, &onProgress);
                 prevProgress = -1;
                 installInfo = "";
             } else {
@@ -225,11 +230,19 @@ bool installCIA(fs::MediaType destination, const std::string path, const std::st
         }
     }
 
-    if(ret != app::APP_SUCCESS) {
+    if(err::has()) {
+        err::Error error = err::get();
         std::stringstream resultMsg;
-        resultMsg << "Install failed!" << "\n";
-        resultMsg << name << "\n";
-        resultMsg << app::resultString(ret);
+        resultMsg << "Install ";
+        if(error.source == err::SOURCE_OPERATION_CANCELLED) {
+            resultMsg << "cancelled!" << "\n";
+            resultMsg << name;
+        } else {
+            resultMsg << "failed!" << "\n";
+            resultMsg << name << "\n";
+            resultMsg << err::toString(error);
+        }
+
         uiPrompt(gpu::SCREEN_TOP, resultMsg.str(), false);
 
         return false;
@@ -265,12 +278,12 @@ bool deleteCIA(const std::string path, const std::string fileName) {
 
 bool deleteTitle(app::App app) {
     uiDisplayMessage(gpu::SCREEN_TOP, "Deleting title...");
-    app::AppResult ret = app::uninstall(app);
 
-    if(ret != app::APP_SUCCESS) {
+    app::uninstall(app);
+    if(err::has()) {
         std::stringstream resultMsg;
         resultMsg << "Delete failed!" << "\n";
-        resultMsg << app::resultString(ret);
+        resultMsg << err::toString(err::get());
         uiPrompt(gpu::SCREEN_TOP, resultMsg.str(), false);
 
         return false;
@@ -281,12 +294,12 @@ bool deleteTitle(app::App app) {
 
 bool launchTitle(app::App app) {
     uiDisplayMessage(gpu::SCREEN_TOP, "Launching title...");
-    app::AppResult ret = app::launch(app);
 
-    if(ret != app::APP_SUCCESS) {
+    app::launch(app);
+    if(err::has()) {
         std::stringstream resultMsg;
         resultMsg << "Launch failed!" << "\n";
-        resultMsg << app::resultString(ret);
+        resultMsg << err::toString(err::get());
         uiPrompt(gpu::SCREEN_TOP, resultMsg.str(), false);
 
         return false;

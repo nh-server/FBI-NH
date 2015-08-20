@@ -1,6 +1,7 @@
 #include "ui.hpp"
 
 #include <citrus/core.hpp>
+#include <citrus/err.hpp>
 #include <citrus/gput.hpp>
 #include <citrus/hid.hpp>
 
@@ -286,8 +287,8 @@ void uiGetDirContents(std::vector<SelectableElement> &elements, const std::strin
 
             std::string extension = fs::extension(path);
             if(extension.compare("cia") == 0) {
-                app::App app;
-                if(app::ciaInfo(&app, path, fs::SD) == app::APP_SUCCESS) {
+                app::App app = app::ciaInfo(path, fs::SD);
+                if(!err::has()) {
                     std::stringstream titleId;
                     titleId << "0x" << std::setfill('0') << std::setw(16) << std::hex << app.titleId;
 
@@ -429,8 +430,7 @@ bool uiFindApp(app::App* result, std::string id, std::vector<app::App> apps) {
 bool uiSelectApp(app::App* selectedApp, fs::MediaType mediaType, std::function<bool(bool &updateList)> onLoop, std::function<bool(app::App app, bool &updateList)> onSelect, bool useTopScreen, bool dpadPageScroll) {
     std::vector<SelectableElement> elements;
 
-    std::vector<app::App> apps;
-    app::list(&apps, mediaType);
+    std::vector<app::App> apps = app::list(mediaType);
     uiGetApps(elements, apps);
 
     bool updateContents = false;
@@ -441,7 +441,7 @@ bool uiSelectApp(app::App* selectedApp, fs::MediaType mediaType, std::function<b
         }
 
         if(updateContents) {
-            app::list(&apps, mediaType);
+            apps = app::list(mediaType);
             uiGetApps(currElements, apps);
             elementsDirty = true;
             resetCursorIfDirty = false;
