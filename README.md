@@ -1,5 +1,4 @@
-<b><center>FBI</center></b>
-==========
+# FBI
 
 FBI is an open source CIA (un)installer for the 3DS.
 
