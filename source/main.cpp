@@ -12,13 +12,13 @@
 #include "rop.h"
 #include "ui.hpp"
 
-#include <sys/errno.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
-#include <sstream>
 #include <iomanip>
-#include <sys/stat.h>
+#include <sstream>
 
 using namespace ctr;
 
@@ -169,8 +169,8 @@ void installROP() {
     }
 }
 
-bool installCIA(fs::MediaType destination, const std::string path, const std::string fileName) {
-    std::string name = fileName;
+bool installCIA(fs::MediaType destination, const std::string path, int curr, int total) {
+    std::string name = fs::fileName(path);
     if(name.length() > 40) {
         name.resize(40);
         name += "...";
@@ -192,9 +192,9 @@ bool installCIA(fs::MediaType destination, const std::string path, const std::st
     fstat(fileno(fd), &st);
 
     std::stringstream batchInstallStream;
-    batchInstallStream << name << "\n";
-    installInfo = batchInstallStream.str();
+    batchInstallStream << name << " (" << curr << "/" << total << ")" << "\n";
 
+    installInfo = batchInstallStream.str();
     app::install(destination, fd, (u64) st.st_size, &onProgress);
     prevProgress = -1;
     installInfo = "";
@@ -219,6 +219,7 @@ bool installCIA(fs::MediaType destination, const std::string path, const std::st
                     return false;
                 }
 
+                installInfo = batchInstallStream.str();
                 app::install(destination, fd, (u64) st.st_size, &onProgress);
                 prevProgress = -1;
                 installInfo = "";
@@ -251,8 +252,8 @@ bool installCIA(fs::MediaType destination, const std::string path, const std::st
     return true;
 }
 
-bool deleteCIA(const std::string path, const std::string fileName) {
-    std::string name = fileName;
+bool deleteCIA(const std::string path, int curr, int total) {
+    std::string name = fs::fileName(path);
     if(name.length() > 40) {
         name.resize(40);
         name += "...";
@@ -260,7 +261,7 @@ bool deleteCIA(const std::string path, const std::string fileName) {
 
     std::stringstream deleteStream;
     deleteStream << "Deleting CIA..." << "\n";
-    deleteStream << name;
+    deleteStream << name << " (" << curr << "/" << total << ")";
     uiDisplayMessage(gpu::SCREEN_TOP, deleteStream.str());
 
     if(remove(path.c_str()) != 0) {
@@ -395,7 +396,7 @@ bool onLoop() {
     gpu::getViewportHeight(&screenHeight);
 
     std::string str = stream.str();
-    const std::string title = "FBI v1.4.9";
+    const std::string title = "FBI v1.4.10";
     gput::drawString(title, (screenWidth - gput::getStringWidth(title, 16)) / 2, (screenHeight - gput::getStringHeight(title, 16) + gput::getStringHeight(str, 8)) / 2, 16, 16);
     gput::drawString(str, (screenWidth - gput::getStringWidth(str, 8)) / 2, 4, 8, 8);
 
@@ -427,25 +428,26 @@ int main(int argc, char **argv) {
                     confirmMsg << "all CIAs in the current directory?";
                     if(uiPrompt(gpu::SCREEN_TOP, confirmMsg.str(), true)) {
                         bool failed = false;
-                        std::vector<std::string> contents = fs::contents(currDirectory);
+                        std::vector<std::string> contents = fs::contents(currDirectory, false, extensions);
+                        int total = contents.size();
+                        int curr = 1;
                         for(std::vector<std::string>::iterator it = contents.begin(); it != contents.end(); it++) {
                             std::string path = *it;
-                            std::string name = fs::fileName(path);
-                            if(!fs::directory(name) && fs::hasExtensions(name, extensions)) {
-                                if(mode == INSTALL_CIA) {
-                                    if(!installCIA(destination, path, name)) {
-                                        failed = true;
-                                        break;
-                                    }
+                            if(mode == INSTALL_CIA) {
+                                if(!installCIA(destination, path, curr, total)) {
+                                    failed = true;
+                                    break;
+                                }
+                            } else {
+                                if(deleteCIA(path, curr, total)) {
+                                    updateList = true;
                                 } else {
-                                    if(deleteCIA(path, name)) {
-                                        updateList = true;
-                                    } else {
-                                        failed = true;
-                                        break;
-                                    }
+                                    failed = true;
+                                    break;
                                 }
                             }
+
+                            curr++;
                         }
 
                         if(!failed) {
@@ -477,9 +479,9 @@ int main(int argc, char **argv) {
                 if(uiPrompt(gpu::SCREEN_TOP, confirmMsg.str(), true)) {
                     bool success = false;
                     if(mode == INSTALL_CIA) {
-                        success = installCIA(destination, path, fs::fileName(path));
+                        success = installCIA(destination, path, 1, 1);
                     } else {
-                        success = deleteCIA(path, fs::fileName(path));
+                        success = deleteCIA(path, 1, 1);
                     }
 
                     if(success) {
