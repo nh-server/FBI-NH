@@ -391,13 +391,17 @@ bool onLoop() {
         stream << "\n" << "START - Exit to launcher";
     }
 
+    std::string str = stream.str();
+
+    std::stringstream titleStream;
+    titleStream << "FBI " << VERSION_STRING;
+    std::string title = titleStream.str();
+
     u32 screenWidth;
     u32 screenHeight;
     gpu::getViewportWidth(&screenWidth);
     gpu::getViewportHeight(&screenHeight);
 
-    std::string str = stream.str();
-    const std::string title = "FBI v1.4.10";
     gput::drawString(title, (screenWidth - gput::getStringWidth(title, 16)) / 2, (screenHeight - gput::getStringHeight(title, 16) + gput::getStringHeight(str, 8)) / 2, 16, 16);
     gput::drawString(str, (screenWidth - gput::getStringWidth(str, 8)) / 2, 4, 8, 8);
 
