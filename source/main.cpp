@@ -190,12 +190,13 @@ bool installCIA(fs::MediaType destination, const std::string path, int curr, int
 
     struct stat st;
     fstat(fileno(fd), &st);
+    u64 size = (u64) (u32) st.st_size;
 
     std::stringstream batchInstallStream;
     batchInstallStream << name << " (" << curr << "/" << total << ")" << "\n";
 
     installInfo = batchInstallStream.str();
-    app::install(destination, fd, (u64) st.st_size, &onProgress);
+    app::install(destination, fd, size, &onProgress);
     prevProgress = -1;
     installInfo = "";
 
@@ -220,7 +221,7 @@ bool installCIA(fs::MediaType destination, const std::string path, int curr, int
                 }
 
                 installInfo = batchInstallStream.str();
-                app::install(destination, fd, (u64) st.st_size, &onProgress);
+                app::install(destination, fd, size, &onProgress);
                 prevProgress = -1;
                 installInfo = "";
             } else {
