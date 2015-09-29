@@ -161,8 +161,8 @@ bool uiSelect(SelectableElement* selected, std::vector<SelectableElement> elemen
             lastScrollTime = 0;
         }
 
-        gpu::setViewport(gpu::SCREEN_BOTTOM, 0, 0, BOTTOM_WIDTH, BOTTOM_HEIGHT);
-        gput::setOrtho(0, BOTTOM_WIDTH, 0, BOTTOM_HEIGHT, -1, 1);
+        gpu::setViewport(gpu::SCREEN_BOTTOM, 0, 0, gpu::BOTTOM_WIDTH, gpu::BOTTOM_HEIGHT);
+        gput::setOrtho(0, gpu::BOTTOM_WIDTH, 0, gpu::BOTTOM_HEIGHT, -1, 1);
         gpu::clear();
 
         u32 screenWidth;
@@ -208,8 +208,8 @@ bool uiSelect(SelectableElement* selected, std::vector<SelectableElement> elemen
         gpu::flushCommands();
         gpu::flushBuffer();
 
-        gpu::setViewport(gpu::SCREEN_TOP, 0, 0, TOP_WIDTH, TOP_HEIGHT);
-        gput::setOrtho(0, TOP_WIDTH, 0, TOP_HEIGHT, -1, 1);
+        gpu::setViewport(gpu::SCREEN_TOP, 0, 0, gpu::TOP_WIDTH, gpu::TOP_HEIGHT);
+        gput::setOrtho(0, gpu::TOP_WIDTH, 0, gpu::TOP_HEIGHT, -1, 1);
         if(useTopScreen) {
             gpu::clear();
 
@@ -477,8 +477,8 @@ bool uiSelectApp(app::App* selectedApp, fs::MediaType mediaType, std::function<b
 }
 
 void uiDisplayMessage(gpu::Screen screen, const std::string message) {
-    u32 width = screen == gpu::SCREEN_TOP ? TOP_WIDTH : BOTTOM_WIDTH;
-    u32 height = screen == gpu::SCREEN_TOP ? TOP_HEIGHT : BOTTOM_HEIGHT;
+    u32 width = screen == gpu::SCREEN_TOP ? gpu::TOP_WIDTH : gpu::BOTTOM_WIDTH;
+    u32 height = screen == gpu::SCREEN_TOP ? gpu::TOP_HEIGHT : gpu::BOTTOM_HEIGHT;
 
     gpu::setViewport(screen, 0, 0, width, height);
     gput::setOrtho(0, width, 0, height, -1, 1);
@@ -489,8 +489,8 @@ void uiDisplayMessage(gpu::Screen screen, const std::string message) {
     gpu::flushBuffer();
     gpu::swapBuffers(true);
 
-    gpu::setViewport(gpu::SCREEN_TOP, 0, 0, TOP_WIDTH, TOP_HEIGHT);
-    gput::setOrtho(0, TOP_WIDTH, 0, TOP_HEIGHT, -1, 1);
+    gpu::setViewport(gpu::SCREEN_TOP, 0, 0, gpu::TOP_WIDTH, gpu::TOP_HEIGHT);
+    gput::setOrtho(0, gpu::TOP_WIDTH, 0, gpu::TOP_HEIGHT, -1, 1);
 }
 
 bool uiPrompt(gpu::Screen screen, const std::string message, bool question) {
@@ -547,8 +547,8 @@ void uiDisplayProgress(gpu::Screen screen, const std::string operation, const st
 
     std::string str = stream.str();
 
-    u32 width = screen == gpu::SCREEN_TOP ? TOP_WIDTH : BOTTOM_WIDTH;
-    u32 height = screen == gpu::SCREEN_TOP ? TOP_HEIGHT : BOTTOM_HEIGHT;
+    u32 width = screen == gpu::SCREEN_TOP ? gpu::TOP_WIDTH : gpu::BOTTOM_WIDTH;
+    u32 height = screen == gpu::SCREEN_TOP ? gpu::TOP_HEIGHT : gpu::BOTTOM_HEIGHT;
 
     gpu::setViewport(screen, 0, 0, width, height);
     gput::setOrtho(0, width, 0, height, -1, 1);
@@ -559,8 +559,8 @@ void uiDisplayProgress(gpu::Screen screen, const std::string operation, const st
     gpu::flushBuffer();
     gpu::swapBuffers(!quickSwap);
 
-    gpu::setViewport(gpu::SCREEN_TOP, 0, 0, TOP_WIDTH, TOP_HEIGHT);
-    gput::setOrtho(0, TOP_WIDTH, 0, TOP_HEIGHT, -1, 1);
+    gpu::setViewport(gpu::SCREEN_TOP, 0, 0, gpu::TOP_WIDTH, gpu::TOP_HEIGHT);
+    gput::setOrtho(0, gpu::TOP_WIDTH, 0, gpu::TOP_HEIGHT, -1, 1);
 }
 
 u64 ntohll(u64 value) {
