@@ -31,14 +31,14 @@ u32 selectorVbo;
 
 void uiInit() {
     gpu::createTexture(&selectorTexture);
-    gpu::setTextureInfo(selectorTexture, 64, 64, gpu::PIXEL_RGBA8, TEXTURE_MIN_FILTER(gpu::FILTER_NEAREST) | TEXTURE_MAG_FILTER(gpu::FILTER_NEAREST));
+    gpu::setTextureInfo(selectorTexture, 64, 64, gpu::PIXEL_RGBA8, gpu::textureMinFilter(gpu::FILTER_NEAREST) | gpu::textureMagFilter(gpu::FILTER_NEAREST));
 
     void* textureData;
     gpu::getTextureData(selectorTexture, &textureData);
     memset(textureData, 0xFF, 64 * 64 * 4);
 
     gpu::createVbo(&selectorVbo);
-    gpu::setVboAttributes(selectorVbo, ATTRIBUTE(0, 3, gpu::ATTR_FLOAT) | ATTRIBUTE(1, 2, gpu::ATTR_FLOAT) | ATTRIBUTE(2, 4, gpu::ATTR_FLOAT), 3);
+    gpu::setVboAttributes(selectorVbo, gpu::vboAttribute(0, 3, gpu::ATTR_FLOAT) | gpu::vboAttribute(1, 2, gpu::ATTR_FLOAT) | gpu::vboAttribute(2, 4, gpu::ATTR_FLOAT), 3);
 
     const float vboData[] = {
             0.0f, 0.0f, -0.1f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f,
