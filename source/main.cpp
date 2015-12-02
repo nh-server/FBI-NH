@@ -165,6 +165,8 @@ void installROP() {
             stream << "< " << ropNames[selected] << " >" << "\n";
             stream << "Press A to install, B to cancel.";
             uiDisplayMessage(gpu::SCREEN_TOP, stream.str());
+
+            dirty = false;
         }
     }
 }
@@ -219,6 +221,8 @@ bool installCIA(fs::MediaType destination, const std::string path, int curr, int
 
                     return false;
                 }
+
+                fseek(fd, 0, SEEK_SET);
 
                 installInfo = batchInstallStream.str();
                 app::install(destination, fd, size, &onProgress);
