@@ -577,7 +577,11 @@ int socketListen(u16 port) {
     if(fd < 0) {
         return -1;
     }
-
+    int rcvbuf = 32768;
+    if(setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0) {
+        
+    }
+    
     struct sockaddr_in address;
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
