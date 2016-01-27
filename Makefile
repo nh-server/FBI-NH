@@ -22,6 +22,8 @@ OUTPUT_DIR := output
 INCLUDE_DIRS := include
 SOURCE_DIRS := source
 
+EXTRA_OUTPUT_FILES :=
+
 LIBRARY_DIRS := $(DEVKITPRO)/citrus $(DEVKITPRO)/libctru
 LIBRARIES := citrus ctru m
 
