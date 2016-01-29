@@ -4,13 +4,13 @@ TARGET := 3DS
 LIBRARY := 0
 
 ifeq ($(TARGET),3DS)
-	ifeq ($(strip $(DEVKITPRO)),)
-		$(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro")
-	endif
+    ifeq ($(strip $(DEVKITPRO)),)
+        $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>devkitPro")
+    endif
 
-	ifeq ($(strip $(DEVKITARM)),)
-		$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
-	endif
+    ifeq ($(strip $(DEVKITARM)),)
+        $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+    endif
 endif
 
 # COMMON CONFIGURATION #
@@ -24,25 +24,28 @@ SOURCE_DIRS := source
 
 EXTRA_OUTPUT_FILES :=
 
-LIBRARY_DIRS := $(DEVKITPRO)/citrus $(DEVKITPRO)/libctru
-LIBRARIES := citrus ctru m
+LIBRARY_DIRS := $(DEVKITPRO)/libctru
+LIBRARIES := citro3d ctru m
 
-BUILD_FLAGS := -DVERSION_STRING="\"`git describe --tags --abbrev=0`\""
+BUILD_FLAGS := -DLIBKHAX_AS_LIB -DVERSION_STRING="\"`git describe --tags --abbrev=0`\""
 RUN_FLAGS :=
 
 # 3DS CONFIGURATION #
 
+TITLE := $(NAME)
 DESCRIPTION := Open source CIA installer.
 AUTHOR := Steveice10
 PRODUCT_CODE := CTR-P-CFBI
-UNIQUE_ID := 0x1930
+UNIQUE_ID := 0xF8001
 
 SYSTEM_MODE := 64MB
 SYSTEM_MODE_EXT := Legacy
 
-ROMFS_DIR :=
+ICON_FLAGS :=
+
+ROMFS_DIR := romfs
 BANNER_AUDIO := meta/audio.wav
-BANNER_IMAGE := meta/banner.png
+BANNER_IMAGE := meta/banner.cgfx
 ICON := meta/icon.png
 
 # INTERNAL #
