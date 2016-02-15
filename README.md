@@ -6,4 +6,4 @@ Banner credit: [OctopusRift](http://gbatemp.net/members/octopusrift.356526/), [A
 
 Download: https://github.com/Steveice10/FBI/releases
 
-Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/) to build.
+Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/) and [citro3d](https://github.com/fincs/citro3d) to build.
