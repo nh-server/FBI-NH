@@ -14,8 +14,8 @@ static void action_import_secure_value_end_onresponse(ui_view* view, void* data,
 static void action_import_secure_value_update(ui_view* view, void* data, float* progress, char* progressText) {
     title_info* info = (title_info*) data;
 
-    char pathBuf[PATH_MAX];
-    snprintf(pathBuf, PATH_MAX, "/fbi/securevalue/%016llX.dat", info->titleId);
+    char pathBuf[64];
+    snprintf(pathBuf, 64, "/fbi/securevalue/%016llX.dat", info->titleId);
 
     Result res = 0;
 
