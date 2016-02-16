@@ -29,6 +29,7 @@ typedef struct {
     char name[NAME_MAX];
     char path[PATH_MAX];
     bool isDirectory;
+    bool containsCias;
     u64 size;
     bool isCia;
     cia_info ciaInfo;
