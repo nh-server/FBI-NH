@@ -150,6 +150,7 @@ static Result task_load_files() {
         strncpy(dotFileInfo->path, files_path, PATH_MAX);
         util_get_path_file(dotFileInfo->name, dotFileInfo->path, NAME_MAX);
         dotFileInfo->isDirectory = true;
+        dotFileInfo->containsCias = false;
         dotFileInfo->size = 0;
         dotFileInfo->isCia = false;
 
@@ -167,6 +168,7 @@ static Result task_load_files() {
         util_get_parent_path(dotDotFileInfo->path, files_path, PATH_MAX);
         util_get_path_file(dotDotFileInfo->name, dotDotFileInfo->path, NAME_MAX);
         dotDotFileInfo->isDirectory = true;
+        dotDotFileInfo->containsCias = false;
         dotDotFileInfo->size = 0;
         dotDotFileInfo->isCia = false;
 
@@ -217,6 +219,7 @@ static Result task_load_files() {
 
                             snprintf(fileInfo->path, PATH_MAX, "%s%s/", files_path, entryName);
                             fileInfo->isDirectory = true;
+                            fileInfo->containsCias = false;
                             fileInfo->size = 0;
                             fileInfo->isCia = false;
                         } else {
@@ -224,6 +227,7 @@ static Result task_load_files() {
 
                             snprintf(fileInfo->path, PATH_MAX, "%s%s", files_path, entryName);
                             fileInfo->isDirectory = false;
+                            fileInfo->containsCias = false;
                             fileInfo->size = 0;
                             fileInfo->isCia = false;
 
@@ -233,6 +237,8 @@ static Result task_load_files() {
 
                                 AM_TitleEntry titleEntry;
                                 if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
+                                    dotFileInfo->containsCias = true;
+
                                     fileInfo->isCia = true;
                                     fileInfo->ciaInfo.titleId = titleEntry.titleID;
                                     fileInfo->ciaInfo.version = titleEntry.version;
