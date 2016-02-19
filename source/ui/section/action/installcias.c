@@ -5,6 +5,7 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
@@ -20,6 +21,9 @@ typedef struct {
     u32 processed;
     u32 total;
     char** contents;
+
+    install_cia_result installResult;
+    Handle installCancelEvent;
 } install_cias_data;
 
 static Result action_install_cias_read(void* data, u32* bytesRead, void* buffer, u32 size) {
@@ -50,60 +54,55 @@ static void action_install_cias_free_data(install_cias_data* data) {
 static void action_install_cias_done_onresponse(ui_view* view, void* data, bool response) {
     action_install_cias_free_data((install_cias_data*) data);
 
-    task_refresh_titles();
-
     prompt_destroy(view);
 }
 
 static void action_install_cias_update(ui_view* view, void* data, float* progress, char* progressText) {
     install_cias_data* installData = (install_cias_data*) data;
 
-    bool cancelled = false;
     if(hidKeysDown() & KEY_B) {
-        task_cancel_cia_install();
-
-        while(task_is_cia_installing()) {
+        svcSignalEvent(installData->installCancelEvent);
+        while(svcWaitSynchronization(installData->installCancelEvent, 0) == 0) {
             svcSleepThread(1000000);
         }
 
-        cancelled = true;
+        installData->installCancelEvent = 0;
     }
 
-    if(!task_is_cia_installing()) {
+    if(!installData->installStarted || installData->installResult.finished) {
         char* path = installData->contents[installData->processed];
 
-        if(installData->installStarted || cancelled) {
-            if(installData->currHandle != 0) {
-                FSFILE_Close(installData->currHandle);
-                installData->currHandle = 0;
-            }
+        if(installData->currHandle != 0) {
+            FSFILE_Close(installData->currHandle);
+            installData->currHandle = 0;
+        }
 
-            Result res = task_get_cia_install_result();
-            if(R_FAILED(res)) {
-                if(installData->processed >= installData->total - 1) {
+        if(installData->installResult.finished) {
+            if(installData->installResult.failed) {
+                if(installData->installResult.cancelled || installData->processed >= installData->total - 1) {
                     ui_pop();
                 }
 
-                if(res == CIA_INSTALL_RESULT_CANCELLED) {
+                if(installData->installResult.cancelled) {
                     ui_push(prompt_create("Failure", "Install cancelled.", 0xFF000000, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
-                } else if(res == CIA_INSTALL_RESULT_ERRNO) {
+                } else if(installData->installResult.ioerr) {
                     if(strlen(path) > 48) {
-                        error_display_errno(installData->base, ui_draw_file_info, task_get_cia_install_errno(), "Failed to install CIA file.\n%.45s...", path);
+                        error_display_errno(installData->base, ui_draw_file_info, installData->installResult.ioerrno, "Failed to install CIA file.\n%.45s...", path);
                     } else {
-                        error_display_errno(installData->base, ui_draw_file_info, task_get_cia_install_errno(), "Failed to install CIA file.\n%.48s", path);
+                        error_display_errno(installData->base, ui_draw_file_info, installData->installResult.ioerrno, "Failed to install CIA file.\n%.48s", path);
                     }
-                } else if(res == CIA_INSTALL_RESULT_WRONG_SYSTEM) {
+                } else if(installData->installResult.wrongSystem) {
                     ui_push(prompt_create("Failure", "Attempted to install to wrong system.", 0xFF000000, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
                 } else {
                     if(strlen(path) > 48) {
-                        error_display_res(installData->base, ui_draw_file_info, res, "Failed to install CIA file.\n%.45s...", path);
+                        error_display_res(installData->base, ui_draw_file_info, installData->installResult.result, "Failed to install CIA file.\n%.45s...", path);
                     } else {
-                        error_display_res(installData->base, ui_draw_file_info, res, "Failed to install CIA file.\n%.48s", path);
+                        error_display_res(installData->base, ui_draw_file_info, installData->installResult.result, "Failed to install CIA file.\n%.48s", path);
                     }
                 }
 
-                if(installData->processed >= installData->total - 1) {
-                    if(res != CIA_INSTALL_RESULT_CANCELLED && res != CIA_INSTALL_RESULT_WRONG_SYSTEM) {
+                if(installData->installResult.cancelled || installData->processed >= installData->total - 1) {
+                    if(!installData->installResult.cancelled && !installData->installResult.wrongSystem) {
                         action_install_cias_free_data(installData);
                     }
 
@@ -118,8 +117,8 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
         installData->installStarted = true;
 
         if(installData->processed >= installData->total) {
-            progressbar_destroy(view);
             ui_pop();
+            progressbar_destroy(view);
 
             ui_push(prompt_create("Success", "Install finished.", 0xFF000000, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
             return;
@@ -134,7 +133,12 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
                 if(R_SUCCEEDED(res = FSFILE_GetSize(installData->currHandle, &size))) {
                     installData->currTotal = size;
 
-                    task_request_cia_install(installData->dest, installData->currTotal, installData, action_install_cias_read);
+                    installData->installCancelEvent = task_install_cia(&installData->installResult, installData->dest, installData->currTotal, installData, action_install_cias_read);
+                    if(installData->installCancelEvent == 0) {
+                        ui_pop();
+                        progressbar_destroy(view);
+                        return;
+                    }
                 }
             }
 

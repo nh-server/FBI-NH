@@ -6,8 +6,6 @@
 #include "../../prompt.h"
 
 static void action_delete_ticket_success_onresponse(ui_view* view, void* data, bool response) {
-    task_refresh_tickets();
-
     prompt_destroy(view);
 }
 

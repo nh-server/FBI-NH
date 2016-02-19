@@ -29,15 +29,6 @@ static void action_delete_dir_contents_free_data(delete_dir_contents_data* data)
 static void action_delete_dir_contents_done_onresponse(ui_view* view, void* data, bool response) {
     action_delete_dir_contents_free_data((delete_dir_contents_data*) data);
 
-    if(task_get_files_path() != NULL && !util_is_dir(task_get_files_archive(), task_get_files_path())) {
-        char parentPath[PATH_MAX];
-        util_get_parent_path(parentPath, task_get_files_path(), PATH_MAX);
-
-        strncpy(task_get_files_path(), parentPath, PATH_MAX);
-    }
-
-    task_refresh_files();
-
     prompt_destroy(view);
 }
 

@@ -4,7 +4,17 @@
 #include <3ds.h>
 
 #include "action/action.h"
+#include "task/task.h"
 #include "section.h"
+
+#define SYSTEMSAVEDATA_MAX 512
+
+typedef struct {
+    list_item items[SYSTEMSAVEDATA_MAX];
+    u32 count;
+    Handle cancelEvent;
+    bool populated;
+} systemsavedata_data;
 
 #define SYSTEMSAVEDATA_ACTION_COUNT 1
 
@@ -51,26 +61,44 @@ static void systemsavedata_draw_top(ui_view* view, void* data, float x1, float y
 }
 
 static void systemsavedata_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+    systemsavedata_data* listData = (systemsavedata_data*) data;
+
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        free(listData);
+        list_destroy(view);
         return;
     }
 
-    if(hidKeysDown() & KEY_X) {
-        task_refresh_system_save_data();
+    if(!listData->populated || (hidKeysDown() & KEY_X)) {
+        if(listData->cancelEvent != 0) {
+            svcSignalEvent(listData->cancelEvent);
+            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+                svcSleepThread(1000000);
+            }
+
+            listData->cancelEvent = 0;
+        }
+
+        listData->cancelEvent = task_populate_system_save_data(listData->items, &listData->count, SYSTEMSAVEDATA_MAX);
+        listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        listData->populated = false;
+
         ui_push(systemsavedata_action_create((system_save_data_info*) selected->data));
+        return;
     }
 
-    if(*itemCount != task_get_system_save_data_count() || *items != task_get_system_save_data()) {
-        *itemCount = task_get_system_save_data_count();
-        *items = task_get_system_save_data();
+    if(*itemCount != &listData->count || *items != listData->items) {
+        *itemCount = &listData->count;
+        *items = listData->items;
     }
 }
 
 void systemsavedata_open() {
-    ui_push(list_create("System Save Data", "A: Select, B: Return, X: Refresh", NULL, systemsavedata_update, systemsavedata_draw_top));
+    systemsavedata_data* data = (systemsavedata_data*) calloc(1, sizeof(systemsavedata_data));
+
+    ui_push(list_create("System Save Data", "A: Select, B: Return, X: Refresh", data, systemsavedata_update, systemsavedata_draw_top));
 }

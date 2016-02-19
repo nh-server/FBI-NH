@@ -7,15 +7,15 @@
 #include "util.h"
 #include "libkhax/khax.h"
 #include "ui/mainmenu.h"
-#include "ui/section/task.h"
 #include "ui/section/action/clipboard.h"
+#include "ui/section/task/task.h"
 
 static void* soc_buffer;
 
 void cleanup() {
     clipboard_clear();
 
-    task_exit();
+    task_quit_all();
     screen_exit();
 
     socExit();
@@ -44,6 +44,15 @@ int main(int argc, const char* argv[]) {
         }
     }
 
+    aptOpenSession();
+    Result setCpuTimeRes = APT_SetAppCpuTimeLimit(30);
+    aptCloseSession();
+
+    if(R_FAILED(setCpuTimeRes)) {
+        util_panic("Failed to set syscore CPU time: %08lX", setCpuTimeRes);
+        return 1;
+    }
+
     romfsInit();
     cfguInit();
     acInit();
@@ -58,7 +67,6 @@ int main(int argc, const char* argv[]) {
     }
 
     screen_init();
-    task_init();
 
     mainmenu_open();
 

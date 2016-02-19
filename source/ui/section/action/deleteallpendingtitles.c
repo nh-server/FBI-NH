@@ -6,8 +6,6 @@
 #include "../../prompt.h"
 
 static void action_delete_all_pending_titles_success_onresponse(ui_view* view, void* data, bool response) {
-    task_refresh_pending_titles();
-
     prompt_destroy(view);
 }
 

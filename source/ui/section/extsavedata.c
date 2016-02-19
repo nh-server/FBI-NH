@@ -4,7 +4,17 @@
 #include <3ds.h>
 
 #include "action/action.h"
+#include "task/task.h"
 #include "section.h"
+
+#define EXTSAVEDATA_MAX 512
+
+typedef struct {
+    list_item items[EXTSAVEDATA_MAX];
+    u32 count;
+    Handle cancelEvent;
+    bool populated;
+} extsavedata_data;
 
 #define EXTSAVEDATA_ACTION_COUNT 1
 
@@ -51,26 +61,44 @@ static void extsavedata_draw_top(ui_view* view, void* data, float x1, float y1, 
 }
 
 static void extsavedata_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+    extsavedata_data* listData = (extsavedata_data*) data;
+
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        free(listData);
+        list_destroy(view);
         return;
     }
 
-    if(hidKeysDown() & KEY_X) {
-        task_refresh_ext_save_data();
+    if(!listData->populated || (hidKeysDown() & KEY_X)) {
+        if(listData->cancelEvent != 0) {
+            svcSignalEvent(listData->cancelEvent);
+            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+                svcSleepThread(1000000);
+            }
+
+            listData->cancelEvent = 0;
+        }
+
+        listData->cancelEvent = task_populate_ext_save_data(listData->items, &listData->count, EXTSAVEDATA_MAX);
+        listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        listData->populated = false;
+
         ui_push(extsavedata_action_create((ext_save_data_info*) selected->data));
+        return;
     }
 
-    if(*itemCount != task_get_ext_save_data_count() || *items != task_get_ext_save_data()) {
-        *itemCount = task_get_ext_save_data_count();
-        *items = task_get_ext_save_data();
+    if(*itemCount != &listData->count || *items != listData->items) {
+        *itemCount = &listData->count;
+        *items = listData->items;
     }
 }
 
 void extsavedata_open() {
-    ui_push(list_create("Ext Save Data", "A: Select, B: Return, X: Refresh", NULL, extsavedata_update, extsavedata_draw_top));
+    extsavedata_data* data = (extsavedata_data*) calloc(1, sizeof(extsavedata_data));
+
+    ui_push(list_create("Ext Save Data", "A: Select, B: Return, X: Refresh", data, extsavedata_update, extsavedata_draw_top));
 }
