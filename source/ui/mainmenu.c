@@ -48,6 +48,7 @@ static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, flo
 static void mainmenu_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
     if(hidKeysDown() & KEY_START) {
         ui_pop();
+        list_destroy(view);
         return;
     }
 
@@ -62,10 +63,6 @@ static void mainmenu_update(ui_view* view, void* data, list_item** items, u32** 
     }
 }
 
-ui_view* mainmenu_create() {
-    return list_create("Main Menu", "A: Select, START: Exit", NULL, mainmenu_update, mainmenu_draw_top);
-}
-
-void mainmenu_destroy(ui_view* view) {
-    list_destroy(view);
+void mainmenu_open() {
+    ui_push(list_create("Main Menu", "A: Select, START: Exit", NULL, mainmenu_update, mainmenu_draw_top));
 }

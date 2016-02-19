@@ -60,8 +60,7 @@ int main(int argc, const char* argv[]) {
     screen_init();
     task_init();
 
-    ui_view* mainmenu = mainmenu_create();
-    ui_push(mainmenu);
+    mainmenu_open();
 
     while(aptMainLoop()) {
         ui_update();
@@ -71,8 +70,6 @@ int main(int argc, const char* argv[]) {
 
         ui_draw();
     }
-
-    mainmenu_destroy(mainmenu);
 
     cleanup();
     return 0;
