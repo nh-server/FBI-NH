@@ -951,6 +951,9 @@ void task_exit() {
     if(task_thread_ptr != NULL) {
         svcSignalEvent(events[EVENT_QUIT]);
         threadJoin(task_thread_ptr, U64_MAX);
+
+        threadFree(task_thread_ptr);
+        task_thread_ptr = NULL;
     }
 
     for(int i = 0; i < EVENT_COUNT; i++) {
