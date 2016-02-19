@@ -4,16 +4,21 @@
 #include <string.h>
 
 #include <3ds.h>
-#include <3ds/services/fs.h>
 
 #include "action/action.h"
-#include "section.h"
-#include "../error.h"
+#include "task/task.h"
 #include "../../util.h"
-#include "task.h"
+#include "../error.h"
+#include "section.h"
+
+#define FILES_MAX 1024
 
 typedef struct {
-    bool setup;
+    list_item items[FILES_MAX];
+    u32 count;
+    Handle cancelEvent;
+    bool populated;
+
     FS_Archive archive;
     void* archivePath;
     char path[PATH_MAX];
@@ -122,33 +127,53 @@ static void files_draw_top(ui_view* view, void* data, float x1, float y1, float 
     }
 }
 
+static void files_repopulate(files_data* listData) {
+    if(listData->cancelEvent != 0) {
+        svcSignalEvent(listData->cancelEvent);
+        while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+            svcSleepThread(1000000);
+        }
+
+        listData->cancelEvent = 0;
+    }
+
+    if(!util_is_dir(&listData->archive, listData->path)) {
+        char parentPath[PATH_MAX];
+        util_get_parent_path(parentPath, listData->path, PATH_MAX);
+
+        strncpy(listData->path, parentPath, PATH_MAX);
+    }
+
+    listData->cancelEvent = task_populate_files(listData->items, &listData->count, FILES_MAX, &listData->archive, listData->path);
+    listData->populated = true;
+}
+
 static void files_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
-    files_data* filesData = (files_data*) data;
+    files_data* listData = (files_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        if(strcmp(filesData->path, "/") == 0) {
-            if(filesData->archive.handle != 0) {
-                FSUSER_CloseArchive(&filesData->archive);
-                filesData->archive.handle = 0;
+        if(strcmp(listData->path, "/") == 0) {
+            if(listData->archive.handle != 0) {
+                FSUSER_CloseArchive(&listData->archive);
+                listData->archive.handle = 0;
             }
 
-            if(filesData->archivePath != NULL) {
-                free(filesData->archivePath);
-                filesData->archivePath = NULL;
+            if(listData->archivePath != NULL) {
+                free(listData->archivePath);
+                listData->archivePath = NULL;
             }
-
-            free(data);
-            list_destroy(view);
 
             ui_pop();
+            free(listData);
+            list_destroy(view);
             return;
         } else if(*items != NULL && *itemCount != NULL) {
             for(u32 i = 0; i < **itemCount; i++) {
                 char* name = (*items)[i].name;
                 file_info* fileInfo = (*items)[i].data;
                 if(fileInfo != NULL && strcmp(name, "..") == 0) {
-                    strncpy(filesData->path, fileInfo->path, PATH_MAX);
-                    task_refresh_files();
+                    strncpy(listData->path, fileInfo->path, PATH_MAX);
+                    files_repopulate(listData);
                     break;
                 }
             }
@@ -159,42 +184,38 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
         file_info* fileInfo = (file_info*) selected->data;
 
         if(strcmp(selected->name, ".") == 0) {
+            listData->populated = false;
+
             ui_push(files_action_create(fileInfo));
+            return;
         } else if(strcmp(selected->name, "..") == 0) {
-            strncpy(filesData->path, fileInfo->path, PATH_MAX);
-            task_refresh_files();
+            strncpy(listData->path, fileInfo->path, PATH_MAX);
+            files_repopulate(listData);
         } else {
-            if(util_is_dir(&filesData->archive, fileInfo->path)) {
-                strncpy(filesData->path, fileInfo->path, PATH_MAX);
-                task_refresh_files();
+            if(util_is_dir(&listData->archive, fileInfo->path)) {
+                strncpy(listData->path, fileInfo->path, PATH_MAX);
+                files_repopulate(listData);
             } else {
+                listData->populated = false;
+
                 ui_push(files_action_create(fileInfo));
+                return;
             }
         }
     }
 
-    if(hidKeysDown() & KEY_X) {
-        task_refresh_files();
+    if(!listData->populated || (hidKeysDown() & KEY_X)) {
+        files_repopulate(listData);
     }
 
-    if(!filesData->setup || task_get_files_archive() != &filesData->archive || task_get_files_path() != filesData->path) {
-        filesData->setup = true;
-
-        task_set_files_archive(&filesData->archive);
-        task_set_files_path(filesData->path);
-
-        task_refresh_files();
-    }
-
-    if(*itemCount != task_get_files_count() || *items != task_get_files()) {
-        *itemCount = task_get_files_count();
-        *items = task_get_files();
+    if(*itemCount != &listData->count || *items != listData->items) {
+        *itemCount = &listData->count;
+        *items = listData->items;
     }
 }
 
 void files_open(FS_Archive archive) {
     files_data* data = (files_data*) calloc(1, sizeof(files_data));
-    data->setup = false;
     data->archive = archive;
     snprintf(data->path, PATH_MAX, "/");
 

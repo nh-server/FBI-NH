@@ -4,7 +4,17 @@
 #include <3ds.h>
 
 #include "action/action.h"
+#include "task/task.h"
 #include "section.h"
+
+#define TICKETS_MAX 1024
+
+typedef struct {
+    list_item items[TICKETS_MAX];
+    u32 count;
+    Handle cancelEvent;
+    bool populated;
+} tickets_data;
 
 #define TICKETS_ACTION_COUNT 1
 
@@ -51,26 +61,44 @@ static void tickets_draw_top(ui_view* view, void* data, float x1, float y1, floa
 }
 
 static void tickets_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+    tickets_data* listData = (tickets_data*) data;
+
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        free(listData);
+        list_destroy(view);
         return;
     }
 
-    if(hidKeysDown() & KEY_X) {
-        task_refresh_tickets();
+    if(!listData->populated || (hidKeysDown() & KEY_X)) {
+        if(listData->cancelEvent != 0) {
+            svcSignalEvent(listData->cancelEvent);
+            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+                svcSleepThread(1000000);
+            }
+
+            listData->cancelEvent = 0;
+        }
+
+        listData->cancelEvent = task_populate_tickets(listData->items, &listData->count, TICKETS_MAX);
+        listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        listData->populated = false;
+
         ui_push(tickets_action_create((ticket_info*) selected->data));
+        return;
     }
 
-    if(*itemCount != task_get_ticket_count() || *items != task_get_tickets()) {
-        *itemCount = task_get_ticket_count();
-        *items = task_get_tickets();
+    if(*itemCount != &listData->count || *items != listData->items) {
+        *itemCount = &listData->count;
+        *items = listData->items;
     }
 }
 
 void tickets_open() {
-    ui_push(list_create("Tickets", "A: Select, B: Return, X: Refresh", NULL, tickets_update, tickets_draw_top));
+    tickets_data* data = (tickets_data*) calloc(1, sizeof(tickets_data));
+
+    ui_push(list_create("Tickets", "A: Select, B: Return, X: Refresh", data, tickets_update, tickets_draw_top));
 }

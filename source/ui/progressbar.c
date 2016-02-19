@@ -1,7 +1,6 @@
 #include <3ds.h>
 #include <malloc.h>
 
-#include "section/task.h"
 #include "progressbar.h"
 #include "../screen.h"
 
@@ -15,27 +14,19 @@ typedef struct {
 } progressbar_data;
 
 static void progressbar_update(ui_view* view, void* data, float bx1, float by1, float bx2, float by2) {
-    svcWaitSynchronization(task_get_mutex(), U64_MAX);
-
     progressbar_data* progressBarData = (progressbar_data*) data;
 
     if(progressBarData->update != NULL) {
         progressBarData->update(view, progressBarData->data, &progressBarData->progress, progressBarData->progressText);
     }
-
-    svcReleaseMutex(task_get_mutex());
 }
 
 static void progressbar_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    svcWaitSynchronization(task_get_mutex(), U64_MAX);
-
     progressbar_data* progressBarData = (progressbar_data*) data;
 
     if(progressBarData->drawTop != NULL) {
         progressBarData->drawTop(view, progressBarData->data, x1, y1, x2, y2);
     }
-
-    svcReleaseMutex(task_get_mutex());
 }
 
 static void progressbar_draw_bottom(ui_view* view, void* data, float x1, float y1, float x2, float y2) {

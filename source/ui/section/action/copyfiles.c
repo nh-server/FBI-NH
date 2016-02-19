@@ -5,7 +5,6 @@
 #include "../../error.h"
 #include "../../prompt.h"
 
-
 static void action_copy_files_success_onresponse(ui_view* view, void* data, bool response) {
     prompt_destroy(view);
 }

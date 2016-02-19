@@ -8,12 +8,13 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "section.h"
+#include "task/task.h"
 #include "../error.h"
 #include "../progressbar.h"
 #include "../prompt.h"
 #include "../../screen.h"
 #include "../../util.h"
+#include "section.h"
 
 typedef struct {
     FS_MediaType dest;
@@ -24,6 +25,9 @@ typedef struct {
     u64 currTotal;
     u32 processed;
     u32 total;
+
+    install_cia_result installResult;
+    Handle installCancelEvent;
 } network_install_data;
 
 static int recvwait(int sockfd, void* buf, size_t len, int flags) {
@@ -69,8 +73,6 @@ static Result networkinstall_read(void* data, u32* bytesRead, void* buffer, u32 
 }
 
 static void networkinstall_done_onresponse(ui_view* view, void* data, bool response) {
-    task_refresh_titles();
-
     prompt_destroy(view);
 }
 
@@ -89,34 +91,31 @@ static void networkinstall_close_client(network_install_data* data) {
 static void networkinstall_install_update(ui_view* view, void* data, float* progress, char* progressText) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
-    bool cancelled = false;
     if(hidKeysDown() & KEY_B) {
-        task_cancel_cia_install();
-
-        while(task_is_cia_installing()) {
+        svcSignalEvent(networkInstallData->installCancelEvent);
+        while(svcWaitSynchronization(networkInstallData->installCancelEvent, 0) == 0) {
             svcSleepThread(1000000);
         }
 
-        cancelled = true;
+        networkInstallData->installCancelEvent = 0;
     }
 
-    if(!task_is_cia_installing()) {
-        if(networkInstallData->installStarted || cancelled) {
-            Result res = task_get_cia_install_result();
-            if(R_FAILED(res)) {
+    if(!networkInstallData->installStarted || networkInstallData->installResult.finished) {
+        if(networkInstallData->installResult.finished) {
+            if(networkInstallData->installResult.failed) {
                 networkinstall_close_client(networkInstallData);
 
-                progressbar_destroy(view);
                 ui_pop();
+                progressbar_destroy(view);
 
-                if(res == CIA_INSTALL_RESULT_CANCELLED) {
+                if(networkInstallData->installResult.cancelled) {
                     ui_push(prompt_create("Failure", "Install cancelled.", 0xFF000000, false, data, NULL, NULL, networkinstall_done_onresponse));
-                } else if(res == CIA_INSTALL_RESULT_ERRNO) {
-                    error_display_errno(NULL, NULL, task_get_cia_install_errno(), "Failed to install CIA file.");
-                } else if(res == CIA_INSTALL_RESULT_WRONG_SYSTEM) {
+                } else if(networkInstallData->installResult.ioerr) {
+                    error_display_errno(NULL, NULL, networkInstallData->installResult.ioerrno, "Failed to install CIA file.");
+                } else if(networkInstallData->installResult.wrongSystem) {
                     ui_push(prompt_create("Failure", "Attempted to install to wrong system.", 0xFF000000, false, data, NULL, NULL, networkinstall_done_onresponse));
                 } else {
-                    error_display_res(NULL, NULL, res, "Failed to install CIA file.");
+                    error_display_res(NULL, NULL, networkInstallData->installResult.result, "Failed to install CIA file.");
                 }
 
                 return;
@@ -130,8 +129,8 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
         if(networkInstallData->processed >= networkInstallData->total) {
             networkinstall_close_client(networkInstallData);
 
-            progressbar_destroy(view);
             ui_pop();
+            progressbar_destroy(view);
 
             ui_push(prompt_create("Success", "Install finished.", 0xFF000000, false, data, NULL, NULL, networkinstall_done_onresponse));
             return;
@@ -143,8 +142,8 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
             if(sendwait(networkInstallData->clientSocket, &ack, sizeof(ack), 0) < 0) {
                 networkinstall_close_client(networkInstallData);
 
-                progressbar_destroy(view);
                 ui_pop();
+                progressbar_destroy(view);
 
                 error_display_errno(NULL, NULL, errno, "Failed to write CIA accept notification.");
                 return;
@@ -153,15 +152,20 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
             if(recvwait(networkInstallData->clientSocket, &networkInstallData->currTotal, sizeof(networkInstallData->currTotal), 0) < 0) {
                 networkinstall_close_client(networkInstallData);
 
-                progressbar_destroy(view);
                 ui_pop();
+                progressbar_destroy(view);
 
                 error_display_errno(NULL, NULL, errno, "Failed to read file size.");
                 return;
             }
 
             networkInstallData->currTotal = __builtin_bswap64(networkInstallData->currTotal);
-            task_request_cia_install(networkInstallData->dest, networkInstallData->currTotal, networkInstallData, networkinstall_read);
+            networkInstallData->installCancelEvent = task_install_cia(&networkInstallData->installResult, networkInstallData->dest, networkInstallData->currTotal, networkInstallData, networkinstall_read);
+            if(networkInstallData->installCancelEvent == 0) {
+                ui_pop();
+                progressbar_destroy(view);
+                return;
+            }
         }
     }
 

@@ -1,7 +1,6 @@
 #include <3ds.h>
 #include <malloc.h>
 
-#include "section/task.h"
 #include "prompt.h"
 #include "../screen.h"
 
@@ -24,22 +23,16 @@ static void notify_response(ui_view* view, prompt_data* promptData, bool respons
 }
 
 static void prompt_update(ui_view* view, void* data, float bx1, float by1, float bx2, float by2) {
-    svcWaitSynchronization(task_get_mutex(), U64_MAX);
-
     prompt_data* promptData = (prompt_data*) data;
 
     if(promptData->onResponse != NULL) {
         if(!promptData->option && (hidKeysDown() & ~KEY_TOUCH)) {
             notify_response(view, promptData, false);
-
-            svcReleaseMutex(task_get_mutex());
             return;
         }
 
         if(promptData->option && (hidKeysDown() & (KEY_A | KEY_B))) {
             notify_response(view, promptData, (bool) (hidKeysDown() & KEY_A));
-
-            svcReleaseMutex(task_get_mutex());
             return;
         }
 
@@ -56,8 +49,6 @@ static void prompt_update(ui_view* view, void* data, float bx1, float by1, float
                 float yesButtonY = by2 - 5 - buttonHeight;
                 if(pos.px >= yesButtonX && pos.py >= yesButtonY && pos.px < yesButtonX + buttonWidth && pos.py < yesButtonY + buttonHeight) {
                     notify_response(view, promptData, true);
-
-                    svcReleaseMutex(task_get_mutex());
                     return;
                 }
 
@@ -65,8 +56,6 @@ static void prompt_update(ui_view* view, void* data, float bx1, float by1, float
                 float noButtonY = by2 - 5 - buttonHeight;
                 if(pos.px >= noButtonX && pos.py >= noButtonY && pos.px < noButtonX + buttonWidth && pos.py < noButtonY + buttonHeight) {
                     notify_response(view, promptData, false);
-
-                    svcReleaseMutex(task_get_mutex());
                     return;
                 }
             } else {
@@ -78,8 +67,6 @@ static void prompt_update(ui_view* view, void* data, float bx1, float by1, float
                 float okayButtonY = by2 - 5 - buttonHeight;
                 if(pos.px >= okayButtonX && pos.py >= okayButtonY && pos.px < okayButtonX + buttonWidth && pos.py < okayButtonY + buttonHeight) {
                     notify_response(view, promptData, false);
-
-                    svcReleaseMutex(task_get_mutex());
                     return;
                 }
             }
@@ -89,20 +76,14 @@ static void prompt_update(ui_view* view, void* data, float bx1, float by1, float
     if(promptData->update != NULL) {
         promptData->update(view, promptData->data);
     }
-
-    svcReleaseMutex(task_get_mutex());
 }
 
 static void prompt_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    svcWaitSynchronization(task_get_mutex(), U64_MAX);
-
     prompt_data* promptData = (prompt_data*) data;
 
     if(promptData->drawTop != NULL) {
         promptData->drawTop(view, promptData->data, x1, y1, x2, y2);
     }
-
-    svcReleaseMutex(task_get_mutex());
 }
 
 static void prompt_draw_bottom(ui_view* view, void* data, float x1, float y1, float x2, float y2) {

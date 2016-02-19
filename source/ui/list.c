@@ -2,7 +2,6 @@
 #include <malloc.h>
 
 #include "list.h"
-#include "section/task.h"
 #include "../screen.h"
 
 typedef struct {
@@ -73,8 +72,6 @@ static void list_validate_pos(list_data* listData, float by1, float by2) {
 }
 
 static void list_update(ui_view* view, void* data, float bx1, float by1, float bx2, float by2) {
-    svcWaitSynchronization(task_get_mutex(), U64_MAX);
-
     list_data* listData = (list_data*) data;
 
     bool selectedTouched = false;
@@ -170,25 +167,17 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
     if(listData->update != NULL) {
         listData->update(view, listData->data, &listData->items, &listData->itemCount, listData->items != NULL && listData->itemCount != NULL && *listData->itemCount > 0 ? &listData->items[listData->selectedIndex] : NULL, selectedTouched);
     }
-
-    svcReleaseMutex(task_get_mutex());
 }
 
 static void list_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    svcWaitSynchronization(task_get_mutex(), U64_MAX);
-
     list_data* listData = (list_data*) data;
 
     if(listData->drawTop != NULL) {
         listData->drawTop(view, listData->data, x1, y1, x2, y2, listData->items != NULL && listData->itemCount != NULL && *listData->itemCount > 0 ? &listData->items[listData->selectedIndex] : NULL);
     }
-
-    svcReleaseMutex(task_get_mutex());
 }
 
 static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    svcWaitSynchronization(task_get_mutex(), U64_MAX);
-
     list_data* listData = (list_data*) data;
 
     list_validate_pos(listData, y1, y2);
@@ -218,8 +207,6 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
             y += stringHeight;
         }
     }
-
-    svcReleaseMutex(task_get_mutex());
 }
 
 ui_view* list_create(const char* name, const char* info, void* data, void (*update)(ui_view* view, void* data, list_item** contents, u32** itemCount, list_item* selected, bool selectedTouched),

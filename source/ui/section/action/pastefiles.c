@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include <3ds.h>
-#include <3ds/services/fs.h>
 
 #include "action.h"
 #include "clipboard.h"
@@ -11,7 +10,6 @@
 #include "../../progressbar.h"
 #include "../../prompt.h"
 #include "../../../util.h"
-#include "../task.h"
 
 typedef struct {
     file_info* base;
@@ -35,8 +33,6 @@ static void action_paste_files_free_data(paste_files_data* data) {
 
 static void action_paste_files_done_onresponse(ui_view* view, void* data, bool response) {
     action_paste_files_free_data((paste_files_data*) data);
-
-    task_refresh_files();
 
     prompt_destroy(view);
 }

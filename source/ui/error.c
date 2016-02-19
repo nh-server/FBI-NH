@@ -27,7 +27,20 @@ static void error_onresponse(ui_view* view, void* data, bool response) {
     free(data);
 }
 
-void error_display_res(void* data, void (* drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
+void error_display(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), const char* text, ...) {
+    error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
+    errorData->data = data;
+    errorData->drawTop = drawTop;
+
+    va_list list;
+    va_start(list, text);
+    vsnprintf(errorData->fullText, 4096, text, list);
+    va_end(list);
+
+    ui_push(prompt_create("Error", errorData->fullText, 0xFF000000, false, errorData, NULL, error_draw_top, error_onresponse));
+}
+
+void error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
     error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
     errorData->data = data;
     errorData->drawTop = drawTop;

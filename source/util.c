@@ -6,7 +6,7 @@
 #include <3ds.h>
 
 #include "util.h"
-#include "ui/section/task.h"
+#include "ui/section/task/task.h"
 
 extern void cleanup();
 
@@ -402,4 +402,30 @@ Result util_ensure_dir(FS_Archive* archive, const char* path) {
     }
 
     return res;
+}
+
+int util_compare_u64(const void* e1, const void* e2) {
+    u64 id1 = *(u64*) e1;
+    u64 id2 = *(u64*) e2;
+
+    return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+}
+
+int util_compare_directory_entries(const void* e1, const void* e2) {
+    FS_DirectoryEntry* ent1 = (FS_DirectoryEntry*) e1;
+    FS_DirectoryEntry* ent2 = (FS_DirectoryEntry*) e2;
+
+    if((ent1->attributes & FS_ATTRIBUTE_DIRECTORY) && !(ent2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
+        return -1;
+    } else if(!(ent1->attributes & FS_ATTRIBUTE_DIRECTORY) && (ent2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
+        return 1;
+    } else {
+        char entryName1[0x213] = {'\0'};
+        utf16_to_utf8((uint8_t*) entryName1, ent1->name, sizeof(entryName1) - 1);
+
+        char entryName2[0x213] = {'\0'};
+        utf16_to_utf8((uint8_t*) entryName2, ent2->name, sizeof(entryName2) - 1);
+
+        return strcasecmp(entryName1, entryName2);
+    }
 }
