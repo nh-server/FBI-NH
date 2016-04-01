@@ -75,7 +75,7 @@ void screen_init() {
     C3D_RenderTargetSetClear(target_bottom, C3D_CLEAR_ALL, 0, 0);
     C3D_RenderTargetSetOutput(target_bottom, GFX_BOTTOM, GFX_LEFT, displayFlags);
 
-    dvlb = DVLB_ParseFile((u32*) default_shbin, default_shbin_size);
+    dvlb = DVLB_ParseFile((u32*) default_shbin, default_shbin_len);
     if(dvlb == NULL) {
         util_panic("Failed to parse shader.");
         return;
