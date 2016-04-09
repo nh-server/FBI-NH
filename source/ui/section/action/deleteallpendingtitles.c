@@ -33,9 +33,9 @@ static void action_delete_all_pending_titles_update(ui_view* view, void* data, f
 }
 
 static void action_delete_all_pending_titles_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_destroy(view);
+    prompt_destroy(view);
 
+    if(response) {
         ui_push(progressbar_create("Deleting Pending Titles", "", data, action_delete_all_pending_titles_update, NULL));
     }
 }

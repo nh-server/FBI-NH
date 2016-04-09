@@ -86,12 +86,14 @@ static void action_delete_dir_contents_update(ui_view* view, void* data, float* 
 }
 
 static void action_delete_dir_contents_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_destroy(view);
+    prompt_destroy(view);
 
+    if(response) {
         ui_view* progressView = progressbar_create("Deleting Contents", "Press B to cancel.", data, action_delete_dir_contents_update, action_delete_dir_contents_draw_top);
         snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", ((delete_dir_contents_data*) data)->total);
         ui_push(progressView);
+    } else {
+        free(data);
     }
 }
 

@@ -29,9 +29,9 @@ static void action_delete_title_update(ui_view* view, void* data, float* progres
 }
 
 static void action_delete_title_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_destroy(view);
+    prompt_destroy(view);
 
+    if(response) {
         ui_push(progressbar_create("Deleting Title", "", data, action_delete_title_update, ui_draw_title_info));
     }
 }
