@@ -203,10 +203,10 @@ static void action_install_cias(file_info* info, FS_MediaType mediaType) {
     ui_push(prompt_create("Confirmation", "Install the selected CIA(s)?", 0xFF000000, true, data, NULL, action_install_cias_draw_top, action_install_cias_onresponse));
 }
 
-void action_install_cias_sd(file_info* info) {
+void action_install_cias_sd(file_info* info, bool* populated) {
     action_install_cias(info, MEDIATYPE_SD);
 }
 
-void action_install_cias_nand(file_info* info) {
+void action_install_cias_nand(file_info* info, bool* populated) {
     action_install_cias(info, MEDIATYPE_NAND);
 }

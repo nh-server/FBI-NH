@@ -13,6 +13,7 @@
 
 typedef struct {
     file_info* base;
+    bool* populated;
     u32 processed;
     u32 total;
     char** contents;
@@ -124,6 +125,8 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
                 progressbar_destroy(view);
                 return;
             }
+        } else {
+            *pasteData->populated = false;
         }
 
         pasteData->processed++;
@@ -145,7 +148,7 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
     }
 }
 
-void action_paste_contents(file_info* info) {
+void action_paste_contents(file_info* info, bool* populated) {
     if(!clipboard_has_contents()) {
         ui_push(prompt_create("Failure", "Clipboard empty.", 0xFF000000, false, info, NULL, ui_draw_file_info, action_paste_files_failure_onresponse));
         return;
@@ -153,6 +156,7 @@ void action_paste_contents(file_info* info) {
 
     paste_files_data* data = (paste_files_data*) calloc(1, sizeof(paste_files_data));
     data->base = info;
+    data->populated = populated;
     data->processed = 0;
 
     Result res = 0;

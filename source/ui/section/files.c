@@ -67,31 +67,42 @@ static list_item cia_directories_action_items[CIA_DIRECTORIES_ACTION_COUNT] = {
         {"Paste", 0xFF000000, action_paste_contents},
 };
 
+typedef struct {
+    file_info* info;
+    bool* populated;
+} files_action_data;
+
 static void files_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_file_info(view, data, x1, y1, x2, y2);
+    ui_draw_file_info(view, ((files_action_data*) data)->info, x1, y1, x2, y2);
 }
 
 static void files_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
-    file_info* fileInfo = (file_info*) data;
+    files_action_data* actionData = (files_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
         list_destroy(view);
         ui_pop();
+
+        free(data);
+
         return;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(file_info*) = (void(*)(file_info*)) selected->data;
+        void(*action)(file_info*, bool*) = (void(*)(file_info*, bool*)) selected->data;
 
         list_destroy(view);
         ui_pop();
 
-        action(fileInfo);
+        action(actionData->info, actionData->populated);
+
+        free(data);
+
         return;
     }
 
-    if(fileInfo->isDirectory) {
-        if(fileInfo->containsCias) {
+    if(actionData->info->isDirectory) {
+        if(actionData->info->containsCias) {
             if(*itemCount != &cia_directories_action_count || *items != cia_directories_action_items) {
                 *itemCount = &cia_directories_action_count;
                 *items = cia_directories_action_items;
@@ -103,7 +114,7 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
             }
         }
     } else {
-        if(fileInfo->isCia) {
+        if(actionData->info->isCia) {
             if(*itemCount != &cia_files_action_count || *items != cia_files_action_items) {
                 *itemCount = &cia_files_action_count;
                 *items = cia_files_action_items;
@@ -117,8 +128,12 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
     }
 }
 
-static ui_view* files_action_create(file_info* info) {
-    return list_create(info->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", info, files_action_update, files_action_draw_top);
+static ui_view* files_action_create(file_info* info, bool* populated) {
+    files_action_data* data = (files_action_data*) calloc(1, sizeof(files_action_data));
+    data->info = info;
+    data->populated = populated;
+
+    return list_create(info->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
 
 static void files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -184,9 +199,7 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
         file_info* fileInfo = (file_info*) selected->data;
 
         if(strcmp(selected->name, ".") == 0) {
-            listData->populated = false;
-
-            ui_push(files_action_create(fileInfo));
+            ui_push(files_action_create(fileInfo, &listData->populated));
             return;
         } else if(strcmp(selected->name, "..") == 0) {
             strncpy(listData->path, fileInfo->path, PATH_MAX);
@@ -196,9 +209,7 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
                 strncpy(listData->path, fileInfo->path, PATH_MAX);
                 files_repopulate(listData);
             } else {
-                listData->populated = false;
-
-                ui_push(files_action_create(fileInfo));
+                ui_push(files_action_create(fileInfo, &listData->populated));
                 return;
             }
         }

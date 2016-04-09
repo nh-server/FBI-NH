@@ -12,6 +12,7 @@
 
 typedef struct {
     file_info* base;
+    bool* populated;
     u32 processed;
     u32 total;
     char** contents;
@@ -76,6 +77,8 @@ static void action_delete_dir_contents_update(ui_view* view, void* data, float* 
                 progressbar_destroy(view);
                 return;
             }
+        } else {
+            *deleteData->populated = false;
         }
 
         deleteData->processed++;
@@ -97,9 +100,10 @@ static void action_delete_dir_contents_onresponse(ui_view* view, void* data, boo
     }
 }
 
-void action_delete_contents(file_info* info) {
+void action_delete_contents(file_info* info, bool* populated) {
     delete_dir_contents_data* data = (delete_dir_contents_data*) calloc(1, sizeof(delete_dir_contents_data));
     data->base = info;
+    data->populated = populated;
     data->processed = 0;
 
     Result res = 0;
@@ -113,9 +117,10 @@ void action_delete_contents(file_info* info) {
     ui_push(prompt_create("Confirmation", "Delete the selected content?", 0xFF000000, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }
 
-void action_delete_dir_contents(file_info* info) {
+void action_delete_dir_contents(file_info* info, bool* populated) {
     delete_dir_contents_data* data = (delete_dir_contents_data*) calloc(1, sizeof(delete_dir_contents_data));
     data->base = info;
+    data->populated = populated;
     data->processed = 0;
 
     Result res = 0;
@@ -129,9 +134,10 @@ void action_delete_dir_contents(file_info* info) {
     ui_push(prompt_create("Confirmation", "Delete all contents of the selected directory?", 0xFF000000, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }
 
-void action_delete_dir_cias(file_info* info) {
+void action_delete_dir_cias(file_info* info, bool* populated) {
     delete_dir_contents_data* data = (delete_dir_contents_data*) calloc(1, sizeof(delete_dir_contents_data));
     data->base = info;
+    data->populated = populated;
     data->processed = 0;
 
     Result res = 0;
