@@ -3,10 +3,11 @@
 #include "../task/task.h"
 
 void action_browse_boss_ext_save_data(ext_save_data_info* info);
-
 void action_browse_user_ext_save_data(ext_save_data_info* info);
+void action_delete_ext_save_data(ext_save_data_info* info);
 
 void action_browse_system_save_data(system_save_data_info* info);
+void action_delete_system_save_data(system_save_data_info* info);
 
 void action_install_cias_nand(file_info* info);
 void action_install_cias_sd(file_info* info);
