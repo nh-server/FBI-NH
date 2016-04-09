@@ -70,6 +70,6 @@ static void action_export_secure_value_onresponse(ui_view* view, void* data, boo
     }
 }
 
-void action_export_secure_value(title_info* info) {
+void action_export_secure_value(title_info* info, bool* populated) {
     ui_push(prompt_create("Confirmation", "Export secure value for the selected title?", 0xFF000000, true, info, NULL, ui_draw_title_info, action_export_secure_value_onresponse));
 }

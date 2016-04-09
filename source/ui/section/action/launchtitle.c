@@ -42,6 +42,6 @@ static void action_launch_title_onresponse(ui_view* view, void* data, bool respo
     }
 }
 
-void action_launch_title(title_info* info) {
+void action_launch_title(title_info* info, bool* populated) {
     ui_push(prompt_create("Confirmation", "Launch the selected title?", 0xFF000000, true, info, NULL, ui_draw_title_info, action_launch_title_onresponse));
 }

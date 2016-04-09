@@ -24,24 +24,37 @@ static list_item pending_titles_action_items[PENDINGTITLES_ACTION_COUNT] = {
         {"Delete All Pending Titles", 0xFF000000, action_delete_all_pending_titles},
 };
 
+typedef struct {
+    pending_title_info* info;
+    bool* populated;
+} pendingtitles_action_data;
+
 static void pendingtitles_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_pending_title_info(view, data, x1, y1, x2, y2);
+    ui_draw_pending_title_info(view, ((pendingtitles_action_data*) data)->info, x1, y1, x2, y2);
 }
 
 static void pendingtitles_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+    pendingtitles_action_data* actionData = (pendingtitles_action_data*) data;
+
     if(hidKeysDown() & KEY_B) {
         list_destroy(view);
         ui_pop();
+
+        free(data);
+
         return;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(pending_title_info*) = (void(*)(pending_title_info*)) selected->data;
+        void(*action)(pending_title_info*, bool*) = (void(*)(pending_title_info*, bool*)) selected->data;
 
         list_destroy(view);
         ui_pop();
 
-        action((pending_title_info*) data);
+        action(actionData->info, actionData->populated);
+
+        free(data);
+
         return;
     }
 
@@ -51,8 +64,12 @@ static void pendingtitles_action_update(ui_view* view, void* data, list_item** i
     }
 }
 
-static ui_view* pendingtitles_action_create(pending_title_info* info) {
-    return list_create("Pending Title Action", "A: Select, B: Return", info, pendingtitles_action_update, pendingtitles_action_draw_top);
+static ui_view* pendingtitles_action_create(pending_title_info* info, bool* populated) {
+    pendingtitles_action_data* data = (pendingtitles_action_data*) calloc(1, sizeof(pendingtitles_action_data));
+    data->info = info;
+    data->populated = populated;
+
+    return list_create("Pending Title Action", "A: Select, B: Return", data, pendingtitles_action_update, pendingtitles_action_draw_top);
 }
 
 static void pendingtitles_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -86,9 +103,7 @@ static void pendingtitles_update(ui_view* view, void* data, list_item** items, u
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        listData->populated = false;
-
-        ui_push(pendingtitles_action_create((pending_title_info*) selected->data));
+        ui_push(pendingtitles_action_create((pending_title_info*) selected->data, &listData->populated));
         return;
     }
 

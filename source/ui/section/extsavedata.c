@@ -25,24 +25,37 @@ static list_item extsavedata_action_items[EXTSAVEDATA_ACTION_COUNT] = {
         {"Delete Save Data", 0xFF000000, action_delete_ext_save_data},
 };
 
+typedef struct {
+    ext_save_data_info* info;
+    bool* populated;
+} extsavedata_action_data;
+
 static void extsavedata_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_ext_save_data_info(view, data, x1, y1, x2, y2);
+    ui_draw_ext_save_data_info(view, ((extsavedata_action_data*) data)->info, x1, y1, x2, y2);
 }
 
 static void extsavedata_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+    extsavedata_action_data* actionData = (extsavedata_action_data*) data;
+
     if(hidKeysDown() & KEY_B) {
         list_destroy(view);
         ui_pop();
+
+        free(data);
+
         return;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(ext_save_data_info*) = (void(*)(ext_save_data_info*)) selected->data;
+        void(*action)(ext_save_data_info*, bool*) = (void(*)(ext_save_data_info*, bool*)) selected->data;
 
         list_destroy(view);
         ui_pop();
 
-        action((ext_save_data_info*) data);
+        action(actionData->info, actionData->populated);
+
+        free(data);
+
         return;
     }
 
@@ -52,8 +65,12 @@ static void extsavedata_action_update(ui_view* view, void* data, list_item** ite
     }
 }
 
-static ui_view* extsavedata_action_create(ext_save_data_info* info) {
-    return list_create("Ext Save Data Action", "A: Select, B: Return", info, extsavedata_action_update, extsavedata_action_draw_top);
+static ui_view* extsavedata_action_create(ext_save_data_info* info, bool* populated) {
+    extsavedata_action_data* data = (extsavedata_action_data*) calloc(1, sizeof(extsavedata_action_data));
+    data->info = info;
+    data->populated = populated;
+
+    return list_create("Ext Save Data Action", "A: Select, B: Return", data, extsavedata_action_update, extsavedata_action_draw_top);
 }
 
 static void extsavedata_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -87,9 +104,7 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        listData->populated = false;
-
-        ui_push(extsavedata_action_create((ext_save_data_info*) selected->data));
+        ui_push(extsavedata_action_create((ext_save_data_info*) selected->data, &listData->populated));
         return;
     }
 

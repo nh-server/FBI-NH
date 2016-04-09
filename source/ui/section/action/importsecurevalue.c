@@ -54,6 +54,6 @@ static void action_import_secure_value_onresponse(ui_view* view, void* data, boo
     }
 }
 
-void action_import_secure_value(title_info* info) {
+void action_import_secure_value(title_info* info, bool* populated) {
     ui_push(prompt_create("Confirmation", "Import secure value for the selected title?", 0xFF000000, true, info, NULL, ui_draw_title_info, action_import_secure_value_onresponse));
 }

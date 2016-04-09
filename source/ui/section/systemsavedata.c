@@ -24,24 +24,37 @@ static list_item systemsavedata_action_items[SYSTEMSAVEDATA_ACTION_COUNT] = {
         {"Delete Save Data", 0xFF000000, action_delete_system_save_data},
 };
 
+typedef struct {
+    system_save_data_info* info;
+    bool* populated;
+} systemsavedata_action_data;
+
 static void systemsavedata_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_system_save_data_info(view, data, x1, y1, x2, y2);
+    ui_draw_system_save_data_info(view, ((systemsavedata_action_data*) data)->info, x1, y1, x2, y2);
 }
 
 static void systemsavedata_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+    systemsavedata_action_data* actionData = (systemsavedata_action_data*) data;
+
     if(hidKeysDown() & KEY_B) {
         list_destroy(view);
         ui_pop();
+
+        free(data);
+
         return;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(system_save_data_info*) = (void(*)(system_save_data_info*)) selected->data;
+        void(*action)(system_save_data_info*, bool*) = (void(*)(system_save_data_info*, bool*)) selected->data;
 
         list_destroy(view);
         ui_pop();
 
-        action((system_save_data_info*) data);
+        action(actionData->info, actionData->populated);
+
+        free(data);
+
         return;
     }
 
@@ -51,8 +64,12 @@ static void systemsavedata_action_update(ui_view* view, void* data, list_item** 
     }
 }
 
-static ui_view* systemsavedata_action_create(system_save_data_info* info) {
-    return list_create("System Save Data Action", "A: Select, B: Return", info, systemsavedata_action_update, systemsavedata_action_draw_top);
+static ui_view* systemsavedata_action_create(system_save_data_info* info, bool* populated) {
+    systemsavedata_action_data* data = (systemsavedata_action_data*) calloc(1, sizeof(systemsavedata_action_data));
+    data->info = info;
+    data->populated = populated;
+
+    return list_create("System Save Data Action", "A: Select, B: Return", data, systemsavedata_action_update, systemsavedata_action_draw_top);
 }
 
 static void systemsavedata_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -86,9 +103,7 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        listData->populated = false;
-
-        ui_push(systemsavedata_action_create((system_save_data_info*) selected->data));
+        ui_push(systemsavedata_action_create((system_save_data_info*) selected->data, &listData->populated));
         return;
     }
 
