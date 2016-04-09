@@ -16,11 +16,12 @@ typedef struct {
     bool populated;
 } systemsavedata_data;
 
-#define SYSTEMSAVEDATA_ACTION_COUNT 1
+#define SYSTEMSAVEDATA_ACTION_COUNT 2
 
 static u32 systemsavedata_action_count = SYSTEMSAVEDATA_ACTION_COUNT;
 static list_item systemsavedata_action_items[SYSTEMSAVEDATA_ACTION_COUNT] = {
         {"Browse Save Data", 0xFF000000, action_browse_system_save_data},
+        {"Delete Save Data", 0xFF000000, action_delete_system_save_data},
 };
 
 static void systemsavedata_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
