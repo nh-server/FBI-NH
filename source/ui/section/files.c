@@ -246,13 +246,3 @@ void files_open_sd() {
     FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
     files_open(sdmcArchive);
 }
-
-void files_open_ctrnand() {
-    FS_Archive ctrNandArchive = {ARCHIVE_NAND_CTR_FS, {PATH_BINARY, 0, (void*) ""}};
-    files_open(ctrNandArchive);
-}
-
-void files_open_twlnand() {
-    FS_Archive twlNandArchive = {ARCHIVE_NAND_TWL_FS, {PATH_BINARY, 0, (void*) ""}};
-    files_open(twlNandArchive);
-}
