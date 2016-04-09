@@ -2,7 +2,9 @@
 
 #include "../task/task.h"
 
-void action_browse_ext_save_data(ext_save_data_info* info);
+void action_browse_boss_ext_save_data(ext_save_data_info* info);
+
+void action_browse_user_ext_save_data(ext_save_data_info* info);
 
 void action_browse_system_save_data(system_save_data_info* info);
 

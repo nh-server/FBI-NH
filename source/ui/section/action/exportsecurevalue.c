@@ -21,10 +21,10 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
     u64 value = 0;
     if(R_SUCCEEDED(res = FSUSER_GetSaveDataSecureValue(&exists, &value, SECUREVALUE_SLOT_SD, (u32) ((info->titleId >> 8) & 0xFFFFF), (u8) (info->titleId & 0xFF)))) {
         if(!exists) {
-            ui_push(prompt_create("Failure", "Secure value not set.", 0xFF000000, false, info, NULL, ui_draw_title_info, action_export_secure_value_end_onresponse));
-
             progressbar_destroy(view);
             ui_pop();
+
+            ui_push(prompt_create("Failure", "Secure value not set.", 0xFF000000, false, info, NULL, ui_draw_title_info, action_export_secure_value_end_onresponse));
 
             return;
         }
@@ -48,10 +48,10 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
     }
 
     if(R_FAILED(res)) {
-        error_display_res(info, ui_draw_title_info, res, "Failed to export secure value.");
-
         progressbar_destroy(view);
         ui_pop();
+
+        error_display_res(info, ui_draw_title_info, res, "Failed to export secure value.");
 
         return;
     }
@@ -63,9 +63,9 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
 }
 
 static void action_export_secure_value_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_destroy(view);
+    prompt_destroy(view);
 
+    if(response) {
         ui_push(progressbar_create("Exporting Secure Value", "", data, action_export_secure_value_update, ui_draw_title_info));
     }
 }

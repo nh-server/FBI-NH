@@ -134,12 +134,14 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
 }
 
 static void action_paste_files_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_destroy(view);
+    prompt_destroy(view);
 
+    if(response) {
         ui_view* progressView = progressbar_create("Pasting Contents", "Press B to cancel.", data, action_paste_files_update, action_paste_files_draw_top);
         snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", ((paste_files_data*) data)->total);
         ui_push(progressView);
+    } else {
+        free(data);
     }
 }
 

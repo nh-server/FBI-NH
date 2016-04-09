@@ -32,10 +32,10 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
     }
 
     if(R_FAILED(res)) {
-        error_display_res(info, ui_draw_title_info, res, "Failed to import secure value.");
-
         progressbar_destroy(view);
         ui_pop();
+
+        error_display_res(info, ui_draw_title_info, res, "Failed to import secure value.");
 
         return;
     }
@@ -47,9 +47,9 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
 }
 
 static void action_import_secure_value_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_destroy(view);
+    prompt_destroy(view);
 
+    if(response) {
         ui_push(progressbar_create("Importing Secure Value", "", data, action_import_secure_value_update, ui_draw_title_info));
     }
 }

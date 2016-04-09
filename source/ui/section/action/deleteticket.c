@@ -29,9 +29,9 @@ static void action_delete_ticket_update(ui_view* view, void* data, float* progre
 }
 
 static void action_delete_ticket_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_destroy(view);
+    prompt_destroy(view);
 
+    if(response) {
         ui_push(progressbar_create("Deleting Ticket", "", data, action_delete_ticket_update, ui_draw_ticket_info));
     }
 }

@@ -16,11 +16,12 @@ typedef struct {
     bool populated;
 } extsavedata_data;
 
-#define EXTSAVEDATA_ACTION_COUNT 1
+#define EXTSAVEDATA_ACTION_COUNT 2
 
 static u32 extsavedata_action_count = EXTSAVEDATA_ACTION_COUNT;
 static list_item extsavedata_action_items[EXTSAVEDATA_ACTION_COUNT] = {
-        {"Browse Save Data", 0xFF000000, action_browse_ext_save_data},
+        {"Browse User Save Data", 0xFF000000, action_browse_user_ext_save_data},
+        {"Browse SpotPass Save Data", 0xFF000000, action_browse_boss_ext_save_data},
 };
 
 static void extsavedata_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
