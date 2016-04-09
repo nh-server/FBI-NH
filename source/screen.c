@@ -48,7 +48,7 @@ static struct {
 static C3D_Tex* glyphSheets;
 
 void screen_init() {
-    if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE)) {
+    if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 2)) {
         util_panic("Failed to initialize the GPU.");
         return;
     }
@@ -510,7 +510,7 @@ void screen_draw_texture_crop(u32 id, float x, float y, float width, float heigh
     draw_quad(x, y, x + width, y + height, 0, 0, width / (float) textures[id].pow2Width, height / (float) textures[id].pow2Height);
 }
 
-static void screen_get_string_size_internal(float* width, float* height, const void* text, float scaleX, float scaleY, bool oneLine) {
+static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine) {
     float w = 0;
     float h = scaleY * fontGetInfo()->lineFeed;
     float lineWidth = 0;
@@ -586,7 +586,7 @@ void screen_draw_string(const char* text, float x, float y, float scaleX, float 
 
         if(code == '\n') {
             if(*p) {
-                screen_get_string_size_internal(&lineWidth, NULL, p, scaleX, scaleY, true);
+                screen_get_string_size_internal(&lineWidth, NULL, (const char*) p, scaleX, scaleY, true);
                 currX = x + (stringWidth - lineWidth) / 2;
                 y += scaleY * fontGetInfo()->lineFeed;
             }
