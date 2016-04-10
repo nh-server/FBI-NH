@@ -20,7 +20,7 @@ typedef struct {
     Handle cancelEvent;
 } populate_titles_data;
 
-static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType mediaType) {
+static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType mediaType, bool useDSiWare) {
     bool inserted;
     FS_CardType type;
     if(mediaType == MEDIATYPE_GAME_CARD && ((R_FAILED(FSUSER_CardSlotIsInserted(&inserted)) || !inserted) || (R_FAILED(FSUSER_GetCardType(&type)) || type != CARD_CTR))) {
@@ -43,6 +43,11 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                         for(u32 i = 0; i < titleCount && i < data->max; i++) {
                             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                                 break;
+                            }
+
+                            bool dsiWare = ((titleIds[i] >> 32) & 0x8000) != 0;
+                            if(dsiWare != useDSiWare) {
+                                continue;
                             }
 
                             title_info* titleInfo = (title_info*) calloc(1, sizeof(title_info));
@@ -101,8 +106,8 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                                 }
 
                                 if(mediaType == MEDIATYPE_NAND) {
-                                    if(((titleInfo->titleId >> 48) & 0xFFFF) == 0x0003) {
-                                        item->rgba = 0xFFCBC0FF;
+                                    if(dsiWare) {
+                                        item->rgba = 0xFF82004B;
                                     } else {
                                         item->rgba = 0xFF0000FF;
                                     }
@@ -138,7 +143,7 @@ static void task_populate_titles_thread(void* arg) {
     populate_titles_data* data = (populate_titles_data*) arg;
 
     Result res = 0;
-    if(R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_GAME_CARD)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_SD)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_NAND))) {
+    if(R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_GAME_CARD, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_SD, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_NAND, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_NAND, true))) {
         error_display_res(NULL, NULL, res, "Failed to load title listing.");
     }
 
