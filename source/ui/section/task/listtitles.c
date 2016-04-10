@@ -101,7 +101,11 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                                 }
 
                                 if(mediaType == MEDIATYPE_NAND) {
-                                    item->rgba = 0xFF0000FF;
+                                    if(((titleInfo->titleId >> 48) & 0xFFFF) == 0x0003) {
+                                        item->rgba = 0xFFCBC0FF;
+                                    } else {
+                                        item->rgba = 0xFF0000FF;
+                                    }
                                 } else if(mediaType == MEDIATYPE_SD) {
                                     item->rgba = 0xFF00FF00;
                                 } else if(mediaType == MEDIATYPE_GAME_CARD) {
