@@ -14,8 +14,8 @@ typedef struct {
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 } error_data;
 
-static const char* level_to_string(int level) {
-    switch(level) {
+static const char* level_to_string(Result res) {
+    switch(R_LEVEL(res)) {
         case RL_SUCCESS:
             return "Success";
         case RL_INFO:
@@ -39,8 +39,8 @@ static const char* level_to_string(int level) {
     }
 }
 
-static const char* summary_to_string(int summary) {
-    switch(summary) {
+static const char* summary_to_string(Result res) {
+    switch(R_SUMMARY(res)) {
         case RS_SUCCESS:
             return "Success";
         case RS_NOP:
@@ -70,8 +70,8 @@ static const char* summary_to_string(int summary) {
     }
 }
 
-static const char* module_to_string(int module) {
-    switch(module) {
+static const char* module_to_string(Result res) {
+    switch(R_MODULE(res)) {
         case RM_COMMON:
             return "Common";
         case RM_KERNEL:
@@ -271,8 +271,223 @@ static const char* module_to_string(int module) {
     }
 }
 
-static const char* description_to_string(int description) {
-    // TODO: Per-module descriptions.
+static const char* description_to_string(Result res) {
+    int module = R_MODULE(res);
+    int description = R_DESCRIPTION(res);
+
+    switch(module) {
+        case RM_KERNEL:
+            switch(description) {
+                case 2:
+                    return "Invalid DMA buffer memory permissions";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_OS:
+            switch(description) {
+                case 1:
+                    return "Out of synchronization object";
+                case 2:
+                    return "Out of shared memory objects";
+                case 9:
+                    return "Out of session objects";
+                case 10:
+                    return "Not enough memory for allocation";
+                case 20:
+                    return "Wrong permissions for unprivilaged load or store";
+                case 26:
+                    return "Session closed by remote process";
+                case 47:
+                    return "Invalid command header";
+                case 52:
+                    return "Max port connections exceeded";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_FS:
+            switch(description) {
+                case 101:
+                    return "Archive not mounted";
+                case 120:
+                    return "Doesn't exist / Failed to open";
+                case 141:
+                    return "Game card not inserted";
+                case 171:
+                    return "Bus: Busy / Underrun";
+                case 172:
+                    return "Bus: Illegal function";
+                case 190:
+                    return "Already exists / Failed to create";
+                case 210:
+                    return "Partition full";
+                case 230:
+                    return "Illegal operation / File in use";
+                case 231:
+                    return "Resource locked";
+                case 265:
+                    return "Bus: Timeout";
+                case 331:
+                    return "Bus error / TWL partition invalid";
+                case 332:
+                    return "Bus: Stop bit error";
+                case 391:
+                    return "Hash verification failure";
+                case 392:
+                    return "RSA/Hash verification failure";
+                case 395:
+                    return "Invalid RomFS or save data block hash";
+                case 630:
+                    return "Archive permission denied";
+                case 702:
+                    return "Invalid archive path / Inaccessible archive";
+                case 705:
+                    return "Offset out of bounds";
+                case 721:
+                    return "Reached file size limit";
+                case 761:
+                    return "ExeFS read size mismatch";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_SRV:
+            switch(description) {
+                case 5:
+                    return "Invalid service name length";
+                case 6:
+                    return "Service access denied";
+                case 7:
+                    return "String size mismatch";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_AM:
+            switch(description) {
+                case 4:
+                    return "Wrong installation state";
+                case 37:
+                    return "Invalid NCCH";
+                case 39:
+                    return "Invalid or outdated title version";
+                case 41:
+                    return "Error type 1";
+                case 43:
+                    return "Database does not exist";
+                case 44:
+                    return "Attempted to delete system title";
+                case 101:
+                    return "Error type -1";
+                case 102:
+                    return "Error type -2";
+                case 103:
+                    return "Error type -3";
+                case 104:
+                    return "Error type -4";
+                case 105:
+                    return "Error type -5";
+                case 106:
+                    return "Cert signature or hash check failed";
+                case 107:
+                    return "Error type -7";
+                case 108:
+                    return "Error type -8";
+                case 109:
+                    return "Error type -9";
+                case 110:
+                    return "Error type -10";
+                case 111:
+                    return "Error type -11";
+                case 112:
+                    return "Error type -12";
+                case 113:
+                    return "Error type -13";
+                case 114:
+                    return "Error type -14";
+                case 393:
+                    return "Invalid database";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_HTTP:
+            switch(description) {
+                case 60:
+                    return "Failed to verify TLS certificate";
+                case 70:
+                    return "Network unavailable";
+                case 102:
+                    return "Wrong context handle";
+                case 105:
+                    return "Request timed out";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_SSL:
+            switch(description) {
+                case 20:
+                    return "Untrusted RootCA";
+                case 54:
+                    return "RootCertChain handle not found";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_SDMC:
+            switch(description) {
+                case 1:
+                    return "Bus: Bit23 error";
+                case 2:
+                    return "Bus: RX ready error";
+                case 3:
+                    return "Bus: Bit28 error";
+                case 4:
+                    return "Bus: Bit27 error";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_MVD:
+            switch(description) {
+                case 271:
+                    return "Invalid configuration";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_NFC:
+            switch(description) {
+                case 512:
+                    return "Invalid NFC state";
+                default:
+                    break;
+            }
+
+            break;
+        case RM_QTM:
+            switch(description) {
+                case 8:
+                    return "Camera busy";
+                default:
+                    break;
+            }
+
+            break;
+        default:
+            break;
+    }
 
     switch(description) {
         case RD_SUCCESS:
@@ -369,7 +584,7 @@ void error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, fl
     int summary = R_SUMMARY(result);
     int module = R_MODULE(result);
     int description = R_DESCRIPTION(result);
-    snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDecription: %s (%d)", textBuf, result, level_to_string(level), level, summary_to_string(summary), summary, module_to_string(module), module, description_to_string(description), description);
+    snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDecription: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
 
     ui_push(prompt_create("Error", errorData->fullText, 0xFF000000, false, errorData, NULL, error_draw_top, error_onresponse));
 }
