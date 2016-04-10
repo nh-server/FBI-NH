@@ -276,3 +276,8 @@ void files_open_twl_nand() {
     FS_Archive sdmcArchive = {ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, "")};
     files_open(sdmcArchive);
 }
+
+void files_open_twl_photo() {
+    FS_Archive sdmcArchive = {ARCHIVE_TWL_PHOTO, fsMakePath(PATH_EMPTY, "")};
+    files_open(sdmcArchive);
+}
