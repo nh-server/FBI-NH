@@ -140,36 +140,36 @@ void screen_init() {
         tex->param = GPU_TEXTURE_MAG_FILTER(GPU_LINEAR) | GPU_TEXTURE_MIN_FILTER(GPU_LINEAR) | GPU_TEXTURE_WRAP_S(GPU_CLAMP_TO_EDGE) | GPU_TEXTURE_WRAP_T(GPU_CLAMP_TO_EDGE);
     }
 
-    screen_load_texture(TEXTURE_BOTTOM_SCREEN_BG, "bottom_screen_bg.png", true);
-    screen_load_texture(TEXTURE_BOTTOM_SCREEN_TOP_BAR, "bottom_screen_top_bar.png", true);
-    screen_load_texture(TEXTURE_BOTTOM_SCREEN_TOP_BAR_SHADOW, "bottom_screen_top_bar_shadow.png", true);
-    screen_load_texture(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR, "bottom_screen_bottom_bar.png", true);
-    screen_load_texture(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR_SHADOW, "bottom_screen_bottom_bar_shadow.png", true);
-    screen_load_texture(TEXTURE_TOP_SCREEN_BG, "top_screen_bg.png", true);
-    screen_load_texture(TEXTURE_TOP_SCREEN_TOP_BAR, "top_screen_top_bar.png", true);
-    screen_load_texture(TEXTURE_TOP_SCREEN_TOP_BAR_SHADOW, "top_screen_top_bar_shadow.png", true);
-    screen_load_texture(TEXTURE_TOP_SCREEN_BOTTOM_BAR, "top_screen_bottom_bar.png", true);
-    screen_load_texture(TEXTURE_TOP_SCREEN_BOTTOM_BAR_SHADOW, "top_screen_bottom_bar_shadow.png", true);
-    screen_load_texture(TEXTURE_LOGO, "logo.png", true);
-    screen_load_texture(TEXTURE_SELECTION_OVERLAY, "selection_overlay.png", true);
-    screen_load_texture(TEXTURE_BUTTON_SMALL, "button_small.png", true);
-    screen_load_texture(TEXTURE_BUTTON_LARGE, "button_large.png", true);
-    screen_load_texture(TEXTURE_PROGRESS_BAR_BG, "progress_bar_bg.png", true);
-    screen_load_texture(TEXTURE_PROGRESS_BAR_CONTENT, "progress_bar_content.png", true);
-    screen_load_texture(TEXTURE_SMDH_INFO_BOX, "smdh_info_box.png", true);
-    screen_load_texture(TEXTURE_SMDH_INFO_BOX_SHADOW, "smdh_info_box_shadow.png", true);
-    screen_load_texture(TEXTURE_BATTERY_CHARGING, "battery_charging.png", true);
-    screen_load_texture(TEXTURE_BATTERY_0, "battery0.png", true);
-    screen_load_texture(TEXTURE_BATTERY_1, "battery1.png", true);
-    screen_load_texture(TEXTURE_BATTERY_2, "battery2.png", true);
-    screen_load_texture(TEXTURE_BATTERY_3, "battery3.png", true);
-    screen_load_texture(TEXTURE_BATTERY_4, "battery4.png", true);
-    screen_load_texture(TEXTURE_BATTERY_5, "battery5.png", true);
-    screen_load_texture(TEXTURE_WIFI_DISCONNECTED, "wifi_disconnected.png", true);
-    screen_load_texture(TEXTURE_WIFI_0, "wifi0.png", true);
-    screen_load_texture(TEXTURE_WIFI_1, "wifi1.png", true);
-    screen_load_texture(TEXTURE_WIFI_2, "wifi2.png", true);
-    screen_load_texture(TEXTURE_WIFI_3, "wifi3.png", true);
+    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BG, "bottom_screen_bg.png", true);
+    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_TOP_BAR, "bottom_screen_top_bar.png", true);
+    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_TOP_BAR_SHADOW, "bottom_screen_top_bar_shadow.png", true);
+    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR, "bottom_screen_bottom_bar.png", true);
+    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR_SHADOW, "bottom_screen_bottom_bar_shadow.png", true);
+    screen_load_texture_file(TEXTURE_TOP_SCREEN_BG, "top_screen_bg.png", true);
+    screen_load_texture_file(TEXTURE_TOP_SCREEN_TOP_BAR, "top_screen_top_bar.png", true);
+    screen_load_texture_file(TEXTURE_TOP_SCREEN_TOP_BAR_SHADOW, "top_screen_top_bar_shadow.png", true);
+    screen_load_texture_file(TEXTURE_TOP_SCREEN_BOTTOM_BAR, "top_screen_bottom_bar.png", true);
+    screen_load_texture_file(TEXTURE_TOP_SCREEN_BOTTOM_BAR_SHADOW, "top_screen_bottom_bar_shadow.png", true);
+    screen_load_texture_file(TEXTURE_LOGO, "logo.png", true);
+    screen_load_texture_file(TEXTURE_SELECTION_OVERLAY, "selection_overlay.png", true);
+    screen_load_texture_file(TEXTURE_BUTTON_SMALL, "button_small.png", true);
+    screen_load_texture_file(TEXTURE_BUTTON_LARGE, "button_large.png", true);
+    screen_load_texture_file(TEXTURE_PROGRESS_BAR_BG, "progress_bar_bg.png", true);
+    screen_load_texture_file(TEXTURE_PROGRESS_BAR_CONTENT, "progress_bar_content.png", true);
+    screen_load_texture_file(TEXTURE_SMDH_INFO_BOX, "smdh_info_box.png", true);
+    screen_load_texture_file(TEXTURE_SMDH_INFO_BOX_SHADOW, "smdh_info_box_shadow.png", true);
+    screen_load_texture_file(TEXTURE_BATTERY_CHARGING, "battery_charging.png", true);
+    screen_load_texture_file(TEXTURE_BATTERY_0, "battery0.png", true);
+    screen_load_texture_file(TEXTURE_BATTERY_1, "battery1.png", true);
+    screen_load_texture_file(TEXTURE_BATTERY_2, "battery2.png", true);
+    screen_load_texture_file(TEXTURE_BATTERY_3, "battery3.png", true);
+    screen_load_texture_file(TEXTURE_BATTERY_4, "battery4.png", true);
+    screen_load_texture_file(TEXTURE_BATTERY_5, "battery5.png", true);
+    screen_load_texture_file(TEXTURE_WIFI_DISCONNECTED, "wifi_disconnected.png", true);
+    screen_load_texture_file(TEXTURE_WIFI_0, "wifi0.png", true);
+    screen_load_texture_file(TEXTURE_WIFI_1, "wifi1.png", true);
+    screen_load_texture_file(TEXTURE_WIFI_2, "wifi2.png", true);
+    screen_load_texture_file(TEXTURE_WIFI_3, "wifi3.png", true);
 }
 
 void screen_exit() {
@@ -220,117 +220,13 @@ u32 next_pow_2(u32 i) {
     return i;
 }
 
-void screen_load_texture(u32 id, const char* path, bool linearFilter) {
-    if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to load path \"%s\" to invalid texture ID \"%lu\".", path, id);
-        return;
-    }
-
-    u32 realPathSize = strlen(path) + 16;
-    char realPath[realPathSize];
-    snprintf(realPath, realPathSize, "sdmc:/fbitheme/%s", path);
-    FILE* fd = fopen(realPath, "rb");
-    if(fd != NULL) {
-        fclose(fd);
-    } else {
-        snprintf(realPath, realPathSize, "romfs:/%s", path);
-    }
-
-    unsigned char* image;
-    unsigned width;
-    unsigned height;
-    unsigned pngErr = lodepng_decode32_file(&image, &width, &height, realPath);
-    if(pngErr != 0) {
-        util_panic("Failed to load PNG file \"%s\": %u", realPath, pngErr);
-        return;
-    }
-
-    u32 pow2Width = next_pow_2(width);
-    if(pow2Width < 64) {
-        pow2Width = 64;
-    }
-
-    u32 pow2Height = next_pow_2(height);
-    if(pow2Height < 64) {
-        pow2Height = 64;
-    }
-
-    u8* gpuTex = linearAlloc(pow2Width * pow2Height * 4);
-    if(gpuTex == NULL) {
-        util_panic("Failed to allocate temporary texture buffer for file \"%s\".", realPath);
-        return;
-    }
-
-    memset(gpuTex, 0, pow2Width * pow2Height * 4);
-
-    for(int x = 0; x < width; x++) {
-        for(int y = 0; y < height; y++) {
-            u32 imagePos = (y * width + x) * 4;
-            u32 gpuTexPos = (y * pow2Width + x) * 4;
-
-            gpuTex[gpuTexPos + 0] = image[imagePos + 3];
-            gpuTex[gpuTexPos + 1] = image[imagePos + 2];
-            gpuTex[gpuTexPos + 2] = image[imagePos + 1];
-            gpuTex[gpuTexPos + 3] = image[imagePos + 0];
-        }
-    }
-
-    textures[id].initialized = true;
-    textures[id].width = width;
-    textures[id].height = height;
-    textures[id].pow2Width = pow2Width;
-    textures[id].pow2Height = pow2Height;
-
-    if(!C3D_TexInit(&textures[id].tex, (int) pow2Width, (int) pow2Height, GPU_RGBA8)) {
-        util_panic("Failed to initialize texture for file \"%s\".", realPath);
-        return;
-    }
-
-    C3D_TexSetFilter(&textures[id].tex, linearFilter ? GPU_LINEAR : GPU_NEAREST, GPU_NEAREST);
-
-    Result flushRes = GSPGPU_FlushDataCache(gpuTex, pow2Width * pow2Height * 4);
-    if(R_FAILED(flushRes)) {
-        util_panic("Failed to flush texture buffer for file \"%s\": 0x%08lX", realPath, flushRes);
-        return;
-    }
-
-    Result transferRes = GX_DisplayTransfer((u32*) gpuTex, GX_BUFFER_DIM(pow2Width, pow2Height), (u32*) textures[id].tex.data, GX_BUFFER_DIM(pow2Width, pow2Height), GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-    if(R_FAILED(transferRes)) {
-        util_panic("Failed to tile texture data for file \"%s\": 0x%08lX", realPath, transferRes);
-        return;
-    }
-
-    gspWaitForPPF();
-
-    free(image);
-    linearFree(gpuTex);
-}
-
-u32 screen_load_texture_auto(const char* path, bool linearFilter) {
-    int id = -1;
-    for(int i = TEXTURE_AUTO_START; i < MAX_TEXTURES; i++) {
-        if(!textures[i].initialized) {
-            id = i;
-            break;
-        }
-    }
-
-    if(id == -1) {
-        util_panic("Attempted to load auto texture from path \"%s\" without free textures.", path);
-        return 0;
-    }
-
-    screen_load_texture((u32) id, path, linearFilter);
-    return (u32) id;
-}
-
 static u32 tiled_texture_index(u32 x, u32 y, u32 w, u32 h) {
     return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3));
 }
 
-void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
+void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to load tiled data to invalid texture ID \"%lu\".", id);
+        util_panic("Attempted to load buffer to invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -356,11 +252,11 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
 
     for(u32 x = 0; x < width; x++) {
         for(u32 y = 0; y < height; y++) {
-            u32 tiledDataPos = tiled_texture_index(x, y, width, height) * pixelSize;
+            u32 dataPos = (y * width + x) * pixelSize;
             u32 pow2TexPos = (y * pow2Width + x) * pixelSize;
 
             for(u32 i = 0; i < pixelSize; i++) {
-                pow2Tex[pow2TexPos + i] = ((u8*) tiledData)[tiledDataPos + i];
+                pow2Tex[pow2TexPos + i] = ((u8*) data)[dataPos + i];
             }
         }
     }
@@ -377,7 +273,6 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
     }
 
     C3D_TexSetFilter(&textures[id].tex, linearFilter ? GPU_LINEAR : GPU_NEAREST, GPU_NEAREST);
-    C3D_TexUpload(&textures[id].tex, pow2Tex);
 
     Result flushRes = GSPGPU_FlushDataCache(pow2Tex, pow2Width * pow2Height * 4);
     if(R_FAILED(flushRes)) {
@@ -394,6 +289,113 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
     gspWaitForPPF();
 
     linearFree(pow2Tex);
+}
+
+u32 screen_load_texture_auto(void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
+    int id = -1;
+    for(int i = TEXTURE_AUTO_START; i < MAX_TEXTURES; i++) {
+        if(!textures[i].initialized) {
+            id = i;
+            break;
+        }
+    }
+
+    if(id == -1) {
+        util_panic("Attempted to load auto texture from buffer without free textures.");
+        return 0;
+    }
+
+    screen_load_texture((u32) id, tiledData, size, width, height, format, linearFilter);
+    return (u32) id;
+}
+
+void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
+    if(id >= MAX_TEXTURES) {
+        util_panic("Attempted to load path \"%s\" to invalid texture ID \"%lu\".", path, id);
+        return;
+    }
+
+    u32 realPathSize = strlen(path) + 16;
+    char realPath[realPathSize];
+    snprintf(realPath, realPathSize, "sdmc:/fbitheme/%s", path);
+    FILE* fd = fopen(realPath, "rb");
+    if(fd != NULL) {
+        fclose(fd);
+    } else {
+        snprintf(realPath, realPathSize, "romfs:/%s", path);
+    }
+
+    unsigned char* image;
+    unsigned width;
+    unsigned height;
+    unsigned pngErr = lodepng_decode32_file(&image, &width, &height, realPath);
+    if(pngErr != 0) {
+        util_panic("Failed to load PNG file \"%s\": %u", realPath, pngErr);
+        return;
+    }
+
+    for(u32 x = 0; x < width; x++) {
+        for(u32 y = 0; y < height; y++) {
+            u32 pos = (y * width + x) * 4;
+
+            u8 c1 = image[pos + 0];
+            u8 c2 = image[pos + 1];
+            u8 c3 = image[pos + 2];
+            u8 c4 = image[pos + 3];
+
+            image[pos + 0] = c4;
+            image[pos + 1] = c3;
+            image[pos + 2] = c2;
+            image[pos + 3] = c1;
+        }
+    }
+
+    screen_load_texture(id, image, width * height * 4, width, height, GPU_RGBA8, linearFilter);
+
+    free(image);
+}
+
+u32 screen_load_texture_file_auto(const char* path, bool linearFilter) {
+    int id = -1;
+    for(int i = TEXTURE_AUTO_START; i < MAX_TEXTURES; i++) {
+        if(!textures[i].initialized) {
+            id = i;
+            break;
+        }
+    }
+
+    if(id == -1) {
+        util_panic("Attempted to load auto texture from path \"%s\" without free textures.", path);
+        return 0;
+    }
+
+    screen_load_texture_file((u32) id, path, linearFilter);
+    return (u32) id;
+}
+
+void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
+    if(id >= MAX_TEXTURES) {
+        util_panic("Attempted to load tiled data to invalid texture ID \"%lu\".", id);
+        return;
+    }
+
+    u32 pixelSize = size / width / height;
+
+    u8* untiledData = (u8*) calloc(1, size);
+    for(u32 x = 0; x < width; x++) {
+        for(u32 y = 0; y < height; y++) {
+            u32 tiledDataPos = tiled_texture_index(x, y, width, height) * pixelSize;
+            u32 untiledDataPos = (y * width + x) * pixelSize;
+
+            for(u32 i = 0; i < pixelSize; i++) {
+                untiledData[untiledDataPos + i] = ((u8*) tiledData)[tiledDataPos + i];
+            }
+        }
+    }
+
+    screen_load_texture(id, untiledData, size, width, height, format, linearFilter);
+
+    free(untiledData);
 }
 
 u32 screen_load_texture_tiled_auto(void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {

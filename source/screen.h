@@ -42,8 +42,8 @@
 
 void screen_init();
 void screen_exit();
-void screen_load_texture(u32 id, const char* path, bool linearFilter);
-u32 screen_load_texture_auto(const char* path, bool linearFilter);
+void screen_load_texture_file(u32 id, const char* path, bool linearFilter);
+u32 screen_load_texture_file_auto(const char* path, bool linearFilter);
 void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
 u32 screen_load_texture_tiled_auto(void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
 void screen_unload_texture(u32 id);
