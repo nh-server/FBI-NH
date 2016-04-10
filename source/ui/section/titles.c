@@ -35,6 +35,14 @@ static list_item card_titles_action_items[CARD_TITLES_ACTION_COUNT] = {
         {"Browse Save Data", 0xFF000000, action_browse_title_save_data},
 };
 
+#define DSIWARE_TITLES_ACTION_COUNT 2
+
+static u32 dsiware_titles_action_count = DSIWARE_TITLES_ACTION_COUNT;
+static list_item dsiware_titles_action_items[DSIWARE_TITLES_ACTION_COUNT] = {
+        {"Launch Title", 0xFF000000, action_launch_title},
+        {"Delete Title", 0xFF000000, action_delete_title},
+};
+
 typedef struct {
     title_info* info;
     bool* populated;
@@ -73,6 +81,11 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
         if(*itemCount != &card_titles_action_count || *items != card_titles_action_items) {
             *itemCount = &card_titles_action_count;
             *items = card_titles_action_items;
+        }
+    } else if(((actionData->info->titleId >> 32) & 0x8000) != 0) {
+        if(*itemCount != &dsiware_titles_action_count || *items != dsiware_titles_action_items) {
+            *itemCount = &dsiware_titles_action_count;
+            *items = dsiware_titles_action_items;
         }
     } else {
         if(*itemCount != &titles_action_count || *items != titles_action_items) {
