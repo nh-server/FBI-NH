@@ -61,7 +61,7 @@ s32 kernel_patch_fs() {
             KCodeSet* codeSet = *(KCodeSet**) (processPtr + processCodeSetOffset);
             if(codeSet != NULL) {
                 // Patches out an archive access check.
-                u8 original[] = {0x0C, 0x05, 0x0C, 0x33, 0x46, 0xF7, 0xF7, 0x49, 0xF8, 0x00, 0x28, 0x01, 0xD0, 0x00, 0x20, 0xF8};
+                u8 original[] = {0x0C, 0x05, 0x0C, 0x33, 0x46, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x28, 0x01, 0xD0, 0x00, 0x20, 0xF8};
                 u8 patched[] =  {0x0C, 0x05, 0x0C, 0x33, 0x46, 0x01, 0x20, 0x00, 0x00, 0x00, 0x28, 0x01, 0xD0, 0x00, 0x20, 0xF8};
 
                 for(KLinkedListNode* node = codeSet->text_info.first_node; node != NULL; node = node->next) {
@@ -74,7 +74,7 @@ s32 kernel_patch_fs() {
 
                         bool equal = true;
                         for(u32 b = 0; b < sizeof(original); b++) {
-                            if(dst[b] != original[b]) {
+                            if(original[b] == 0xFF || dst[b] != original[b]) {
                                 equal = false;
                                 break;
                             }
