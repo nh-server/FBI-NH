@@ -74,7 +74,7 @@ s32 kernel_patch_fs() {
 
                         bool equal = true;
                         for(u32 b = 0; b < sizeof(original); b++) {
-                            if(original[b] == 0xFF || dst[b] != original[b]) {
+                            if(original[b] != 0xFF && dst[b] != original[b]) {
                                 equal = false;
                                 break;
                             }
