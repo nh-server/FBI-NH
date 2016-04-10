@@ -178,6 +178,15 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
                 listData->archivePath = NULL;
             }
 
+            if(listData->cancelEvent != 0) {
+                svcSignalEvent(listData->cancelEvent);
+                while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+                    svcSleepThread(1000000);
+                }
+
+                listData->cancelEvent = 0;
+            }
+
             ui_pop();
             free(listData);
             list_destroy(view);
@@ -255,5 +264,15 @@ void files_open(FS_Archive archive) {
 
 void files_open_sd() {
     FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
+    files_open(sdmcArchive);
+}
+
+void files_open_ctr_nand() {
+    FS_Archive sdmcArchive = {ARCHIVE_NAND_CTR_FS, fsMakePath(PATH_EMPTY, "")};
+    files_open(sdmcArchive);
+}
+
+void files_open_twl_nand() {
+    FS_Archive sdmcArchive = {ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, "")};
     files_open(sdmcArchive);
 }

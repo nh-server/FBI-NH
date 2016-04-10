@@ -404,6 +404,13 @@ Result util_ensure_dir(FS_Archive* archive, const char* path) {
     return res;
 }
 
+int util_compare_u32(const void* e1, const void* e2) {
+    u32 id1 = *(u32*) e1;
+    u32 id2 = *(u32*) e2;
+
+    return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+}
+
 int util_compare_u64(const void* e1, const void* e2) {
     u64 id1 = *(u64*) e1;
     u64 id2 = *(u64*) e2;

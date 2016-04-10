@@ -60,7 +60,7 @@ typedef struct {
 } ext_save_data_info;
 
 typedef struct {
-    u64 systemSaveDataId;
+    u32 systemSaveDataId;
 } system_save_data_info;
 
 typedef struct {

@@ -25,10 +25,10 @@ static void task_populate_system_save_data_thread(void* arg) {
     Result res = 0;
 
     u32 systemSaveDataCount = 0;
-    u64* systemSaveDataIds = (u64*) calloc(data->max, sizeof(u64));
+    u32* systemSaveDataIds = (u32*) calloc(data->max, sizeof(u32));
     if(systemSaveDataIds != NULL) {
-        if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, data->max * sizeof(u64), systemSaveDataIds))) {
-            qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u64), util_compare_u64);
+        if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, data->max * sizeof(u32), (u64*) systemSaveDataIds))) {
+            qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), util_compare_u64);
 
             for(u32 i = 0; i < systemSaveDataCount && i < data->max; i++) {
                 if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
@@ -40,7 +40,7 @@ static void task_populate_system_save_data_thread(void* arg) {
                     systemSaveDataInfo->systemSaveDataId = systemSaveDataIds[i];
 
                     list_item* item = &data->items[*data->count];
-                    snprintf(item->name, NAME_MAX, "%016llX", systemSaveDataIds[i]);
+                    snprintf(item->name, NAME_MAX, "%08lX", systemSaveDataIds[i]);
                     item->rgba = 0xFF000000;
                     item->data = systemSaveDataInfo;
 

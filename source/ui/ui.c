@@ -461,7 +461,7 @@ void ui_draw_system_save_data_info(ui_view* view, void* data, float x1, float y1
 
     char buf[64];
 
-    snprintf(buf, 64, "System Save Data ID: %016llX", info->systemSaveDataId);
+    snprintf(buf, 64, "System Save Data ID: %08lX", info->systemSaveDataId);
 
     float saveDataIdWidth;
     float saveDataIdHeight;
