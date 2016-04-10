@@ -82,6 +82,15 @@ static void pendingtitles_update(ui_view* view, void* data, list_item** items, u
     pendingtitles_data* listData = (pendingtitles_data*) data;
 
     if(hidKeysDown() & KEY_B) {
+        if(listData->cancelEvent != 0) {
+            svcSignalEvent(listData->cancelEvent);
+            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+                svcSleepThread(1000000);
+            }
+
+            listData->cancelEvent = 0;
+        }
+
         ui_pop();
         free(listData);
         list_destroy(view);

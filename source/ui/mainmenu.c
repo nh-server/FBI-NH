@@ -8,11 +8,14 @@
 #include "section/section.h"
 #include "../screen.h"
 
-#define MAINMENU_ITEM_COUNT 8
+#define MAINMENU_ITEM_COUNT 11
 
 static u32 mainmenu_item_count = MAINMENU_ITEM_COUNT;
 static list_item mainmenu_items[MAINMENU_ITEM_COUNT] = {
         {"SD", 0xFF000000, files_open_sd},
+        {"CTR NAND", 0xFF000000, files_open_ctr_nand},
+        {"TWL NAND", 0xFF000000, files_open_twl_nand},
+        {"Dump NAND", 0xFF000000, dump_nand},
         {"Titles", 0xFF000000, titles_open},
         {"Pending Titles", 0xFF000000, pendingtitles_open},
         {"Tickets", 0xFF000000, tickets_open},

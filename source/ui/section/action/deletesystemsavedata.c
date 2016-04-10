@@ -23,7 +23,7 @@ static void action_delete_system_save_data_success_onresponse(ui_view* view, voi
 static void action_delete_system_save_data_update(ui_view* view, void* data, float* progress, char* progressText) {
     delete_system_save_data_data* deleteData = (delete_system_save_data_data*) data;
 
-    FS_SystemSaveDataInfo sysInfo = *(FS_SystemSaveDataInfo*) &deleteData->info->systemSaveDataId;
+    FS_SystemSaveDataInfo sysInfo = {.mediaType = MEDIATYPE_NAND, .saveId = deleteData->info->systemSaveDataId};
     Result res = FSUSER_DeleteSystemSaveData(sysInfo);
 
     progressbar_destroy(view);
