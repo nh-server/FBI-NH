@@ -27,6 +27,14 @@ static list_item titles_action_items[TITLES_ACTION_COUNT] = {
         {"Export Secure Value", 0xFF000000, action_export_secure_value},
 };
 
+#define CARD_TITLES_ACTION_COUNT 2
+
+static u32 card_titles_action_count = CARD_TITLES_ACTION_COUNT;
+static list_item card_titles_action_items[CARD_TITLES_ACTION_COUNT] = {
+        {"Launch Title", 0xFF000000, action_launch_title},
+        {"Browse Save Data", 0xFF000000, action_browse_title_save_data},
+};
+
 typedef struct {
     title_info* info;
     bool* populated;
@@ -61,9 +69,16 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
         return;
     }
 
-    if(*itemCount != &titles_action_count || *items != titles_action_items) {
-        *itemCount = &titles_action_count;
-        *items = titles_action_items;
+    if(actionData->info->mediaType == MEDIATYPE_GAME_CARD) {
+        if(*itemCount != &card_titles_action_count || *items != card_titles_action_items) {
+            *itemCount = &card_titles_action_count;
+            *items = card_titles_action_items;
+        }
+    } else {
+        if(*itemCount != &titles_action_count || *items != titles_action_items) {
+            *itemCount = &titles_action_count;
+            *items = titles_action_items;
+        }
     }
 }
 
