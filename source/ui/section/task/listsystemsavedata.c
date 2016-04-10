@@ -27,7 +27,7 @@ static void task_populate_system_save_data_thread(void* arg) {
     u32 systemSaveDataCount = 0;
     u32* systemSaveDataIds = (u32*) calloc(data->max, sizeof(u32));
     if(systemSaveDataIds != NULL) {
-        if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, data->max * sizeof(u32), (u64*) systemSaveDataIds))) {
+        if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, data->max * sizeof(u32), systemSaveDataIds))) {
             qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), util_compare_u64);
 
             for(u32 i = 0; i < systemSaveDataCount && i < data->max; i++) {
