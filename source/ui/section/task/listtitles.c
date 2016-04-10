@@ -21,7 +21,8 @@ typedef struct {
 } populate_titles_data;
 
 static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType mediaType) {
-    if(mediaType == MEDIATYPE_GAME_CARD && R_FAILED(FSUSER_GetCardType(NULL))) {
+    FS_CardType type;
+    if(mediaType == MEDIATYPE_GAME_CARD && (R_FAILED(FSUSER_GetCardType(&type)) || type != CARD_CTR)) {
         return 0;
     }
 
