@@ -201,7 +201,7 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                 titleInfo->titleId = *(u64*) &header[0x230];
                 memcpy(titleInfo->productCode, header, 0x00C);
                 titleInfo->version = header[0x01E];
-                titleInfo->installedSize = *(u32*) &header[0x080];
+                titleInfo->installedSize = titleInfo->titleId != 0 ? *(u32*) &header[0x210] : *(u32*) &header[0x080];
                 titleInfo->twl = true;
                 titleInfo->hasSmdh = true;
 
