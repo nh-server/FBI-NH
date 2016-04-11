@@ -74,21 +74,38 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                                             char title[0x100] = {'\0'};
                                             utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], 0x100);
 
-                                            char* nameEnd = strchr(title, '\n');
-                                            if(nameEnd != NULL) {
-                                                char* curr = NULL;
-                                                while((curr = strchr(nameEnd + 1, '\n')) != NULL) {
-                                                    *nameEnd = ' ';
-                                                    nameEnd = curr;
-                                                }
+                                            if(strchr(title, '\n') == NULL) {
+                                                size_t len = strlen(title);
+                                                strncpy(item->name, title, len);
+                                                strncpy(titleInfo->smdhInfo.shortDescription, title, len);
                                             } else {
-                                                nameEnd = title + strlen(title);
+                                                char* destinations[] = {titleInfo->smdhInfo.shortDescription, titleInfo->smdhInfo.longDescription, titleInfo->smdhInfo.publisher};
+                                                int currDest = 0;
+
+                                                char* last = title;
+                                                char* curr = NULL;
+
+                                                while(currDest < 3 && (curr = strchr(last, '\n')) != NULL) {
+                                                    if(currDest == 0) {
+                                                        strncpy(item->name, last, curr - last);
+                                                    }
+
+                                                    strncpy(destinations[currDest++], last, curr - last);
+                                                    last = curr + 1;
+                                                }
+
+                                                if(currDest < 3) {
+                                                    strncpy(destinations[currDest], last, strlen(title) - (last - title));
+                                                }
+
+                                                strncpy(item->name, title, last - title);
+                                                int len = strlen(item->name);
+                                                for(int pos = 0; pos < len; pos++) {
+                                                    if(item->name[pos] == '\n') {
+                                                        item->name[pos] = ' ';
+                                                    }
+                                                }
                                             }
-
-                                            strncpy(item->name, title, nameEnd - title);
-
-                                            strncpy(titleInfo->smdhInfo.shortDescription, title, nameEnd - title);
-                                            strncpy(titleInfo->smdhInfo.longDescription, nameEnd + 1, strlen(title) - (nameEnd - title) - 1);
 
                                             u8 icon[32 * 32 * 2];
                                             for(u32 x = 0; x < 32; x++) {
@@ -213,21 +230,31 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                 char title[0x100] = {'\0'};
                 utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], 0x100);
 
-                char* nameEnd = strchr(title, '\n');
-                if(nameEnd != NULL) {
-                    char* curr = NULL;
-                    while((curr = strchr(nameEnd + 1, '\n')) != NULL) {
-                        *nameEnd = ' ';
-                        nameEnd = curr;
-                    }
+                if(strchr(title, '\n') == NULL) {
+                    size_t len = strlen(title);
+                    strncpy(item->name, title, len);
+                    strncpy(titleInfo->smdhInfo.shortDescription, title, len);
                 } else {
-                    nameEnd = title + strlen(title);
+                    char* destinations[] = {titleInfo->smdhInfo.shortDescription, titleInfo->smdhInfo.longDescription, titleInfo->smdhInfo.publisher};
+                    int currDest = 0;
+
+                    char* last = title;
+                    char* curr = NULL;
+
+                    while(currDest < 3 && (curr = strchr(last, '\n')) != NULL) {
+                        if(currDest == 0) {
+                            strncpy(item->name, last, curr - last);
+                        }
+
+                        strncpy(destinations[currDest++], last, curr - last);
+                        last = curr + 1;
+                    }
+
+                    strncpy(item->name, title, last - title);
+                    if(currDest < 3) {
+                        strncpy(destinations[currDest], last, strlen(title) - (last - title));
+                    }
                 }
-
-                strncpy(item->name, title, nameEnd - title);
-
-                strncpy(titleInfo->smdhInfo.shortDescription, title, nameEnd - title);
-                strncpy(titleInfo->smdhInfo.longDescription, nameEnd + 1, strlen(title) - (nameEnd - title) - 1);
 
                 u8 icon[32 * 32 * 2];
                 for(u32 x = 0; x < 32; x++) {
