@@ -49,12 +49,12 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                         u8 systemLanguage = CFG_LANGUAGE_EN;
                         CFGU_GetSystemLanguage(&systemLanguage);
 
-                        utf16_to_utf8((uint8_t*) item->name, smdh.titles[systemLanguage].shortDescription, NAME_MAX - 1);
+                        utf16_to_utf8((uint8_t*) item->name, smdh.titles[systemLanguage].shortDescription, NAME_MAX);
 
                         extSaveDataInfo->hasSmdh = true;
-                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(extSaveDataInfo->smdhInfo.shortDescription) - 1);
-                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(extSaveDataInfo->smdhInfo.longDescription) - 1);
-                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(extSaveDataInfo->smdhInfo.publisher) - 1);
+                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(extSaveDataInfo->smdhInfo.shortDescription));
+                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(extSaveDataInfo->smdhInfo.longDescription));
+                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(extSaveDataInfo->smdhInfo.publisher));
                         extSaveDataInfo->smdhInfo.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
                     } else {
                         extSaveDataInfo->hasSmdh = false;

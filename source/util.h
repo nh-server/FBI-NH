@@ -25,6 +25,19 @@ typedef struct {
     u8 largeIcon[0x1200];
 } SMDH;
 
+typedef struct {
+    u8 version;
+    bool animated;
+    u16 crc16[4];
+    u8 reserved[0x16];
+    u8 mainIconBitmap[0x200];
+    u16 mainIconPalette[0x10];
+    u16 titles[16][0x80];
+    u8 animatedFrameBitmaps[8][0x200];
+    u16 animatedFramePalettes[8][0x10];
+    u16 animationSequence[0x40];
+} BNR;
+
 void util_panic(const char* s, ...);
 
 bool util_is_dir(FS_Archive* archive, const char* path);
@@ -45,3 +58,6 @@ Result util_ensure_dir(FS_Archive* archive, const char* path);
 int util_compare_u32(const void* e1, const void* e2);
 int util_compare_u64(const void* e1, const void* e2);
 int util_compare_directory_entries(const void* e1, const void* e2);
+
+u32 util_next_pow_2(u32 i);
+u32 util_tiled_texture_index(u32 x, u32 y, u32 w, u32 h);
