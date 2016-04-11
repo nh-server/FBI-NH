@@ -4,6 +4,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../task/task.h"
 
 static void action_launch_title_update(ui_view* view, void* data, float* progress, char* progressText) {
     title_info* info = (title_info*) data;
@@ -11,10 +12,11 @@ static void action_launch_title_update(ui_view* view, void* data, float* progres
     u8 buf0[0x300];
     u8 buf1[0x20];
 
+    Result res = 0;
+
     aptOpenSession();
 
-    Result res = APT_PrepareToDoAppJump(0, info->titleId, info->mediaType);
-    if(R_SUCCEEDED(res)) {
+    if(R_SUCCEEDED(res = APT_PrepareToDoAppJump(0, info->titleId, info->mediaType))) {
         res = APT_DoAppJump(0x300, 0x20, buf0, buf1);
     }
 

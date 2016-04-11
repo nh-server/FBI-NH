@@ -23,164 +23,242 @@ typedef struct {
 static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType mediaType, bool useDSiWare) {
     bool inserted;
     FS_CardType type;
-    if(mediaType == MEDIATYPE_GAME_CARD && ((R_FAILED(FSUSER_CardSlotIsInserted(&inserted)) || !inserted) || (R_FAILED(FSUSER_GetCardType(&type)) || type != CARD_CTR))) {
+    if(mediaType == MEDIATYPE_GAME_CARD && (R_FAILED(FSUSER_CardSlotIsInserted(&inserted)) || !inserted || R_FAILED(FSUSER_GetCardType(&type)))) {
         return 0;
     }
 
     Result res = 0;
 
-    u32 titleCount = 0;
-    if(R_SUCCEEDED(res = AM_GetTitleCount(mediaType, &titleCount))) {
-        u64* titleIds = (u64*) calloc(titleCount, sizeof(u64));
-        if(titleIds != NULL) {
-            if(R_SUCCEEDED(res = AM_GetTitleList(&titleCount, mediaType, titleCount, titleIds))) {
-                qsort(titleIds, titleCount, sizeof(u64), util_compare_u64);
+    if(mediaType != MEDIATYPE_GAME_CARD || type == CARD_CTR) {
+        u32 titleCount = 0;
+        if(R_SUCCEEDED(res = AM_GetTitleCount(mediaType, &titleCount))) {
+            u64* titleIds = (u64*) calloc(titleCount, sizeof(u64));
+            if(titleIds != NULL) {
+                if(R_SUCCEEDED(res = AM_GetTitleList(&titleCount, mediaType, titleCount, titleIds))) {
+                    qsort(titleIds, titleCount, sizeof(u64), util_compare_u64);
 
-                AM_TitleEntry* titleInfos = (AM_TitleEntry*) calloc(titleCount, sizeof(AM_TitleEntry));
-                if(titleInfos != NULL) {
-                    if(R_SUCCEEDED(res = AM_GetTitleInfo(mediaType, titleCount, titleIds, titleInfos))) {
-                        SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
-                        BNR* bnr = (BNR*) calloc(1, sizeof(BNR));
-                        for(u32 i = 0; i < titleCount && i < data->max; i++) {
-                            if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
-                                break;
-                            }
-
-                            bool dsiWare = ((titleIds[i] >> 32) & 0x8000) != 0;
-                            if(dsiWare != useDSiWare) {
-                                continue;
-                            }
-
-                            title_info* titleInfo = (title_info*) calloc(1, sizeof(title_info));
-                            if(titleInfo != NULL) {
-                                titleInfo->mediaType = mediaType;
-                                titleInfo->titleId = titleIds[i];
-                                AM_GetTitleProductCode(mediaType, titleIds[i], titleInfo->productCode);
-                                titleInfo->version = titleInfos[i].version;
-                                titleInfo->installedSize = titleInfos[i].size;
-                                titleInfo->hasSmdh = false;
-
-                                list_item* item = &data->items[*data->count];
-
-                                if(dsiWare) {
-                                    if(R_SUCCEEDED(FSUSER_GetLegacyBannerData(mediaType, titleIds[i], (u8*) bnr))) {
-                                        titleInfo->hasSmdh = true;
-
-                                        u8 systemLanguage = CFG_LANGUAGE_EN;
-                                        CFGU_GetSystemLanguage(&systemLanguage);
-
-                                        char title[0x100] = {'\0'};
-                                        utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], 0x100);
-
-                                        char* nameEnd = strchr(title, '\n');
-                                        if(nameEnd == NULL) {
-                                            nameEnd = title + strlen(title);
-                                        }
-
-                                        strncpy(item->name, title, nameEnd - title);
-
-                                        strncpy(titleInfo->smdhInfo.shortDescription, title, nameEnd - title);
-                                        strncpy(titleInfo->smdhInfo.longDescription, nameEnd + 1, strlen(title) - (nameEnd - title) - 1);
-
-                                        u8 icon[32 * 32 * 2];
-                                        for(u32 x = 0; x < 32; x++) {
-                                            for(u32 y = 0; y < 32; y++) {
-                                                u32 srcPos = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
-                                                u32 srcShift = (x & 1) * 4;
-                                                u16 srcPx = bnr->mainIconPalette[(bnr->mainIconBitmap[srcPos] >> srcShift) & 0xF];
-
-                                                u8 r = (u8) (srcPx & 0x1F);
-                                                u8 g = (u8) ((srcPx >> 5) & 0x1F);
-                                                u8 b = (u8) ((srcPx >> 10) & 0x1F);
-
-                                                u16 reversedPx = (u16) ((r << 11) | (g << 6) | (b << 1) | 1);
-
-                                                u32 dstPos = (y * 32 + x) * 2;
-                                                icon[dstPos + 0] = (u8) (reversedPx & 0xFF);
-                                                icon[dstPos + 1] = (u8) ((reversedPx >> 8) & 0xFF);
-                                            }
-                                        }
-
-                                        titleInfo->smdhInfo.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
-                                    }
-                                } else {
-                                    static const u32 filePathData[] = {0x00000000, 0x00000000, 0x00000002, 0x6E6F6369, 0x00000000};
-                                    static const FS_Path filePath = (FS_Path) {PATH_BINARY, 0x14, (u8*) filePathData};
-                                    u32 archivePath[] = {(u32) (titleIds[i] & 0xFFFFFFFF), (u32) ((titleIds[i] >> 32) & 0xFFFFFFFF), mediaType, 0x00000000};
-                                    FS_Archive archive = {ARCHIVE_SAVEDATA_AND_CONTENT, (FS_Path) {PATH_BINARY, 0x10, (u8*) archivePath}};
-                                    Handle fileHandle;
-                                    if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&fileHandle, archive, filePath, FS_OPEN_READ, 0))) {
-                                        u32 bytesRead;
-                                        if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 0, smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
-                                            if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
-                                                u8 systemLanguage = CFG_LANGUAGE_EN;
-                                                CFGU_GetSystemLanguage(&systemLanguage);
-
-                                                utf16_to_utf8((uint8_t*) item->name, smdh->titles[systemLanguage].shortDescription, NAME_MAX);
-
-                                                titleInfo->hasSmdh = true;
-                                                utf16_to_utf8((uint8_t*) titleInfo->smdhInfo.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(titleInfo->smdhInfo.shortDescription));
-                                                utf16_to_utf8((uint8_t*) titleInfo->smdhInfo.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->smdhInfo.longDescription));
-                                                utf16_to_utf8((uint8_t*) titleInfo->smdhInfo.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->smdhInfo.publisher));
-                                                titleInfo->smdhInfo.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
-                                            }
-                                        }
-
-                                        FSFILE_Close(fileHandle);
-                                    }
+                    AM_TitleEntry* titleInfos = (AM_TitleEntry*) calloc(titleCount, sizeof(AM_TitleEntry));
+                    if(titleInfos != NULL) {
+                        if(R_SUCCEEDED(res = AM_GetTitleInfo(mediaType, titleCount, titleIds, titleInfos))) {
+                            SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
+                            BNR* bnr = (BNR*) calloc(1, sizeof(BNR));
+                            for(u32 i = 0; i < titleCount && i < data->max; i++) {
+                                if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
+                                    break;
                                 }
 
-                                bool empty = strlen(item->name) == 0;
-                                if(!empty) {
-                                    empty = true;
-
-                                    char* curr = item->name;
-                                    while(*curr) {
-                                        if(*curr != ' ') {
-                                            empty = false;
-                                            break;
-                                        }
-
-                                        curr++;
-                                    }
+                                bool dsiWare = ((titleIds[i] >> 32) & 0x8000) != 0;
+                                if(dsiWare != useDSiWare) {
+                                    continue;
                                 }
 
-                                if(empty) {
-                                    snprintf(item->name, NAME_MAX, "%016llX", titleIds[i]);
-                                }
+                                title_info* titleInfo = (title_info*) calloc(1, sizeof(title_info));
+                                if(titleInfo != NULL) {
+                                    titleInfo->mediaType = mediaType;
+                                    titleInfo->titleId = titleIds[i];
+                                    AM_GetTitleProductCode(mediaType, titleIds[i], titleInfo->productCode);
+                                    titleInfo->version = titleInfos[i].version;
+                                    titleInfo->installedSize = titleInfos[i].size;
+                                    titleInfo->twl = dsiWare;
+                                    titleInfo->hasSmdh = false;
 
-                                if(mediaType == MEDIATYPE_NAND) {
+                                    list_item* item = &data->items[*data->count];
+
                                     if(dsiWare) {
-                                        item->rgba = 0xFF82004B;
+                                        if(R_SUCCEEDED(FSUSER_GetLegacyBannerData(mediaType, titleIds[i], (u8*) bnr))) {
+                                            titleInfo->hasSmdh = true;
+
+                                            u8 systemLanguage = CFG_LANGUAGE_EN;
+                                            CFGU_GetSystemLanguage(&systemLanguage);
+
+                                            char title[0x100] = {'\0'};
+                                            utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], 0x100);
+
+                                            char* nameEnd = strchr(title, '\n');
+                                            if(nameEnd != NULL) {
+                                                char* curr = NULL;
+                                                while((curr = strchr(nameEnd + 1, '\n')) != NULL) {
+                                                    *nameEnd = ' ';
+                                                    nameEnd = curr;
+                                                }
+                                            } else {
+                                                nameEnd = title + strlen(title);
+                                            }
+
+                                            strncpy(item->name, title, nameEnd - title);
+
+                                            strncpy(titleInfo->smdhInfo.shortDescription, title, nameEnd - title);
+                                            strncpy(titleInfo->smdhInfo.longDescription, nameEnd + 1, strlen(title) - (nameEnd - title) - 1);
+
+                                            u8 icon[32 * 32 * 2];
+                                            for(u32 x = 0; x < 32; x++) {
+                                                for(u32 y = 0; y < 32; y++) {
+                                                    u32 srcPos = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
+                                                    u32 srcShift = (x & 1) * 4;
+                                                    u16 srcPx = bnr->mainIconPalette[(bnr->mainIconBitmap[srcPos] >> srcShift) & 0xF];
+
+                                                    u8 r = (u8) (srcPx & 0x1F);
+                                                    u8 g = (u8) ((srcPx >> 5) & 0x1F);
+                                                    u8 b = (u8) ((srcPx >> 10) & 0x1F);
+
+                                                    u16 reversedPx = (u16) ((r << 11) | (g << 6) | (b << 1) | 1);
+
+                                                    u32 dstPos = (y * 32 + x) * 2;
+                                                    icon[dstPos + 0] = (u8) (reversedPx & 0xFF);
+                                                    icon[dstPos + 1] = (u8) ((reversedPx >> 8) & 0xFF);
+                                                }
+                                            }
+
+                                            titleInfo->smdhInfo.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
+                                        }
                                     } else {
-                                        item->rgba = 0xFF0000FF;
+                                        static const u32 filePathData[] = {0x00000000, 0x00000000, 0x00000002, 0x6E6F6369, 0x00000000};
+                                        static const FS_Path filePath = (FS_Path) {PATH_BINARY, 0x14, (u8*) filePathData};
+                                        u32 archivePath[] = {(u32) (titleIds[i] & 0xFFFFFFFF), (u32) ((titleIds[i] >> 32) & 0xFFFFFFFF), mediaType, 0x00000000};
+                                        FS_Archive archive = {ARCHIVE_SAVEDATA_AND_CONTENT, (FS_Path) {PATH_BINARY, 0x10, (u8*) archivePath}};
+                                        Handle fileHandle;
+                                        if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&fileHandle, archive, filePath, FS_OPEN_READ, 0))) {
+                                            u32 bytesRead;
+                                            if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 0, smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
+                                                if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
+                                                    u8 systemLanguage = CFG_LANGUAGE_EN;
+                                                    CFGU_GetSystemLanguage(&systemLanguage);
+
+                                                    utf16_to_utf8((uint8_t*) item->name, smdh->titles[systemLanguage].shortDescription, NAME_MAX);
+
+                                                    titleInfo->hasSmdh = true;
+                                                    utf16_to_utf8((uint8_t*) titleInfo->smdhInfo.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(titleInfo->smdhInfo.shortDescription));
+                                                    utf16_to_utf8((uint8_t*) titleInfo->smdhInfo.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->smdhInfo.longDescription));
+                                                    utf16_to_utf8((uint8_t*) titleInfo->smdhInfo.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->smdhInfo.publisher));
+                                                    titleInfo->smdhInfo.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
+                                                }
+                                            }
+
+                                            FSFILE_Close(fileHandle);
+                                        }
                                     }
-                                } else if(mediaType == MEDIATYPE_SD) {
-                                    item->rgba = 0xFF00FF00;
-                                } else if(mediaType == MEDIATYPE_GAME_CARD) {
-                                    item->rgba = 0xFFFF0000;
+
+                                    bool empty = strlen(item->name) == 0;
+                                    if(!empty) {
+                                        empty = true;
+
+                                        char* curr = item->name;
+                                        while(*curr) {
+                                            if(*curr != ' ') {
+                                                empty = false;
+                                                break;
+                                            }
+
+                                            curr++;
+                                        }
+                                    }
+
+                                    if(empty) {
+                                        snprintf(item->name, NAME_MAX, "%016llX", titleIds[i]);
+                                    }
+
+                                    if(mediaType == MEDIATYPE_NAND) {
+                                        if(dsiWare) {
+                                            item->rgba = 0xFF82004B;
+                                        } else {
+                                            item->rgba = 0xFF0000FF;
+                                        }
+                                    } else if(mediaType == MEDIATYPE_SD) {
+                                        item->rgba = 0xFF00FF00;
+                                    } else if(mediaType == MEDIATYPE_GAME_CARD) {
+                                        item->rgba = 0xFFFF0000;
+                                    }
+
+                                    item->data = titleInfo;
+
+                                    (*data->count)++;
                                 }
-
-                                item->data = titleInfo;
-
-                                (*data->count)++;
                             }
+
+                            free(smdh);
+                            free(bnr);
                         }
 
-                        free(smdh);
-                        free(bnr);
+                        free(titleInfos);
+                    } else {
+                        res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
                     }
-
-                    free(titleInfos);
-                } else {
-                    res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
                 }
-            }
 
-            free(titleIds);
-        } else {
-            res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+                free(titleIds);
+            } else {
+                res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+            }
         }
+    } else {
+        u8* header = (u8*) calloc(1, 0x3B4);
+        BNR* bnr = (BNR*) calloc(1, sizeof(BNR));
+
+        if(R_SUCCEEDED(res = FSUSER_GetLegacyRomHeader(MEDIATYPE_GAME_CARD, 0, header)) && R_SUCCEEDED(res = FSUSER_GetLegacyBannerData(MEDIATYPE_GAME_CARD, 0, (u8*) bnr))) {
+            title_info* titleInfo = (title_info*) calloc(1, sizeof(title_info));
+            if(titleInfo != NULL) {
+                titleInfo->mediaType = MEDIATYPE_GAME_CARD;
+                titleInfo->titleId = *(u64*) &header[0x230];
+                memcpy(titleInfo->productCode, header, 0x00C);
+                titleInfo->version = header[0x01E];
+                titleInfo->installedSize = *(u32*) &header[0x080];
+                titleInfo->twl = true;
+                titleInfo->hasSmdh = true;
+
+                list_item* item = &data->items[*data->count];
+
+                u8 systemLanguage = CFG_LANGUAGE_EN;
+                CFGU_GetSystemLanguage(&systemLanguage);
+
+                char title[0x100] = {'\0'};
+                utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], 0x100);
+
+                char* nameEnd = strchr(title, '\n');
+                if(nameEnd != NULL) {
+                    char* curr = NULL;
+                    while((curr = strchr(nameEnd + 1, '\n')) != NULL) {
+                        *nameEnd = ' ';
+                        nameEnd = curr;
+                    }
+                } else {
+                    nameEnd = title + strlen(title);
+                }
+
+                strncpy(item->name, title, nameEnd - title);
+
+                strncpy(titleInfo->smdhInfo.shortDescription, title, nameEnd - title);
+                strncpy(titleInfo->smdhInfo.longDescription, nameEnd + 1, strlen(title) - (nameEnd - title) - 1);
+
+                u8 icon[32 * 32 * 2];
+                for(u32 x = 0; x < 32; x++) {
+                    for(u32 y = 0; y < 32; y++) {
+                        u32 srcPos = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
+                        u32 srcShift = (x & 1) * 4;
+                        u16 srcPx = bnr->mainIconPalette[(bnr->mainIconBitmap[srcPos] >> srcShift) & 0xF];
+
+                        u8 r = (u8) (srcPx & 0x1F);
+                        u8 g = (u8) ((srcPx >> 5) & 0x1F);
+                        u8 b = (u8) ((srcPx >> 10) & 0x1F);
+
+                        u16 reversedPx = (u16) ((r << 11) | (g << 6) | (b << 1) | 1);
+
+                        u32 dstPos = (y * 32 + x) * 2;
+                        icon[dstPos + 0] = (u8) (reversedPx & 0xFF);
+                        icon[dstPos + 1] = (u8) ((reversedPx >> 8) & 0xFF);
+                    }
+                }
+
+                titleInfo->smdhInfo.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
+
+                item->rgba = 0xFFFF0000;
+                item->data = titleInfo;
+
+                (*data->count)++;
+            }
+        }
+
+        free(header);
+        free(bnr);
     }
 
     return res;
