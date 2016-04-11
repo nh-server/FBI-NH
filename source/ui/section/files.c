@@ -268,16 +268,21 @@ void files_open_sd() {
 }
 
 void files_open_ctr_nand() {
-    FS_Archive sdmcArchive = {ARCHIVE_NAND_CTR_FS, fsMakePath(PATH_EMPTY, "")};
-    files_open(sdmcArchive);
+    FS_Archive ctrNandArchive = {ARCHIVE_NAND_CTR_FS, fsMakePath(PATH_EMPTY, "")};
+    files_open(ctrNandArchive);
 }
 
 void files_open_twl_nand() {
-    FS_Archive sdmcArchive = {ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, "")};
-    files_open(sdmcArchive);
+    FS_Archive twlNandArchive = {ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, "")};
+    files_open(twlNandArchive);
 }
 
 void files_open_twl_photo() {
-    FS_Archive sdmcArchive = {ARCHIVE_TWL_PHOTO, fsMakePath(PATH_EMPTY, "")};
-    files_open(sdmcArchive);
+    FS_Archive twlPhotoArchive = {ARCHIVE_TWL_PHOTO, fsMakePath(PATH_EMPTY, "")};
+    files_open(twlPhotoArchive);
+}
+
+void files_open_twl_sound() {
+    FS_Archive twlSoundArchive = {ARCHIVE_TWL_SOUND, {PATH_EMPTY, 0, ""}};
+    files_open(twlSoundArchive);
 }

@@ -8,21 +8,22 @@
 #include "section/section.h"
 #include "../screen.h"
 
-#define MAINMENU_ITEM_COUNT 12
+#define MAINMENU_ITEM_COUNT 13
 
 static u32 mainmenu_item_count = MAINMENU_ITEM_COUNT;
 static list_item mainmenu_items[MAINMENU_ITEM_COUNT] = {
-        {"SD", 0xFF000000, files_open_sd},
-        {"CTR NAND", 0xFF000000, files_open_ctr_nand},
-        {"TWL NAND", 0xFF000000, files_open_twl_nand},
-        {"TWL Photo", 0xFF000000, files_open_twl_photo},
-        {"Dump NAND", 0xFF000000, dump_nand},
-        {"Titles", 0xFF000000, titles_open},
-        {"Pending Titles", 0xFF000000, pendingtitles_open},
-        {"Tickets", 0xFF000000, tickets_open},
-        {"Ext Save Data", 0xFF000000, extsavedata_open},
-        {"System Save Data", 0xFF000000, systemsavedata_open},
-        {"Network Install to SD", 0xFF000000, networkinstall_open_sd},
+        {"SD", 0xFF000000,                      files_open_sd},
+        {"CTR NAND", 0xFF000000,                files_open_ctr_nand},
+        {"TWL NAND", 0xFF000000,                files_open_twl_nand},
+        {"TWL Photo", 0xFF000000,               files_open_twl_photo},
+        {"TWL Sound", 0xFF000000,                files_open_twl_sound},
+        {"Dump NAND", 0xFF000000,               dump_nand},
+        {"Titles", 0xFF000000,                  titles_open},
+        {"Pending Titles", 0xFF000000,          pendingtitles_open},
+        {"Tickets", 0xFF000000,                 tickets_open},
+        {"Ext Save Data", 0xFF000000,           extsavedata_open},
+        {"System Save Data", 0xFF000000,        systemsavedata_open},
+        {"Network Install to SD", 0xFF000000,   networkinstall_open_sd},
         {"Network Install to NAND", 0xFF000000, networkinstall_open_nand},
 };
 

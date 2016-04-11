@@ -296,7 +296,7 @@ static const char* description_to_string(Result res) {
                 case 10:
                     return "Not enough memory for allocation";
                 case 20:
-                    return "Wrong permissions for unprivilaged load or store";
+                    return "Wrong permissions for unprivileged access";
                 case 26:
                     return "Session closed by remote process";
                 case 47:
@@ -343,11 +343,13 @@ static const char* description_to_string(Result res) {
                 case 630:
                     return "Archive permission denied";
                 case 702:
-                    return "Invalid archive path / Inaccessible archive";
+                    return "Invalid path / Inaccessible archive";
                 case 705:
                     return "Offset out of bounds";
                 case 721:
                     return "Reached file size limit";
+                case 760:
+                    return "Unsupported operation";
                 case 761:
                     return "ExeFS read size mismatch";
                 default:
@@ -584,7 +586,7 @@ void error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, fl
     int summary = R_SUMMARY(result);
     int module = R_MODULE(result);
     int description = R_DESCRIPTION(result);
-    snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDecription: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
+    snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDesc: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
 
     ui_push(prompt_create("Error", errorData->fullText, 0xFF000000, false, errorData, NULL, error_draw_top, error_onresponse));
 }
