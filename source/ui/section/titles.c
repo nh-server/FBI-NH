@@ -43,6 +43,13 @@ static list_item dsiware_titles_action_items[DSIWARE_TITLES_ACTION_COUNT] = {
         {"Delete Title", 0xFF000000, action_delete_title},
 };
 
+#define DSIWARE_CARD_TITLES_ACTION_COUNT 1
+
+static u32 dsiware_card_titles_action_count = DSIWARE_CARD_TITLES_ACTION_COUNT;
+static list_item dsiware_card_titles_action_items[DSIWARE_CARD_TITLES_ACTION_COUNT] = {
+        {"Launch Title", 0xFF000000, action_launch_title},
+};
+
 typedef struct {
     title_info* info;
     bool* populated;
@@ -77,12 +84,17 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
         return;
     }
 
-    if(actionData->info->mediaType == MEDIATYPE_GAME_CARD) {
+    if(actionData->info->mediaType == MEDIATYPE_GAME_CARD && actionData->info->twl) {
+        if(*itemCount != &dsiware_card_titles_action_count || *items != dsiware_card_titles_action_items) {
+            *itemCount = &dsiware_card_titles_action_count;
+            *items = dsiware_card_titles_action_items;
+        }
+    } else if(actionData->info->mediaType == MEDIATYPE_GAME_CARD) {
         if(*itemCount != &card_titles_action_count || *items != card_titles_action_items) {
             *itemCount = &card_titles_action_count;
             *items = card_titles_action_items;
         }
-    } else if(((actionData->info->titleId >> 32) & 0x8000) != 0) {
+    } else if(actionData->info->twl) {
         if(*itemCount != &dsiware_titles_action_count || *items != dsiware_titles_action_items) {
             *itemCount = &dsiware_titles_action_count;
             *items = dsiware_titles_action_items;

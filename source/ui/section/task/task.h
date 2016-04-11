@@ -37,6 +37,7 @@ typedef struct {
     char productCode[0x10];
     u16 version;
     u64 installedSize;
+    bool twl;
     bool hasSmdh;
     smdh_info smdhInfo;
 } title_info;
