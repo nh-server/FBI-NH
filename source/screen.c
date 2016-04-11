@@ -5,8 +5,9 @@
 #include <citro3d.h>
 
 #include "screen.h"
-#include "lodepng.h"
+#include "stb_image.h"
 #include "util.h"
+
 #include "default_shbin.h"
 
 GX_TRANSFER_FORMAT gpuToGxFormat[13] = {
@@ -309,12 +310,12 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
         snprintf(realPath, realPathSize, "romfs:/%s", path);
     }
 
-    unsigned char* image;
-    unsigned width;
-    unsigned height;
-    unsigned pngErr = lodepng_decode32_file(&image, &width, &height, realPath);
-    if(pngErr != 0) {
-        util_panic("Failed to load PNG file \"%s\": %u", realPath, pngErr);
+    int width;
+    int height;
+    int depth;
+    u8* image = stbi_load(realPath, &width, &height, &depth, STBI_rgb_alpha);
+    if(image == NULL || depth != STBI_rgb_alpha) {
+        util_panic("Failed to load PNG file \"%s\".", realPath);
         return;
     }
 
@@ -334,7 +335,7 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
         }
     }
 
-    screen_load_texture(id, image, width * height * 4, width, height, GPU_RGBA8, linearFilter);
+    screen_load_texture(id, image, (u32) (width * height * 4), (u32) width, (u32) height, GPU_RGBA8, linearFilter);
 
     free(image);
 }
