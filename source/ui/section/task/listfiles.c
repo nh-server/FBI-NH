@@ -146,9 +146,9 @@ static void task_populate_files_thread(void* arg) {
                                                 CFGU_GetSystemLanguage(&systemLanguage);
 
                                                 fileInfo->ciaInfo.hasSmdh = true;
-                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.smdhInfo.shortDescription) - 1);
-                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.smdhInfo.longDescription) - 1);
-                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.smdhInfo.publisher) - 1);
+                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.smdhInfo.shortDescription));
+                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.smdhInfo.longDescription));
+                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.smdhInfo.publisher));
                                                 fileInfo->ciaInfo.smdhInfo.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
                                             }
                                         }

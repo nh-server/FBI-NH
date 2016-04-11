@@ -5,9 +5,9 @@
 #include "../../list.h"
 
 typedef struct {
-    char shortDescription[0x81];
-    char longDescription[0x161];
-    char publisher[0x81];
+    char shortDescription[0x100];
+    char longDescription[0x200];
+    char publisher[0x100];
     u32 texture;
 } smdh_info;
 

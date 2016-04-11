@@ -436,3 +436,19 @@ int util_compare_directory_entries(const void* e1, const void* e2) {
         return strcasecmp(entryName1, entryName2);
     }
 }
+
+u32 util_next_pow_2(u32 i) {
+    i--;
+    i |= i >> 1;
+    i |= i >> 2;
+    i |= i >> 4;
+    i |= i >> 8;
+    i |= i >> 16;
+    i++;
+
+    return i;
+}
+
+u32 util_tiled_texture_index(u32 x, u32 y, u32 w, u32 h) {
+    return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3));
+}

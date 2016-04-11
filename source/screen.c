@@ -208,34 +208,18 @@ void screen_exit() {
     }
 }
 
-u32 next_pow_2(u32 i) {
-    i--;
-    i |= i >> 1;
-    i |= i >> 2;
-    i |= i >> 4;
-    i |= i >> 8;
-    i |= i >> 16;
-    i++;
-
-    return i;
-}
-
-static u32 tiled_texture_index(u32 x, u32 y, u32 w, u32 h) {
-    return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3));
-}
-
 void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
         util_panic("Attempted to load buffer to invalid texture ID \"%lu\".", id);
         return;
     }
 
-    u32 pow2Width = next_pow_2(width);
+    u32 pow2Width = util_next_pow_2(width);
     if(pow2Width < 64) {
         pow2Width = 64;
     }
 
-    u32 pow2Height = next_pow_2(height);
+    u32 pow2Height = util_next_pow_2(height);
     if(pow2Height < 64) {
         pow2Height = 64;
     }
@@ -384,7 +368,7 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
     u8* untiledData = (u8*) calloc(1, size);
     for(u32 x = 0; x < width; x++) {
         for(u32 y = 0; y < height; y++) {
-            u32 tiledDataPos = tiled_texture_index(x, y, width, height) * pixelSize;
+            u32 tiledDataPos = util_tiled_texture_index(x, y, width, height) * pixelSize;
             u32 untiledDataPos = (y * width + x) * pixelSize;
 
             for(u32 i = 0; i < pixelSize; i++) {
