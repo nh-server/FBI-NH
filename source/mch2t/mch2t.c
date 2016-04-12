@@ -241,6 +241,28 @@ static void allocate_work(void) {
     svcExitThread();
 }
 
+u32 kprocess_ptr = 0;
+u32 kprocess_pid_offset = 0;
+
+u32 old_pid = 0;
+
+s32 kernel_patch_pid_zero() {
+    u32* pidPtr = (u32*) (*(u32*) kprocess_ptr + kprocess_pid_offset);
+
+    old_pid = *pidPtr;
+    *pidPtr = 0;
+
+    return 0;
+}
+
+s32 kernel_patch_pid_reset() {
+    u32* pidPtr = (u32*) (*(u32*) kprocess_ptr + kprocess_pid_offset);
+
+    *pidPtr = old_pid;
+
+    return 0;
+}
+
 #define VTABLE_ENTRIES 64
 #define MAX_HANDLES 32
 #define DUMMY_STACK_U32S 0x80
@@ -643,10 +665,32 @@ Result mch2t(void) {
     STEP_PRINT_VA(8, "free memory before exploit: %lld", start_free);
     STEP_PRINT_VA(8, "free memory now: %lld", osGetMemRegionFree(MEMREGION_APPLICATION));
 
+    kprocess_ptr = 0xFFFF9004;
+
+    if(osGetKernelVersion() < 0x022C0600) {
+        kprocess_pid_offset = 0xAC;
+    } else {
+        bool n3ds = false;
+        APT_CheckNew3DS((u8*) &n3ds);
+
+        if(n3ds) {
+            kprocess_pid_offset = 0xBC;
+        } else {
+            kprocess_pid_offset = 0xB4;
+        }
+    }
+
+    if(osGetKernelVersion() > 0x022E0000) {
+        svcBackdoor(kernel_patch_pid_zero);
+        srvExit();
+        srvInit();
+        svcBackdoor(kernel_patch_pid_reset);
+    }
+
     STEP_PRINT(9, "success!");
     return 0;
 
-    exploit_failed:
+exploit_failed:
     DEBUG_PRINT("Exploit failed irrecoverably; please long-press power and reboot");
     while (true) {
         svcSleepThread(10000000000ULL);

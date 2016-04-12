@@ -7,7 +7,6 @@
 #include "util.h"
 #include "libkhax/khax.h"
 #include "mch2t/mch2t.h"
-#include "patcher/patcher.h"
 #include "ui/mainmenu.h"
 #include "ui/section/action/clipboard.h"
 #include "ui/section/task/task.h"
@@ -44,8 +43,6 @@ int main(int argc, const char* argv[]) {
             return 1;
         }
     }
-
-    apply_patches();
 
     aptOpenSession();
     Result setCpuTimeRes = APT_SetAppCpuTimeLimit(30);
