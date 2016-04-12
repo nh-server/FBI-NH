@@ -6,6 +6,7 @@
 #include "screen.h"
 #include "util.h"
 #include "libkhax/khax.h"
+#include "mch2t/mch2t.h"
 #include "patcher/patcher.h"
 #include "ui/mainmenu.h"
 #include "ui/section/action/clipboard.h"
@@ -30,7 +31,6 @@ void cleanup() {
     amExit();
     cfguExit();
     romfsExit();
-    khaxExit();
     gfxExit();
 }
 
@@ -38,14 +38,14 @@ int main(int argc, const char* argv[]) {
     gfxInitDefault();
 
     if(argc > 0) {
-        Result res = khaxInit();
+        Result res = osGetKernelVersion() > 0x022E0000 ? mch2t() : khaxInit();
         if(R_FAILED(res)) {
-            util_panic("Failed to acquire service access: %08lX", res);
+            util_panic("Failed to acquire kernel access: 0x%08lX", res);
             return 1;
         }
     }
 
-    patch_fs();
+    apply_patches();
 
     aptOpenSession();
     Result setCpuTimeRes = APT_SetAppCpuTimeLimit(30);

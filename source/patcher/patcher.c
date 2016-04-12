@@ -29,36 +29,20 @@ typedef struct KCodeSet {
 } KCodeSet;
 #pragma pack(0)
 
-static u32 kernel_version = 0;
-static bool n3ds = false;
+u32 kprocess_ptr = 0;
+u32 kprocess_size = 0;
+u32 kprocess_code_set_offset = 0;
+u32 kprocess_pid_offset = 0;
 
 s32 kernel_patch_fs() {
     asm volatile("cpsid aif");
 
-    u32 processSize = 0;
-    u32 processCodeSetOffset = 0;
-    u32 processPidOffset = 0;
-
-    if(kernel_version < 0x022C0600) {
-        processSize = 0x260;
-        processCodeSetOffset = 0xA8;
-        processPidOffset = 0xAC;
-    } else if(n3ds) {
-        processSize = 0x270;
-        processCodeSetOffset = 0xB8;
-        processPidOffset = 0xBC;
-    } else {
-        processSize = 0x268;
-        processCodeSetOffset = 0xB0;
-        processPidOffset = 0xB4;
-    }
-
-    u32 currProcessPtr = *(u32*) 0xFFFF9004;
+    u32 currProcessPtr = *(u32*) kprocess_ptr;
     u32 vtablePtr = *(u32*) currProcessPtr;
 
-    for(u32 processPtr = currProcessPtr; *(u32*) processPtr == vtablePtr; processPtr -= processSize) {
-        if(*(u32*) (processPtr + processPidOffset) == 0) {
-            KCodeSet* codeSet = *(KCodeSet**) (processPtr + processCodeSetOffset);
+    for(u32 processPtr = currProcessPtr; *(u32*) processPtr == vtablePtr; processPtr -= kprocess_size) {
+        if(*(u32*) (processPtr + kprocess_pid_offset) == 0) {
+            KCodeSet* codeSet = *(KCodeSet**) (processPtr + kprocess_code_set_offset);
             if(codeSet != NULL) {
                 // Patches out an archive access check.
                 u8 original[] = {0x0C, 0x05, 0x0C, 0x33, 0x46, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x28, 0x01, 0xD0, 0x00, 0x20, 0xF8};
@@ -103,9 +87,53 @@ s32 kernel_patch_fs() {
     return 0;
 }
 
-void patch_fs() {
-    kernel_version = *(vu32*) 0x1FF80000;
-    APT_CheckNew3DS((u8*) &n3ds);
+u32 old_pid = 0;
+
+s32 kernel_patch_pid_zero() {
+    u32* pidPtr = (u32*) (*(u32*) kprocess_ptr + kprocess_pid_offset);
+
+    old_pid = *pidPtr;
+    *pidPtr = 0;
+
+    return 0;
+}
+
+s32 kernel_patch_pid_reset() {
+    u32* pidPtr = (u32*) (*(u32*) kprocess_ptr + kprocess_pid_offset);
+
+    *pidPtr = old_pid;
+
+    return 0;
+}
+
+void apply_patches() {
+    kprocess_ptr = 0xFFFF9004;
+
+    if(osGetKernelVersion() < 0x022C0600) {
+        kprocess_size = 0x260;
+        kprocess_code_set_offset = 0xA8;
+        kprocess_pid_offset = 0xAC;
+    } else {
+        bool n3ds = false;
+        APT_CheckNew3DS((u8*) &n3ds);
+
+        if(n3ds) {
+            kprocess_size = 0x270;
+            kprocess_code_set_offset = 0xB8;
+            kprocess_pid_offset = 0xBC;
+        } else {
+            kprocess_size = 0x268;
+            kprocess_code_set_offset = 0xB0;
+            kprocess_pid_offset = 0xB4;
+        }
+    }
+
+    if(osGetKernelVersion() > 0x022E0000) {
+        svcBackdoor(kernel_patch_pid_zero);
+        srvExit();
+        srvInit();
+        svcBackdoor(kernel_patch_pid_reset);
+    }
 
     svcBackdoor(kernel_patch_fs);
 }
