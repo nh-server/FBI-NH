@@ -4,8 +4,8 @@
 #include <3ds.h>
 #include <citro3d.h>
 
+#include "stb_image/stb_image.h"
 #include "screen.h"
-#include "stb_image.h"
 #include "util.h"
 
 #include "default_shbin.h"

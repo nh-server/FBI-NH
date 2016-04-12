@@ -1,4 +1,4 @@
 #pragma once
 
-void patch_fs();
+void apply_patches();
 
