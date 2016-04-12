@@ -7,6 +7,7 @@
 #include "../../progressbar.h"
 #include "../../prompt.h"
 #include "../task/task.h"
+#include "../../../screen.h"
 
 typedef struct {
     ext_save_data_info* info;
@@ -35,7 +36,7 @@ static void action_delete_ext_save_data_update(ui_view* view, void* data, float*
     } else {
         *deleteData->populated = false;
 
-        ui_push(prompt_create("Success", "Ext save data deleted.", 0xFF000000, false, deleteData->info, NULL, ui_draw_ext_save_data_info, action_delete_ext_save_data_success_onresponse));
+        ui_push(prompt_create("Success", "Ext save data deleted.", COLOR_TEXT, false, deleteData->info, NULL, ui_draw_ext_save_data_info, action_delete_ext_save_data_success_onresponse));
     }
 
     free(data);
@@ -56,5 +57,5 @@ void action_delete_ext_save_data(ext_save_data_info* info, bool* populated) {
     data->info = info;
     data->populated = populated;
 
-    ui_push(prompt_create("Confirmation", "Delete the selected ext save data?", 0xFF000000, true, data, NULL, action_delete_ext_save_data_draw_top, action_delete_ext_save_data_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete the selected ext save data?", COLOR_TEXT, true, data, NULL, action_delete_ext_save_data_draw_top, action_delete_ext_save_data_onresponse));
 }

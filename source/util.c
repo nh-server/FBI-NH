@@ -452,3 +452,19 @@ u32 util_next_pow_2(u32 i) {
 u32 util_tiled_texture_index(u32 x, u32 y, u32 w, u32 h) {
     return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3));
 }
+
+FILE* util_open_resource(const char* path) {
+    u32 realPathSize = strlen(path) + 16;
+    char realPath[realPathSize];
+
+    snprintf(realPath, realPathSize, "sdmc:/fbitheme/%s", path);
+    FILE* fd = fopen(realPath, "rb");
+
+    if(fd != NULL) {
+        return fd;
+    } else {
+        snprintf(realPath, realPathSize, "romfs:/%s", path);
+
+        return fopen(realPath, "rb");
+    }
+}

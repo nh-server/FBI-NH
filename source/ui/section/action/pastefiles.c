@@ -9,6 +9,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../../../screen.h"
 #include "../../../util.h"
 
 typedef struct {
@@ -45,7 +46,7 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
         progressbar_destroy(view);
         ui_pop();
 
-        ui_push(prompt_create("Failure", "Paste cancelled.", 0xFF000000, false, data, NULL, action_paste_files_draw_top, action_paste_files_done_onresponse));
+        ui_push(prompt_create("Failure", "Paste cancelled.", COLOR_TEXT, false, data, NULL, action_paste_files_draw_top, action_paste_files_done_onresponse));
         return;
     }
 
@@ -53,7 +54,7 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
         progressbar_destroy(view);
         ui_pop();
 
-        ui_push(prompt_create("Success", "Contents pasted.", 0xFF000000, false, data, NULL, action_paste_files_draw_top, action_paste_files_done_onresponse));
+        ui_push(prompt_create("Success", "Contents pasted.", COLOR_TEXT, false, data, NULL, action_paste_files_draw_top, action_paste_files_done_onresponse));
     } else {
         FS_Archive* srcArchive = clipboard_get_archive();
         char* srcPath = pasteData->contents[pasteData->processed];
@@ -150,7 +151,7 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
 
 void action_paste_contents(file_info* info, bool* populated) {
     if(!clipboard_has_contents()) {
-        ui_push(prompt_create("Failure", "Clipboard empty.", 0xFF000000, false, info, NULL, ui_draw_file_info, action_paste_files_failure_onresponse));
+        ui_push(prompt_create("Failure", "Clipboard empty.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, action_paste_files_failure_onresponse));
         return;
     }
 
@@ -167,5 +168,5 @@ void action_paste_contents(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Paste clipboard contents to the current directory?", 0xFF000000, true, data, NULL, action_paste_files_draw_top, action_paste_files_onresponse));
+    ui_push(prompt_create("Confirmation", "Paste clipboard contents to the current directory?", COLOR_TEXT, true, data, NULL, action_paste_files_draw_top, action_paste_files_onresponse));
 }

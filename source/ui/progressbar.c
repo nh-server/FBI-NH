@@ -54,7 +54,7 @@ static void progressbar_draw_bottom(ui_view* view, void* data, float x1, float y
 
     float progressTextX = x1 + (x2 - x1 - progressTextWidth) / 2;
     float progressTextY = progressBarBgY + progressBarBgHeight + 10;
-    screen_draw_string(progressBarData->progressText, progressTextX, progressTextY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(progressBarData->progressText, progressTextX, progressTextY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 ui_view* progressbar_create(const char* name, const char* info, void* data, void (*update)(ui_view* view, void* data, float* progress, char* progressText),

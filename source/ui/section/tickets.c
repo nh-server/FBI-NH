@@ -5,6 +5,7 @@
 
 #include "action/action.h"
 #include "task/task.h"
+#include "../../screen.h"
 #include "section.h"
 
 #define TICKETS_MAX 1024
@@ -20,7 +21,7 @@ typedef struct {
 
 static u32 tickets_action_count = TICKETS_ACTION_COUNT;
 static list_item tickets_action_items[TICKETS_ACTION_COUNT] = {
-        {"Delete Ticket", 0xFF000000, action_delete_ticket},
+        {"Delete Ticket", COLOR_TEXT, action_delete_ticket},
 };
 
 typedef struct {

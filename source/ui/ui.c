@@ -103,7 +103,7 @@ static void ui_draw_top(ui_view* ui) {
     float timeTextWidth;
     float timeTextHeight;
     screen_get_string_size(&timeTextWidth, &timeTextHeight, timeText, 0.5f, 0.5f);
-    screen_draw_string(timeText, topScreenTopBarX + (topScreenTopBarWidth - timeTextWidth) / 2, topScreenTopBarY + (topScreenTopBarHeight - timeTextHeight) / 2, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(timeText, topScreenTopBarX + (topScreenTopBarWidth - timeTextWidth) / 2, topScreenTopBarY + (topScreenTopBarHeight - timeTextHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
 
     u32 batteryIcon = 0;
     u8 batteryChargeState = 0;
@@ -152,7 +152,7 @@ static void ui_draw_top(ui_view* ui) {
     float freeSpaceHeight;
     screen_get_string_size(NULL, &freeSpaceHeight, buffer, 0.5f, 0.5f);
 
-    screen_draw_string(buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 static void ui_draw_bottom(ui_view* ui) {
@@ -197,14 +197,14 @@ static void ui_draw_bottom(ui_view* ui) {
         float nameWidth;
         float nameHeight;
         screen_get_string_size(&nameWidth, &nameHeight, ui->name, 0.5f, 0.5f);
-        screen_draw_string(ui->name, (BOTTOM_SCREEN_WIDTH - nameWidth) / 2, (bottomScreenTopBarHeight - nameHeight) / 2, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(ui->name, (BOTTOM_SCREEN_WIDTH - nameWidth) / 2, (bottomScreenTopBarHeight - nameHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 
     if(ui->info != NULL) {
         float infoWidth;
         float infoHeight;
         screen_get_string_size(&infoWidth, &infoHeight, ui->info, 0.5f, 0.5f);
-        screen_draw_string(ui->info, (BOTTOM_SCREEN_WIDTH - infoWidth) / 2, BOTTOM_SCREEN_HEIGHT - (bottomScreenBottomBarHeight + infoHeight) / 2, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(ui->info, (BOTTOM_SCREEN_WIDTH - infoWidth) / 2, BOTTOM_SCREEN_HEIGHT - (bottomScreenBottomBarHeight + infoHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 }
 
@@ -256,13 +256,13 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
         float smdhTextX = smdhIconX + 48 + 8;
 
         float smdhShortDescriptionY = smdhIconY + (48 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(info->smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float smdhPublisherY = smdhLongDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(info->smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 
     snprintf(buf, 64, "Ext Save Data ID: %016llX", info->extSaveDataId);
@@ -273,7 +273,7 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
 
     float saveDataIdX = x1 + (x2 - x1 - saveDataIdWidth) / 2;
     float saveDataIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, saveDataIdX, saveDataIdY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, saveDataIdX, saveDataIdY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     snprintf(buf, 64, "Shared: %s", info->shared ? "Yes" : "No");
 
@@ -283,7 +283,7 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
 
     float sharedX = x1 + (x2 - x1 - sharedWidth) / 2;
     float sharedY = saveDataIdY + saveDataIdHeight + 2;
-    screen_draw_string(buf, sharedX, sharedY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, sharedX, sharedY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -303,7 +303,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
     float nameX = x1 + (x2 - x1 - nameWidth) / 2;
     float nameY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, nameX, nameY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, nameX, nameY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     if(!info->isDirectory) {
         snprintf(buf, 64, "Size: %.2f MB", info->size / 1024.0 / 1024.0);
@@ -314,7 +314,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
         float sizeX = x1 + (x2 - x1 - sizeWidth) / 2;
         float sizeY = nameY + nameHeight + 2;
-        screen_draw_string(buf, sizeX, sizeY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(buf, sizeX, sizeY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         if(info->isCia) {
             if(info->ciaInfo.hasSmdh) {
@@ -350,13 +350,13 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
                 float smdhTextX = smdhIconX + 48 + 8;
 
                 float smdhShortDescriptionY = smdhIconY + (48 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-                screen_draw_string(info->ciaInfo.smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, 0xFF000000, false);
+                screen_draw_string(info->ciaInfo.smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
                 float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, 0xFF000000, false);
+                screen_draw_string(info->ciaInfo.smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
                 float smdhPublisherY = smdhLongDescriptionY + longDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, 0xFF000000, false);
+                screen_draw_string(info->ciaInfo.smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, COLOR_TEXT, false);
             }
 
             snprintf(buf, 64, "Title ID: %016llX", info->ciaInfo.titleId);
@@ -367,7 +367,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
             float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
             float titleIdY = sizeY + sizeHeight + 2;
-            screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, 0xFF000000, false);
+            screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
 
             snprintf(buf, 64, "Version: %hu", info->ciaInfo.version);
 
@@ -377,7 +377,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
             float versionX = x1 + (x2 - x1 - versionWidth) / 2;
             float versionY = titleIdY + titleIdHeight + 2;
-            screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, 0xFF000000, false);
+            screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
             snprintf(buf, 64, "Installed Size (SD): %.2f MB", info->ciaInfo.installedSizeSD / 1024.0 / 1024.0);
 
@@ -387,7 +387,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
             float installedSizeSDX = x1 + (x2 - x1 - installedSizeSDWidth) / 2;
             float installedSizeSDY = versionY + versionHeight + 2;
-            screen_draw_string(buf, installedSizeSDX, installedSizeSDY, 0.5f, 0.5f, 0xFF000000, false);
+            screen_draw_string(buf, installedSizeSDX, installedSizeSDY, 0.5f, 0.5f, COLOR_TEXT, false);
 
             snprintf(buf, 64, "Installed Size (NAND): %.2f MB", info->ciaInfo.installedSizeNAND / 1024.0 / 1024.0);
 
@@ -397,7 +397,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
             float installedSizeNANDX = x1 + (x2 - x1 - installedSizeNANDWidth) / 2;
             float installedSizeNANDY = installedSizeSDY + installedSizeSDHeight + 2;
-            screen_draw_string(buf, installedSizeNANDX, installedSizeNANDY, 0.5f, 0.5f, 0xFF000000, false);
+            screen_draw_string(buf, installedSizeNANDX, installedSizeNANDY, 0.5f, 0.5f, COLOR_TEXT, false);
         }
     } else {
         snprintf(buf, 64, "Directory");
@@ -408,7 +408,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
         float directoryX = x1 + (x2 - x1 - directoryWidth) / 2;
         float directoryY = nameY + nameHeight + 2;
-        screen_draw_string(buf, directoryX, directoryY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(buf, directoryX, directoryY, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 }
 
@@ -425,7 +425,7 @@ void ui_draw_pending_title_info(ui_view* view, void* data, float x1, float y1, f
 
     float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
     float titleIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     snprintf(buf, 64, "Media Type: %s", info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card");
 
@@ -435,7 +435,7 @@ void ui_draw_pending_title_info(ui_view* view, void* data, float x1, float y1, f
 
     float mediaTypeX = x1 + (x2 - x1 - mediaTypeWidth) / 2;
     float mediaTypeY = titleIdY + titleIdHeight + 2;
-    screen_draw_string(buf, mediaTypeX, mediaTypeY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, mediaTypeX, mediaTypeY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     snprintf(buf, 64, "Version: %hu", info->version);
 
@@ -445,7 +445,7 @@ void ui_draw_pending_title_info(ui_view* view, void* data, float x1, float y1, f
 
     float versionX = x1 + (x2 - x1 - versionWidth) / 2;
     float versionY = mediaTypeY + mediaTypeHeight + 2;
-    screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 void ui_draw_system_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -461,7 +461,7 @@ void ui_draw_system_save_data_info(ui_view* view, void* data, float x1, float y1
 
     float saveDataIdX = x1 + (x2 - x1 - saveDataIdWidth) / 2;
     float saveDataIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, saveDataIdX, saveDataIdY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, saveDataIdX, saveDataIdY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 void ui_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -477,7 +477,7 @@ void ui_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2
 
     float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
     float titleIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -518,13 +518,13 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
         float smdhTextX = smdhIconX + 48 + 8;
 
         float smdhShortDescriptionY = smdhIconY + (48 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(info->smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float smdhPublisherY = smdhLongDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, 0xFF000000, false);
+        screen_draw_string(info->smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 
     snprintf(buf, 64, "Title ID: %016llX", info->titleId);
@@ -535,7 +535,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
 
     float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
     float titleIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     snprintf(buf, 64, "Media Type: %s", info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card");
 
@@ -545,7 +545,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
 
     float mediaTypeX = x1 + (x2 - x1 - mediaTypeWidth) / 2;
     float mediaTypeY = titleIdY + titleIdHeight + 2;
-    screen_draw_string(buf, mediaTypeX, mediaTypeY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, mediaTypeX, mediaTypeY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     snprintf(buf, 64, "Product Code: %s", info->productCode);
 
@@ -555,7 +555,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
 
     float productCodeX = x1 + (x2 - x1 - productCodeWidth) / 2;
     float productCodeY = mediaTypeY + mediaTypeHeight + 2;
-    screen_draw_string(buf, productCodeX, productCodeY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, productCodeX, productCodeY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     snprintf(buf, 64, "Version: %hu", info->version);
 
@@ -565,7 +565,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
 
     float versionX = x1 + (x2 - x1 - versionWidth) / 2;
     float versionY = productCodeY + productCodeHeight + 2;
-    screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     snprintf(buf, 64, "Installed Size: %.2f MB", info->installedSize / 1024.0 / 1024.0);
 
@@ -575,5 +575,5 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
 
     float installedSizeX = x1 + (x2 - x1 - installedSizeWidth) / 2;
     float installedSizeY = versionY + versionHeight + 2;
-    screen_draw_string(buf, installedSizeX, installedSizeY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(buf, installedSizeX, installedSizeY, 0.5f, 0.5f, COLOR_TEXT, false);
 }

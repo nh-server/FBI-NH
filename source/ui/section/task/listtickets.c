@@ -8,6 +8,7 @@
 
 #include "../../list.h"
 #include "../../error.h"
+#include "../../../screen.h"
 #include "../../../util.h"
 #include "task.h"
 
@@ -42,7 +43,7 @@ static void task_populate_tickets_thread(void* arg) {
 
                         list_item* item = &data->items[*data->count];
                         snprintf(item->name, NAME_MAX, "%016llX", ticketIds[i]);
-                        item->rgba = 0xFF000000;
+                        item->rgba = COLOR_TEXT;
                         item->data = ticketInfo;
 
                         (*data->count)++;

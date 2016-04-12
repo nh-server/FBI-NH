@@ -1,5 +1,7 @@
+#include <errno.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <3ds.h>
 #include <citro3d.h>
@@ -25,6 +27,8 @@ GX_TRANSFER_FORMAT gpuToGxFormat[13] = {
         GX_TRANSFER_FMT_RGBA8, // Unsupported
         GX_TRANSFER_FMT_RGBA8  // Unsupported
 };
+
+static u32 colorConfig[NUM_COLORS];
 
 static bool c3dInitialized;
 
@@ -139,6 +143,45 @@ void screen_init() {
         tex->width = glyphInfo->sheetWidth;
         tex->height = glyphInfo->sheetHeight;
         tex->param = GPU_TEXTURE_MAG_FILTER(GPU_LINEAR) | GPU_TEXTURE_MIN_FILTER(GPU_LINEAR) | GPU_TEXTURE_WRAP_S(GPU_CLAMP_TO_EDGE) | GPU_TEXTURE_WRAP_T(GPU_CLAMP_TO_EDGE);
+    }
+
+    FILE* fd = util_open_resource("textcolor.cfg");
+    if(fd == NULL) {
+        util_panic("Failed to open text color config: %s\n", strerror(errno));
+        return;
+    }
+
+    char line[128];
+    while(fgets(line, sizeof(line), fd) != NULL) {
+        char* newline = strchr(line, '\n');
+        if(newline != NULL) {
+            *newline = '\0';
+        }
+
+        char* equals = strchr(line, '=');
+        if(equals != NULL) {
+            char key[64] = {'\0'};
+            char value[64] = {'\0'};
+
+            strncpy(key, line, equals - line);
+            strncpy(value, equals + 1, strlen(equals) - 1);
+
+            u32 color = strtoul(value, NULL, 16);
+
+            if(strcasecmp(key, "text") == 0) {
+                colorConfig[COLOR_TEXT] = color;
+            } else if(strcasecmp(key, "nand") == 0) {
+                colorConfig[COLOR_NAND] = color;
+            } else if(strcasecmp(key, "sd") == 0) {
+                colorConfig[COLOR_SD] = color;
+            } else if(strcasecmp(key, "gamecard") == 0) {
+                colorConfig[COLOR_GAME_CARD] = color;
+            } else if(strcasecmp(key, "dstitle") == 0) {
+                colorConfig[COLOR_DS_TITLE] = color;
+            } else if(strcasecmp(key, "directory") == 0) {
+                colorConfig[COLOR_DIRECTORY] = color;
+            }
+        }
     }
 
     screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BG, "bottom_screen_bg.png", true);
@@ -300,22 +343,18 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
         return;
     }
 
-    u32 realPathSize = strlen(path) + 16;
-    char realPath[realPathSize];
-    snprintf(realPath, realPathSize, "sdmc:/fbitheme/%s", path);
-    FILE* fd = fopen(realPath, "rb");
-    if(fd != NULL) {
-        fclose(fd);
-    } else {
-        snprintf(realPath, realPathSize, "romfs:/%s", path);
+    FILE* fd = util_open_resource(path);
+    if(fd == NULL) {
+        util_panic("Failed to load PNG file \"%s\": %s", strerror(errno));
+        return;
     }
 
     int width;
     int height;
     int depth;
-    u8* image = stbi_load(realPath, &width, &height, &depth, STBI_rgb_alpha);
+    u8* image = stbi_load_from_file(fd, &width, &height, &depth, STBI_rgb_alpha);
     if(image == NULL || depth != STBI_rgb_alpha) {
-        util_panic("Failed to load PNG file \"%s\".", realPath);
+        util_panic("Failed to load PNG file \"%s\".", path);
         return;
     }
 
@@ -540,7 +579,7 @@ void screen_get_string_size(float* width, float* height, const char* text, float
     screen_get_string_size_internal(width, height, text, scaleX, scaleY, false);
 }
 
-void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 rgba, bool baseline) {
+void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool baseline) {
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     if(env == NULL) {
         util_panic("Failed to retrieve combiner settings.");
@@ -552,7 +591,7 @@ void screen_draw_string(const char* text, float x, float y, float scaleX, float 
     C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
     C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
     C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
-    C3D_TexEnvColor(env, rgba);
+    C3D_TexEnvColor(env, colorConfig[colorId]);
 
     float stringWidth;
     screen_get_string_size_internal(&stringWidth, NULL, text, scaleX, scaleY, false);

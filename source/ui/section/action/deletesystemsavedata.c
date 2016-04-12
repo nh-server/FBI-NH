@@ -6,6 +6,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../../../screen.h"
 
 typedef struct {
     system_save_data_info* info;
@@ -34,7 +35,7 @@ static void action_delete_system_save_data_update(ui_view* view, void* data, flo
     } else {
         *deleteData->populated = false;
 
-        ui_push(prompt_create("Success", "System save data deleted.", 0xFF000000, false, deleteData->info, NULL, ui_draw_system_save_data_info, action_delete_system_save_data_success_onresponse));
+        ui_push(prompt_create("Success", "System save data deleted.", COLOR_TEXT, false, deleteData->info, NULL, ui_draw_system_save_data_info, action_delete_system_save_data_success_onresponse));
     }
 
     free(data);
@@ -55,5 +56,5 @@ void action_delete_system_save_data(system_save_data_info* info, bool* populated
     data->info = info;
     data->populated = populated;
 
-    ui_push(prompt_create("Confirmation", "Delete the selected system save data?", 0xFF000000, true, data, NULL, action_delete_system_save_data_draw_top, action_delete_system_save_data_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete the selected system save data?", COLOR_TEXT, true, data, NULL, action_delete_system_save_data_draw_top, action_delete_system_save_data_onresponse));
 }

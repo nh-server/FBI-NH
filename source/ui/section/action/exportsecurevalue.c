@@ -7,6 +7,7 @@
 #include "../../progressbar.h"
 #include "../../prompt.h"
 #include "../../../util.h"
+#include "../../../screen.h"
 
 static void action_export_secure_value_end_onresponse(ui_view* view, void* data, bool response) {
     prompt_destroy(view);
@@ -24,7 +25,7 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
             progressbar_destroy(view);
             ui_pop();
 
-            ui_push(prompt_create("Failure", "Secure value not set.", 0xFF000000, false, info, NULL, ui_draw_title_info, action_export_secure_value_end_onresponse));
+            ui_push(prompt_create("Failure", "Secure value not set.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, action_export_secure_value_end_onresponse));
 
             return;
         }
@@ -59,7 +60,7 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
     progressbar_destroy(view);
     ui_pop();
 
-    ui_push(prompt_create("Success", "Secure value exported.", 0xFF000000, false, info, NULL, ui_draw_title_info, action_export_secure_value_end_onresponse));
+    ui_push(prompt_create("Success", "Secure value exported.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, action_export_secure_value_end_onresponse));
 }
 
 static void action_export_secure_value_onresponse(ui_view* view, void* data, bool response) {
@@ -71,5 +72,5 @@ static void action_export_secure_value_onresponse(ui_view* view, void* data, boo
 }
 
 void action_export_secure_value(title_info* info, bool* populated) {
-    ui_push(prompt_create("Confirmation", "Export secure value for the selected title?", 0xFF000000, true, info, NULL, ui_draw_title_info, action_export_secure_value_onresponse));
+    ui_push(prompt_create("Confirmation", "Export secure value for the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_export_secure_value_onresponse));
 }

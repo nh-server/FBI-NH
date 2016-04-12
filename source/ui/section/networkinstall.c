@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <3ds.h>
 
@@ -86,6 +87,9 @@ static void networkinstall_close_client(network_install_data* data) {
     data->total = 0;
     data->currProcessed = 0;
     data->currTotal = 0;
+
+    memset(&data->installResult, 0, sizeof(data->installResult));
+    data->installCancelEvent = 0;
 }
 
 static void networkinstall_install_update(ui_view* view, void* data, float* progress, char* progressText) {
@@ -109,11 +113,11 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
                 progressbar_destroy(view);
 
                 if(networkInstallData->installResult.cancelled) {
-                    ui_push(prompt_create("Failure", "Install cancelled.", 0xFF000000, false, data, NULL, NULL, networkinstall_done_onresponse));
+                    ui_push(prompt_create("Failure", "Install cancelled.", COLOR_TEXT, false, data, NULL, NULL, networkinstall_done_onresponse));
                 } else if(networkInstallData->installResult.ioerr) {
                     error_display_errno(NULL, NULL, networkInstallData->installResult.ioerrno, "Failed to install CIA file.");
                 } else if(networkInstallData->installResult.wrongSystem) {
-                    ui_push(prompt_create("Failure", "Attempted to install to wrong system.", 0xFF000000, false, data, NULL, NULL, networkinstall_done_onresponse));
+                    ui_push(prompt_create("Failure", "Attempted to install to wrong system.", COLOR_TEXT, false, data, NULL, NULL, networkinstall_done_onresponse));
                 } else {
                     error_display_res(NULL, NULL, networkInstallData->installResult.result, "Failed to install CIA file.");
                 }
@@ -132,7 +136,7 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
             ui_pop();
             progressbar_destroy(view);
 
-            ui_push(prompt_create("Success", "Install finished.", 0xFF000000, false, data, NULL, NULL, networkinstall_done_onresponse));
+            ui_push(prompt_create("Success", "Install finished.", COLOR_TEXT, false, data, NULL, NULL, networkinstall_done_onresponse));
             return;
         } else {
             networkInstallData->currProcessed = 0;
@@ -215,10 +219,11 @@ static void networkinstall_wait_update(ui_view* view, void* data, float bx1, flo
             return;
         }
 
+        networkInstallData->processed = 0;
         networkInstallData->total = ntohl(networkInstallData->total);
 
         networkInstallData->clientSocket = sock;
-        ui_push(prompt_create("Confirmation", "Install received CIA(s)?", 0xFF000000, true, data, NULL, NULL, networkinstall_confirm_onresponse));
+        ui_push(prompt_create("Confirmation", "Install received CIA(s)?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_confirm_onresponse));
     } else if(errno != EAGAIN) {
         error_display_errno(NULL, NULL, errno, "Failed to open socket.");
     }
@@ -236,7 +241,7 @@ static void networkinstall_wait_draw_bottom(ui_view* view, void* data, float x1,
 
     float textX = x1 + (x2 - x1 - textWidth) / 2;
     float textY = y1 + (y2 - y1 - textHeight) / 2;
-    screen_draw_string(text, textX, textY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(text, textX, textY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 void networkinstall_open(FS_MediaType dest) {

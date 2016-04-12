@@ -5,6 +5,7 @@
 
 #include "action/action.h"
 #include "task/task.h"
+#include "../../screen.h"
 #include "section.h"
 
 #define EXTSAVEDATA_MAX 512
@@ -20,9 +21,9 @@ typedef struct {
 
 static u32 extsavedata_action_count = EXTSAVEDATA_ACTION_COUNT;
 static list_item extsavedata_action_items[EXTSAVEDATA_ACTION_COUNT] = {
-        {"Browse User Save Data", 0xFF000000, action_browse_user_ext_save_data},
-        {"Browse SpotPass Save Data", 0xFF000000, action_browse_boss_ext_save_data},
-        {"Delete Save Data", 0xFF000000, action_delete_ext_save_data},
+        {"Browse User Save Data", COLOR_TEXT, action_browse_user_ext_save_data},
+        {"Browse SpotPass Save Data", COLOR_TEXT, action_browse_boss_ext_save_data},
+        {"Delete Save Data", COLOR_TEXT, action_delete_ext_save_data},
 };
 
 typedef struct {

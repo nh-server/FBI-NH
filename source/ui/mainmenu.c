@@ -12,19 +12,19 @@
 
 static u32 mainmenu_item_count = MAINMENU_ITEM_COUNT;
 static list_item mainmenu_items[MAINMENU_ITEM_COUNT] = {
-        {"SD", 0xFF000000, files_open_sd},
-        {"CTR NAND", 0xFF000000, files_open_ctr_nand},
-        {"TWL NAND", 0xFF000000, files_open_twl_nand},
-        {"TWL Photo", 0xFF000000, files_open_twl_photo},
-        {"TWL Sound", 0xFF000000, files_open_twl_sound},
-        {"Dump NAND", 0xFF000000, dump_nand},
-        {"Titles", 0xFF000000, titles_open},
-        {"Pending Titles", 0xFF000000, pendingtitles_open},
-        {"Tickets", 0xFF000000, tickets_open},
-        {"Ext Save Data", 0xFF000000, extsavedata_open},
-        {"System Save Data", 0xFF000000, systemsavedata_open},
-        {"Network Install to SD", 0xFF000000, networkinstall_open_sd},
-        {"Network Install to NAND", 0xFF000000, networkinstall_open_nand},
+        {"SD", COLOR_TEXT, files_open_sd},
+        {"CTR NAND", COLOR_TEXT, files_open_ctr_nand},
+        {"TWL NAND", COLOR_TEXT, files_open_twl_nand},
+        {"TWL Photo", COLOR_TEXT, files_open_twl_photo},
+        {"TWL Sound", COLOR_TEXT, files_open_twl_sound},
+        {"Dump NAND", COLOR_TEXT, dump_nand},
+        {"Titles", COLOR_TEXT, titles_open},
+        {"Pending Titles", COLOR_TEXT, pendingtitles_open},
+        {"Tickets", COLOR_TEXT, tickets_open},
+        {"Ext Save Data", COLOR_TEXT, extsavedata_open},
+        {"System Save Data", COLOR_TEXT, systemsavedata_open},
+        {"Network Install to SD", COLOR_TEXT, networkinstall_open_sd},
+        {"Network Install to NAND", COLOR_TEXT, networkinstall_open_nand},
 };
 
 static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -45,7 +45,7 @@ static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, flo
 
     float verX = x1 + (x2 - x1 - verWidth) / 2;
     float verY = logoY + logoHeight + (y2 - (logoY + logoHeight) - verHeight) / 2;
-    screen_draw_string(verString, verX, verY, 0.5f, 0.5f, 0xFF000000, false);
+    screen_draw_string(verString, verX, verY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 static void mainmenu_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {

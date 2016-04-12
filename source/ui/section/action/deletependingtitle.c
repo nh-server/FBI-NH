@@ -6,6 +6,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../../../screen.h"
 
 typedef struct {
     pending_title_info* info;
@@ -33,7 +34,7 @@ static void action_delete_pending_title_update(ui_view* view, void* data, float*
     } else {
         *deleteData->populated = false;
 
-        ui_push(prompt_create("Success", "Pending title deleted.", 0xFF000000, false, deleteData->info, NULL, ui_draw_pending_title_info, action_delete_pending_title_success_onresponse));
+        ui_push(prompt_create("Success", "Pending title deleted.", COLOR_TEXT, false, deleteData->info, NULL, ui_draw_pending_title_info, action_delete_pending_title_success_onresponse));
     }
 
     free(data);
@@ -54,5 +55,5 @@ void action_delete_pending_title(pending_title_info* info, bool* populated) {
     data->info = info;
     data->populated = populated;
 
-    ui_push(prompt_create("Confirmation", "Delete the selected pending title?", 0xFF000000, true, data, NULL, action_delete_pending_title_draw_top, action_delete_pending_title_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete the selected pending title?", COLOR_TEXT, true, data, NULL, action_delete_pending_title_draw_top, action_delete_pending_title_onresponse));
 }

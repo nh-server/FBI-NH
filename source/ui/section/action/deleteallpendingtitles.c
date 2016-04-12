@@ -4,6 +4,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../../../screen.h"
 
 static void action_delete_all_pending_titles_success_onresponse(ui_view* view, void* data, bool response) {
     prompt_destroy(view);
@@ -29,7 +30,7 @@ static void action_delete_all_pending_titles_update(ui_view* view, void* data, f
     progressbar_destroy(view);
     ui_pop();
 
-    ui_push(prompt_create("Success", "Pending titles deleted.", 0xFF000000, false, NULL, NULL, NULL, action_delete_all_pending_titles_success_onresponse));
+    ui_push(prompt_create("Success", "Pending titles deleted.", COLOR_TEXT, false, NULL, NULL, NULL, action_delete_all_pending_titles_success_onresponse));
 }
 
 static void action_delete_all_pending_titles_onresponse(ui_view* view, void* data, bool response) {
@@ -41,5 +42,5 @@ static void action_delete_all_pending_titles_onresponse(ui_view* view, void* dat
 }
 
 void action_delete_all_pending_titles(pending_title_info* info, bool* populated) {
-    ui_push(prompt_create("Confirmation", "Delete all pending titles?", 0xFF000000, true, populated, NULL, NULL, action_delete_all_pending_titles_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete all pending titles?", COLOR_TEXT, true, populated, NULL, NULL, action_delete_all_pending_titles_onresponse));
 }

@@ -6,6 +6,7 @@
 #include "../error.h"
 #include "../progressbar.h"
 #include "../prompt.h"
+#include "../../screen.h"
 
 typedef struct {
     Handle in;
@@ -37,7 +38,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* pr
         progressbar_destroy(view);
         ui_pop();
 
-        ui_push(prompt_create("Failure", "Dump cancelled.", 0xFF000000, false, data, NULL, NULL, dumpnand_done_onresponse));
+        ui_push(prompt_create("Failure", "Dump cancelled.", COLOR_TEXT, false, data, NULL, NULL, dumpnand_done_onresponse));
 
         free(data);
 
@@ -100,7 +101,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* pr
         progressbar_destroy(view);
         ui_pop();
 
-        ui_push(prompt_create("Success", "NAND dumped.", 0xFF000000, false, NULL, NULL, NULL, dumpnand_done_onresponse));
+        ui_push(prompt_create("Success", "NAND dumped.", COLOR_TEXT, false, NULL, NULL, NULL, dumpnand_done_onresponse));
 
         free(data);
     } else {
@@ -154,5 +155,5 @@ void dump_nand() {
     data->offset = 0;
     data->size = 0;
 
-    ui_push(prompt_create("Confirmation", "Dump raw NAND image to the SD card?", 0xFF000000, true, data, NULL, NULL, dumpnand_onresponse));
+    ui_push(prompt_create("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, true, data, NULL, NULL, dumpnand_onresponse));
 }

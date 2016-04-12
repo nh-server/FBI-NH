@@ -5,6 +5,7 @@
 
 #include "action/action.h"
 #include "task/task.h"
+#include "../../screen.h"
 #include "section.h"
 
 #define SYSTEMSAVEDATA_MAX 512
@@ -20,8 +21,8 @@ typedef struct {
 
 static u32 systemsavedata_action_count = SYSTEMSAVEDATA_ACTION_COUNT;
 static list_item systemsavedata_action_items[SYSTEMSAVEDATA_ACTION_COUNT] = {
-        {"Browse Save Data", 0xFF000000, action_browse_system_save_data},
-        {"Delete Save Data", 0xFF000000, action_delete_system_save_data},
+        {"Browse Save Data", COLOR_TEXT, action_browse_system_save_data},
+        {"Delete Save Data", COLOR_TEXT, action_delete_system_save_data},
 };
 
 typedef struct {

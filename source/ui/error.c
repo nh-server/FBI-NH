@@ -7,6 +7,7 @@
 
 #include "error.h"
 #include "prompt.h"
+#include "../screen.h"
 
 typedef struct {
     char fullText[4096];
@@ -568,7 +569,7 @@ void error_display(void* data, void (*drawTop)(ui_view* view, void* data, float 
     vsnprintf(errorData->fullText, 4096, text, list);
     va_end(list);
 
-    ui_push(prompt_create("Error", errorData->fullText, 0xFF000000, false, errorData, NULL, error_draw_top, error_onresponse));
+    ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
 }
 
 void error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
@@ -588,7 +589,7 @@ void error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, fl
     int description = R_DESCRIPTION(result);
     snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDesc: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
 
-    ui_push(prompt_create("Error", errorData->fullText, 0xFF000000, false, errorData, NULL, error_draw_top, error_onresponse));
+    ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
 }
 
 void error_display_errno(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), int err, const char* text, ...) {
@@ -604,5 +605,5 @@ void error_display_errno(void* data, void (*drawTop)(ui_view* view, void* data, 
 
     snprintf(errorData->fullText, 4096, "%s\nError: %s (%d)", textBuf, strerror(err), err);
 
-    ui_push(prompt_create("Error", errorData->fullText, 0xFF000000, false, errorData, NULL, error_draw_top, error_onresponse));
+    ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
 }

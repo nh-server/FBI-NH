@@ -9,6 +9,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../../../screen.h"
 #include "../../../util.h"
 
 typedef struct {
@@ -84,7 +85,7 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
                 }
 
                 if(installData->installResult.cancelled) {
-                    ui_push(prompt_create("Failure", "Install cancelled.", 0xFF000000, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
+                    ui_push(prompt_create("Failure", "Install cancelled.", COLOR_TEXT, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
                 } else if(installData->installResult.ioerr) {
                     if(strlen(path) > 48) {
                         error_display_errno(installData->base, ui_draw_file_info, installData->installResult.ioerrno, "Failed to install CIA file.\n%.45s...", path);
@@ -92,7 +93,7 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
                         error_display_errno(installData->base, ui_draw_file_info, installData->installResult.ioerrno, "Failed to install CIA file.\n%.48s", path);
                     }
                 } else if(installData->installResult.wrongSystem) {
-                    ui_push(prompt_create("Failure", "Attempted to install to wrong system.", 0xFF000000, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
+                    ui_push(prompt_create("Failure", "Attempted to install to wrong system.", COLOR_TEXT, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
                 } else {
                     if(strlen(path) > 48) {
                         error_display_res(installData->base, ui_draw_file_info, installData->installResult.result, "Failed to install CIA file.\n%.45s...", path);
@@ -120,7 +121,7 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
             ui_pop();
             progressbar_destroy(view);
 
-            ui_push(prompt_create("Success", "Install finished.", 0xFF000000, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
+            ui_push(prompt_create("Success", "Install finished.", COLOR_TEXT, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
             return;
         } else {
             FS_Archive* archive = installData->base->archive;
@@ -200,7 +201,7 @@ static void action_install_cias(file_info* info, FS_MediaType mediaType) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Install the selected CIA(s)?", 0xFF000000, true, data, NULL, action_install_cias_draw_top, action_install_cias_onresponse));
+    ui_push(prompt_create("Confirmation", "Install the selected CIA(s)?", COLOR_TEXT, true, data, NULL, action_install_cias_draw_top, action_install_cias_onresponse));
 }
 
 void action_install_cias_sd(file_info* info, bool* populated) {
