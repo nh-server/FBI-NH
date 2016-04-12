@@ -8,6 +8,7 @@
 
 #include "../../list.h"
 #include "../../error.h"
+#include "../../../screen.h"
 #include "../../../util.h"
 #include "task.h"
 
@@ -46,9 +47,9 @@ static Result task_populate_pending_titles_from(populate_pending_titles_data* da
                                 list_item* item = &data->items[*data->count];
                                 snprintf(item->name, NAME_MAX, "%016llX", pendingTitleIds[i]);
                                 if(mediaType == MEDIATYPE_NAND) {
-                                    item->rgba = 0xFF0000FF;
+                                    item->rgba = COLOR_NAND;
                                 } else if(mediaType == MEDIATYPE_SD) {
-                                    item->rgba = 0xFF00FF00;
+                                    item->rgba = COLOR_SD;
                                 }
 
                                 item->data = pendingTitleInfo;

@@ -41,7 +41,7 @@ static void task_populate_files_thread(void* arg) {
 
             list_item* dotItem = &data->items[*data->count];
             strncpy(dotItem->name, ".", NAME_MAX);
-            dotItem->rgba = 0xFF0000FF;
+            dotItem->rgba = COLOR_DIRECTORY;
             dotItem->data = dotFileInfo;
 
             (*data->count)++;
@@ -63,7 +63,7 @@ static void task_populate_files_thread(void* arg) {
 
             list_item* dotDotItem = &data->items[*data->count];
             strncpy(dotDotItem->name, "..", NAME_MAX);
-            dotDotItem->rgba = 0xFF0000FF;
+            dotDotItem->rgba = COLOR_DIRECTORY;
             dotDotItem->data = dotDotFileInfo;
 
             (*data->count)++;
@@ -102,7 +102,7 @@ static void task_populate_files_thread(void* arg) {
                             list_item* item = &data->items[*data->count];
 
                             if(entries[i].attributes & FS_ATTRIBUTE_DIRECTORY) {
-                                item->rgba = 0xFF0000FF;
+                                item->rgba = COLOR_DIRECTORY;
 
                                 snprintf(fileInfo->path, PATH_MAX, "%s%s/", data->path, entryName);
                                 fileInfo->isDirectory = true;
@@ -110,7 +110,7 @@ static void task_populate_files_thread(void* arg) {
                                 fileInfo->size = 0;
                                 fileInfo->isCia = false;
                             } else {
-                                item->rgba = 0xFF000000;
+                                item->rgba = COLOR_TEXT;
 
                                 snprintf(fileInfo->path, PATH_MAX, "%s%s", data->path, entryName);
                                 fileInfo->isDirectory = false;

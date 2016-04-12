@@ -5,6 +5,7 @@
 
 #include "action/action.h"
 #include "task/task.h"
+#include "../../screen.h"
 #include "section.h"
 
 #define TITLES_MAX 1024
@@ -20,34 +21,34 @@ typedef struct {
 
 static u32 titles_action_count = TITLES_ACTION_COUNT;
 static list_item titles_action_items[TITLES_ACTION_COUNT] = {
-        {"Launch Title", 0xFF000000, action_launch_title},
-        {"Delete Title", 0xFF000000, action_delete_title},
-        {"Browse Save Data", 0xFF000000, action_browse_title_save_data},
-        {"Import Secure Value", 0xFF000000, action_import_secure_value},
-        {"Export Secure Value", 0xFF000000, action_export_secure_value},
+        {"Launch Title", COLOR_TEXT, action_launch_title},
+        {"Delete Title", COLOR_TEXT, action_delete_title},
+        {"Browse Save Data", COLOR_TEXT, action_browse_title_save_data},
+        {"Import Secure Value", COLOR_TEXT, action_import_secure_value},
+        {"Export Secure Value", COLOR_TEXT, action_export_secure_value},
 };
 
 #define CARD_TITLES_ACTION_COUNT 2
 
 static u32 card_titles_action_count = CARD_TITLES_ACTION_COUNT;
 static list_item card_titles_action_items[CARD_TITLES_ACTION_COUNT] = {
-        {"Launch Title", 0xFF000000, action_launch_title},
-        {"Browse Save Data", 0xFF000000, action_browse_title_save_data},
+        {"Launch Title", COLOR_TEXT, action_launch_title},
+        {"Browse Save Data", COLOR_TEXT, action_browse_title_save_data},
 };
 
 #define DSIWARE_TITLES_ACTION_COUNT 2
 
 static u32 dsiware_titles_action_count = DSIWARE_TITLES_ACTION_COUNT;
 static list_item dsiware_titles_action_items[DSIWARE_TITLES_ACTION_COUNT] = {
-        {"Launch Title", 0xFF000000, action_launch_title},
-        {"Delete Title", 0xFF000000, action_delete_title},
+        {"Launch Title", COLOR_TEXT, action_launch_title},
+        {"Delete Title", COLOR_TEXT, action_delete_title},
 };
 
 #define DSIWARE_CARD_TITLES_ACTION_COUNT 1
 
 static u32 dsiware_card_titles_action_count = DSIWARE_CARD_TITLES_ACTION_COUNT;
 static list_item dsiware_card_titles_action_items[DSIWARE_CARD_TITLES_ACTION_COUNT] = {
-        {"Launch Title", 0xFF000000, action_launch_title},
+        {"Launch Title", COLOR_TEXT, action_launch_title},
 };
 
 typedef struct {

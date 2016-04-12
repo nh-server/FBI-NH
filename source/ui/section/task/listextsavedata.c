@@ -80,11 +80,9 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                     }
 
                     if(mediaType == MEDIATYPE_NAND) {
-                        item->rgba = 0xFF0000FF;
+                        item->rgba = COLOR_NAND;
                     } else if(mediaType == MEDIATYPE_SD) {
-                        item->rgba = 0xFF00FF00;
-                    } else if(mediaType == MEDIATYPE_GAME_CARD) {
-                        item->rgba = 0xFFFF0000;
+                        item->rgba = COLOR_SD;
                     }
 
                     item->data = extSaveDataInfo;

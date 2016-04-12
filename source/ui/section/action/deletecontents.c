@@ -8,6 +8,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../../../screen.h"
 #include "../../../util.h"
 
 typedef struct {
@@ -40,7 +41,7 @@ static void action_delete_dir_contents_update(ui_view* view, void* data, float* 
         progressbar_destroy(view);
         ui_pop();
 
-        ui_push(prompt_create("Failure", "Delete cancelled.", 0xFF000000, false, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_done_onresponse));
+        ui_push(prompt_create("Failure", "Delete cancelled.", COLOR_TEXT, false, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_done_onresponse));
         return;
     }
 
@@ -48,7 +49,7 @@ static void action_delete_dir_contents_update(ui_view* view, void* data, float* 
         progressbar_destroy(view);
         ui_pop();
 
-        ui_push(prompt_create("Success", "Contents deleted.", 0xFF000000, false, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_done_onresponse));
+        ui_push(prompt_create("Success", "Contents deleted.", COLOR_TEXT, false, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_done_onresponse));
     } else {
         FS_Archive* archive = deleteData->base->archive;
         char* path = deleteData->contents[deleteData->processed];
@@ -114,7 +115,7 @@ void action_delete_contents(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Delete the selected content?", 0xFF000000, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete the selected content?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }
 
 void action_delete_dir_contents(file_info* info, bool* populated) {
@@ -131,7 +132,7 @@ void action_delete_dir_contents(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Delete all contents of the selected directory?", 0xFF000000, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete all contents of the selected directory?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }
 
 void action_delete_dir_cias(file_info* info, bool* populated) {
@@ -148,5 +149,5 @@ void action_delete_dir_cias(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Delete all CIAs in the selected directory?", 0xFF000000, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete all CIAs in the selected directory?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }

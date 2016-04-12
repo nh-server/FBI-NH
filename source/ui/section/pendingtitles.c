@@ -5,6 +5,7 @@
 
 #include "action/action.h"
 #include "task/task.h"
+#include "../../screen.h"
 #include "section.h"
 
 #define PENDINGTITLES_MAX 1024
@@ -20,8 +21,8 @@ typedef struct {
 
 static u32 pending_titles_action_count = PENDINGTITLES_ACTION_COUNT;
 static list_item pending_titles_action_items[PENDINGTITLES_ACTION_COUNT] = {
-        {"Delete Pending Title", 0xFF000000, action_delete_pending_title},
-        {"Delete All Pending Titles", 0xFF000000, action_delete_all_pending_titles},
+        {"Delete Pending Title", COLOR_TEXT, action_delete_pending_title},
+        {"Delete All Pending Titles", COLOR_TEXT, action_delete_all_pending_titles},
 };
 
 typedef struct {

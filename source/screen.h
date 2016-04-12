@@ -40,6 +40,22 @@
 #define TEXTURE_WIFI_3 29
 #define TEXTURE_AUTO_START 30
 
+#define COLOR_TEXT 0
+#define COLOR_NAND 1
+#define COLOR_SD 2
+#define COLOR_GAME_CARD 3
+#define COLOR_DS_TITLE 4
+#define COLOR_DIRECTORY 5
+
+#define NUM_COLORS 6
+
+/*#define COLOR_TEXT 0xFF000000
+#define COLOR_NAND 0xFF0000FF
+#define COLOR_SD 0xFF00FF00
+#define COLOR_GAME_CARD 0xFFFF0000
+#define COLOR_DS_TITLE 0xFF82004B
+#define COLOR_DIRECTORY 0xFF0000FF */
+
 void screen_init();
 void screen_exit();
 void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
@@ -56,4 +72,4 @@ void screen_select(gfxScreen_t screen);
 void screen_draw_texture(u32 id, float x, float y, float width, float height);
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height);
 void screen_get_string_size(float* width, float* height, const char* text, float scaleX, float scaleY);
-void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 rgba, bool baseline);
+void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool baseline);

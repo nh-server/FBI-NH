@@ -176,14 +176,14 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
 
                                     if(mediaType == MEDIATYPE_NAND) {
                                         if(dsiWare) {
-                                            item->rgba = 0xFF82004B;
+                                            item->rgba = COLOR_DS_TITLE;
                                         } else {
-                                            item->rgba = 0xFF0000FF;
+                                            item->rgba = COLOR_NAND;
                                         }
                                     } else if(mediaType == MEDIATYPE_SD) {
-                                        item->rgba = 0xFF00FF00;
+                                        item->rgba = COLOR_SD;
                                     } else if(mediaType == MEDIATYPE_GAME_CARD) {
-                                        item->rgba = 0xFFFF0000;
+                                        item->rgba = COLOR_GAME_CARD;
                                     }
 
                                     item->data = titleInfo;
@@ -277,7 +277,7 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
 
                 titleInfo->smdhInfo.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
 
-                item->rgba = 0xFFFF0000;
+                item->rgba = COLOR_DS_TITLE;
                 item->data = titleInfo;
 
                 (*data->count)++;

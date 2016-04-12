@@ -96,6 +96,11 @@ static void task_install_cia_thread(void* arg) {
                     break;
                 }
 
+                // TODO: Does this fix?
+                AM_DeleteTitle(data->dest, titleId);
+                AM_DeleteTicket(titleId);
+                AM_QueryAvailableExternalTitleDatabase(NULL);
+
                 if(R_FAILED(data->result->result = AM_StartCiaInstall(data->dest, &ciaHandle))) {
                     break;
                 }

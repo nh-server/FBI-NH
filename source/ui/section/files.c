@@ -7,8 +7,9 @@
 
 #include "action/action.h"
 #include "task/task.h"
-#include "../../util.h"
 #include "../error.h"
+#include "../../screen.h"
+#include "../../util.h"
 #include "section.h"
 
 #define FILES_MAX 1024
@@ -28,43 +29,43 @@ typedef struct {
 
 static u32 files_action_count = FILES_ACTION_COUNT;
 static list_item files_action_items[FILES_ACTION_COUNT] = {
-        {"Delete", 0xFF000000, action_delete_contents},
-        {"Copy", 0xFF000000, action_copy_contents},
-        {"Paste", 0xFF000000, action_paste_contents},
+        {"Delete", COLOR_TEXT, action_delete_contents},
+        {"Copy", COLOR_TEXT, action_copy_contents},
+        {"Paste", COLOR_TEXT, action_paste_contents},
 };
 
 #define CIA_FILES_ACTION_COUNT 5
 
 static u32 cia_files_action_count = CIA_FILES_ACTION_COUNT;
 static list_item cia_files_action_items[CIA_FILES_ACTION_COUNT] = {
-        {"Install CIA to SD", 0xFF000000, action_install_cias_sd},
-        {"Install CIA to NAND", 0xFF000000, action_install_cias_nand},
-        {"Delete", 0xFF000000, action_delete_contents},
-        {"Copy", 0xFF000000, action_copy_contents},
-        {"Paste", 0xFF000000, action_paste_contents},
+        {"Install CIA to SD", COLOR_TEXT, action_install_cias_sd},
+        {"Install CIA to NAND", COLOR_TEXT, action_install_cias_nand},
+        {"Delete", COLOR_TEXT, action_delete_contents},
+        {"Copy", COLOR_TEXT, action_copy_contents},
+        {"Paste", COLOR_TEXT, action_paste_contents},
 };
 
 #define DIRECTORIES_ACTION_COUNT 4
 
 static u32 directories_action_count = DIRECTORIES_ACTION_COUNT;
 static list_item directories_action_items[DIRECTORIES_ACTION_COUNT] = {
-        {"Delete all contents", 0xFF000000, action_delete_dir_contents},
-        {"Delete", 0xFF000000, action_delete_contents},
-        {"Copy", 0xFF000000, action_copy_contents},
-        {"Paste", 0xFF000000, action_paste_contents},
+        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
+        {"Delete", COLOR_TEXT, action_delete_contents},
+        {"Copy", COLOR_TEXT, action_copy_contents},
+        {"Paste", COLOR_TEXT, action_paste_contents},
 };
 
 #define CIA_DIRECTORIES_ACTION_COUNT 7
 
 static u32 cia_directories_action_count = CIA_DIRECTORIES_ACTION_COUNT;
 static list_item cia_directories_action_items[CIA_DIRECTORIES_ACTION_COUNT] = {
-        {"Install all CIAs to SD", 0xFF000000, action_install_cias_sd},
-        {"Install all CIAs to NAND", 0xFF000000, action_install_cias_nand},
-        {"Delete all CIAs", 0xFF000000, action_delete_dir_cias},
-        {"Delete all contents", 0xFF000000, action_delete_dir_contents},
-        {"Delete", 0xFF000000, action_delete_contents},
-        {"Copy", 0xFF000000, action_copy_contents},
-        {"Paste", 0xFF000000, action_paste_contents},
+        {"Install all CIAs to SD", COLOR_TEXT, action_install_cias_sd},
+        {"Install all CIAs to NAND", COLOR_TEXT, action_install_cias_nand},
+        {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias},
+        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
+        {"Delete", COLOR_TEXT, action_delete_contents},
+        {"Copy", COLOR_TEXT, action_copy_contents},
+        {"Paste", COLOR_TEXT, action_paste_contents},
 };
 
 typedef struct {

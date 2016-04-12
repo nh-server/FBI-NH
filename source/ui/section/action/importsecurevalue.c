@@ -6,6 +6,7 @@
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
+#include "../../../screen.h"
 
 static void action_import_secure_value_end_onresponse(ui_view* view, void* data, bool response) {
     prompt_destroy(view);
@@ -43,7 +44,7 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
     progressbar_destroy(view);
     ui_pop();
 
-    ui_push(prompt_create("Success", "Secure value imported.", 0xFF000000, false, info, NULL, ui_draw_title_info, action_import_secure_value_end_onresponse));
+    ui_push(prompt_create("Success", "Secure value imported.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, action_import_secure_value_end_onresponse));
 }
 
 static void action_import_secure_value_onresponse(ui_view* view, void* data, bool response) {
@@ -55,5 +56,5 @@ static void action_import_secure_value_onresponse(ui_view* view, void* data, boo
 }
 
 void action_import_secure_value(title_info* info, bool* populated) {
-    ui_push(prompt_create("Confirmation", "Import secure value for the selected title?", 0xFF000000, true, info, NULL, ui_draw_title_info, action_import_secure_value_onresponse));
+    ui_push(prompt_create("Confirmation", "Import secure value for the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_import_secure_value_onresponse));
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdio.h>
+
 typedef struct {
     u16 shortDescription[0x40];
     u16 longDescription[0x80];
@@ -61,3 +63,5 @@ int util_compare_directory_entries(const void* e1, const void* e2);
 
 u32 util_next_pow_2(u32 i);
 u32 util_tiled_texture_index(u32 x, u32 y, u32 w, u32 h);
+
+FILE* util_open_resource(const char* path);

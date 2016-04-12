@@ -1,10 +1,11 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../progressbar.h"
 #include "../../prompt.h"
-#include "../task/task.h"
+#include "../../../screen.h"
 
 static void action_launch_title_update(ui_view* view, void* data, float* progress, char* progressText) {
     title_info* info = (title_info*) data;
@@ -45,5 +46,5 @@ static void action_launch_title_onresponse(ui_view* view, void* data, bool respo
 }
 
 void action_launch_title(title_info* info, bool* populated) {
-    ui_push(prompt_create("Confirmation", "Launch the selected title?", 0xFF000000, true, info, NULL, ui_draw_title_info, action_launch_title_onresponse));
+    ui_push(prompt_create("Confirmation", "Launch the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_launch_title_onresponse));
 }
