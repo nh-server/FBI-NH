@@ -241,13 +241,15 @@ static void allocate_work(void) {
     svcExitThread();
 }
 
-u32 kprocess_ptr = 0;
-u32 kprocess_pid_offset = 0;
-
 u32 old_pid = 0;
 
 s32 kernel_patch_pid_zero() {
-    u32* pidPtr = (u32*) (*(u32*) kprocess_ptr + kprocess_pid_offset);
+    u32* pidPtr = NULL;
+    if(is_n3ds) {
+        pidPtr = (u32*) (*(u32*) 0xFFFF9004 + 0xBC);
+    } else {
+        pidPtr = (u32*) (*(u32*) 0xFFFF9004 + 0xB4);
+    }
 
     old_pid = *pidPtr;
     *pidPtr = 0;
@@ -256,7 +258,12 @@ s32 kernel_patch_pid_zero() {
 }
 
 s32 kernel_patch_pid_reset() {
-    u32* pidPtr = (u32*) (*(u32*) kprocess_ptr + kprocess_pid_offset);
+    u32* pidPtr = NULL;
+    if(is_n3ds) {
+        pidPtr = (u32*) (*(u32*) 0xFFFF9004 + 0xBC);
+    } else {
+        pidPtr = (u32*) (*(u32*) 0xFFFF9004 + 0xB4);
+    }
 
     *pidPtr = old_pid;
 
@@ -665,27 +672,10 @@ Result mch2t(void) {
     STEP_PRINT_VA(8, "free memory before exploit: %lld", start_free);
     STEP_PRINT_VA(8, "free memory now: %lld", osGetMemRegionFree(MEMREGION_APPLICATION));
 
-    kprocess_ptr = 0xFFFF9004;
-
-    if(osGetKernelVersion() < 0x022C0600) {
-        kprocess_pid_offset = 0xAC;
-    } else {
-        bool n3ds = false;
-        APT_CheckNew3DS((u8*) &n3ds);
-
-        if(n3ds) {
-            kprocess_pid_offset = 0xBC;
-        } else {
-            kprocess_pid_offset = 0xB4;
-        }
-    }
-
-    if(osGetKernelVersion() > 0x022E0000) {
-        svcBackdoor(kernel_patch_pid_zero);
-        srvExit();
-        srvInit();
-        svcBackdoor(kernel_patch_pid_reset);
-    }
+    svcBackdoor(kernel_patch_pid_zero);
+    srvExit();
+    srvInit();
+    svcBackdoor(kernel_patch_pid_reset);
 
     STEP_PRINT(9, "success!");
     return 0;
