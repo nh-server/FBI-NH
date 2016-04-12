@@ -15,6 +15,8 @@
 typedef struct {
     file_info* base;
     FS_MediaType dest;
+    bool delete;
+    bool* populated;
     Handle currHandle;
     bool installStarted;
     u64 currProcessed;
@@ -112,6 +114,12 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
                 }
             }
 
+            if(installData->delete) {
+                FSUSER_DeleteFile(*installData->base->archive, fsMakePath(PATH_ASCII, path));
+
+                *installData->populated = false;
+            }
+
             installData->processed++;
         }
 
@@ -184,10 +192,12 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
     }
 }
 
-static void action_install_cias(file_info* info, FS_MediaType mediaType) {
+static void action_install_cias(file_info* info, bool* populated, FS_MediaType mediaType, bool delete) {
     install_cias_data* data = (install_cias_data*) calloc(1, sizeof(install_cias_data));
     data->base = info;
     data->dest = mediaType;
+    data->delete = delete;
+    data->populated = populated;
     data->installStarted = false;
     data->currProcessed = 0;
     data->currTotal = 0;
@@ -204,10 +214,18 @@ static void action_install_cias(file_info* info, FS_MediaType mediaType) {
     ui_push(prompt_create("Confirmation", "Install the selected CIA(s)?", COLOR_TEXT, true, data, NULL, action_install_cias_draw_top, action_install_cias_onresponse));
 }
 
-void action_install_cias_sd(file_info* info, bool* populated) {
-    action_install_cias(info, MEDIATYPE_SD);
+void action_install_cias_nand(file_info* info, bool* populated) {
+    action_install_cias(info, populated, MEDIATYPE_NAND, false);
 }
 
-void action_install_cias_nand(file_info* info, bool* populated) {
-    action_install_cias(info, MEDIATYPE_NAND);
+void action_install_cias_sd(file_info* info, bool* populated) {
+    action_install_cias(info, populated, MEDIATYPE_SD, false);
+}
+
+void action_install_cias_delete_nand(file_info* info, bool* populated) {
+    action_install_cias(info, populated, MEDIATYPE_NAND, true);
+}
+
+void action_install_cias_delete_sd(file_info* info, bool* populated) {
+    action_install_cias(info, populated, MEDIATYPE_SD, true);
 }
