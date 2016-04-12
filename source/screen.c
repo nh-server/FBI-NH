@@ -28,7 +28,7 @@ GX_TRANSFER_FORMAT gpuToGxFormat[13] = {
         GX_TRANSFER_FMT_RGBA8  // Unsupported
 };
 
-static u32 colorConfig[NUM_COLORS];
+static u32 colorConfig[NUM_COLORS] = {0xFF000000};
 
 static bool c3dInitialized;
 
