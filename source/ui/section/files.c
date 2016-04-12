@@ -36,12 +36,14 @@ static list_item files_action_items[FILES_ACTION_COUNT] = {
         {"Paste", COLOR_TEXT, action_paste_contents},
 };
 
-#define CIA_FILES_ACTION_COUNT 5
+#define CIA_FILES_ACTION_COUNT 7
 
 static u32 cia_files_action_count = CIA_FILES_ACTION_COUNT;
 static list_item cia_files_action_items[CIA_FILES_ACTION_COUNT] = {
         {"Install CIA to SD", COLOR_TEXT, action_install_cias_sd},
         {"Install CIA to NAND", COLOR_TEXT, action_install_cias_nand},
+        {"Install CIA to SD and delete", COLOR_TEXT, action_install_cias_delete_sd},
+        {"Install CIA to NAND and delete", COLOR_TEXT, action_install_cias_delete_nand},
         {"Delete", COLOR_TEXT, action_delete_contents},
         {"Copy", COLOR_TEXT, action_copy_contents},
         {"Paste", COLOR_TEXT, action_paste_contents},
@@ -57,12 +59,14 @@ static list_item directories_action_items[DIRECTORIES_ACTION_COUNT] = {
         {"Paste", COLOR_TEXT, action_paste_contents},
 };
 
-#define CIA_DIRECTORIES_ACTION_COUNT 7
+#define CIA_DIRECTORIES_ACTION_COUNT 9
 
 static u32 cia_directories_action_count = CIA_DIRECTORIES_ACTION_COUNT;
 static list_item cia_directories_action_items[CIA_DIRECTORIES_ACTION_COUNT] = {
         {"Install all CIAs to SD", COLOR_TEXT, action_install_cias_sd},
         {"Install all CIAs to NAND", COLOR_TEXT, action_install_cias_nand},
+        {"Install all CIAs to SD and delete", COLOR_TEXT, action_install_cias_delete_sd},
+        {"Install all CIAs to NAND and delete", COLOR_TEXT, action_install_cias_delete_nand},
         {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias},
         {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
         {"Delete", COLOR_TEXT, action_delete_contents},

@@ -11,6 +11,8 @@ void action_delete_system_save_data(system_save_data_info* info, bool* populated
 
 void action_install_cias_nand(file_info* info, bool* populated);
 void action_install_cias_sd(file_info* info, bool* populated);
+void action_install_cias_delete_nand(file_info* info, bool* populated);
+void action_install_cias_delete_sd(file_info* info, bool* populated);
 void action_copy_contents(file_info* info, bool* populated);
 void action_delete_contents(file_info* info, bool* populated);
 void action_delete_dir_contents(file_info* info, bool* populated);
