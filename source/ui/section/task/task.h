@@ -79,7 +79,7 @@ bool task_is_quit_all();
 void task_quit_all();
 
 Handle task_populate_ext_save_data(list_item* items, u32* count, u32 max);
-Handle task_populate_files(list_item* items, u32* count, u32 max, FS_Archive* archive, const char* path);
+Handle task_populate_files(list_item* items, u32* count, u32 max, file_info* dir);
 Handle task_populate_pending_titles(list_item* items, u32* count, u32 max);
 Handle task_populate_system_save_data(list_item* items, u32* count, u32 max);
 Handle task_populate_tickets(list_item* items, u32* count, u32 max);
