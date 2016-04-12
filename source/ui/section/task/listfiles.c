@@ -19,62 +19,19 @@ typedef struct {
 
     Handle cancelEvent;
 
-    FS_Archive* archive;
-    const char* path;
+    file_info* dir;
 } populate_files_data;
 
 static void task_populate_files_thread(void* arg) {
     populate_files_data* data = (populate_files_data*) arg;
 
+    data->dir->containsCias = false;
+
     Result res = 0;
 
     if(data->max > *data->count) {
-        file_info* dotFileInfo = (file_info*) calloc(1, sizeof(file_info));
-        if(dotFileInfo != NULL) {
-            dotFileInfo->archive = data->archive;
-            strncpy(dotFileInfo->path, data->path, PATH_MAX);
-            util_get_path_file(dotFileInfo->name, dotFileInfo->path, NAME_MAX);
-            dotFileInfo->isDirectory = true;
-            dotFileInfo->containsCias = false;
-            dotFileInfo->size = 0;
-            dotFileInfo->isCia = false;
-
-            list_item* dotItem = &data->items[*data->count];
-            strncpy(dotItem->name, ".", NAME_MAX);
-            dotItem->rgba = COLOR_DIRECTORY;
-            dotItem->data = dotFileInfo;
-
-            (*data->count)++;
-        } else {
-            res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
-        }
-    }
-
-    if(R_SUCCEEDED(res) && data->max > *data->count) {
-        file_info* dotDotFileInfo = (file_info*) calloc(1, sizeof(file_info));
-        if(dotDotFileInfo != NULL) {
-            dotDotFileInfo->archive = data->archive;
-            util_get_parent_path(dotDotFileInfo->path, data->path, PATH_MAX);
-            util_get_path_file(dotDotFileInfo->name, dotDotFileInfo->path, NAME_MAX);
-            dotDotFileInfo->isDirectory = true;
-            dotDotFileInfo->containsCias = false;
-            dotDotFileInfo->size = 0;
-            dotDotFileInfo->isCia = false;
-
-            list_item* dotDotItem = &data->items[*data->count];
-            strncpy(dotDotItem->name, "..", NAME_MAX);
-            dotDotItem->rgba = COLOR_DIRECTORY;
-            dotDotItem->data = dotDotFileInfo;
-
-            (*data->count)++;
-        } else {
-            res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
-        }
-    }
-
-    if(R_SUCCEEDED(res) && data->max > *data->count) {
         Handle dirHandle = 0;
-        if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *data->archive, fsMakePath(PATH_ASCII, data->path)))) {
+        if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *data->dir->archive, fsMakePath(PATH_ASCII, data->dir->path)))) {
             u32 entryCount = 0;
             FS_DirectoryEntry* entries = (FS_DirectoryEntry*) calloc(data->max, sizeof(FS_DirectoryEntry));
             if(entries != NULL) {
@@ -96,7 +53,7 @@ static void task_populate_files_thread(void* arg) {
                             char entryName[0x213] = {'\0'};
                             utf16_to_utf8((uint8_t*) entryName, entries[i].name, sizeof(entryName) - 1);
 
-                            fileInfo->archive = data->archive;
+                            fileInfo->archive = data->dir->archive;
                             strncpy(fileInfo->name, entryName, NAME_MAX);
 
                             list_item* item = &data->items[*data->count];
@@ -104,7 +61,7 @@ static void task_populate_files_thread(void* arg) {
                             if(entries[i].attributes & FS_ATTRIBUTE_DIRECTORY) {
                                 item->rgba = COLOR_DIRECTORY;
 
-                                snprintf(fileInfo->path, PATH_MAX, "%s%s/", data->path, entryName);
+                                snprintf(fileInfo->path, PATH_MAX, "%s%s/", data->dir->path, entryName);
                                 fileInfo->isDirectory = true;
                                 fileInfo->containsCias = false;
                                 fileInfo->size = 0;
@@ -112,19 +69,19 @@ static void task_populate_files_thread(void* arg) {
                             } else {
                                 item->rgba = COLOR_TEXT;
 
-                                snprintf(fileInfo->path, PATH_MAX, "%s%s", data->path, entryName);
+                                snprintf(fileInfo->path, PATH_MAX, "%s%s", data->dir->path, entryName);
                                 fileInfo->isDirectory = false;
                                 fileInfo->containsCias = false;
                                 fileInfo->size = 0;
                                 fileInfo->isCia = false;
 
                                 Handle fileHandle;
-                                if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *data->archive, fsMakePath(PATH_ASCII, fileInfo->path), FS_OPEN_READ, 0))) {
+                                if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *data->dir->archive, fsMakePath(PATH_ASCII, fileInfo->path), FS_OPEN_READ, 0))) {
                                     FSFILE_GetSize(fileHandle, &fileInfo->size);
 
                                     AM_TitleEntry titleEntry;
                                     if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
-                                        fileInfo->containsCias = true;
+                                        data->dir->containsCias = true;
 
                                         fileInfo->isCia = true;
                                         fileInfo->ciaInfo.titleId = titleEntry.titleID;
@@ -207,8 +164,8 @@ static void task_clear_files(list_item* items, u32* count) {
     }
 }
 
-Handle task_populate_files(list_item* items, u32* count, u32 max, FS_Archive* archive, const char* path) {
-    if(items == NULL || count == NULL || max == 0 || archive == NULL || path == NULL) {
+Handle task_populate_files(list_item* items, u32* count, u32 max, file_info* dir) {
+    if(items == NULL || count == NULL || max == 0 || dir == NULL) {
         return 0;
     }
 
@@ -218,8 +175,7 @@ Handle task_populate_files(list_item* items, u32* count, u32 max, FS_Archive* ar
     data->items = items;
     data->count = count;
     data->max = max;
-    data->archive = archive;
-    data->path = path;
+    data->dir = dir;
 
     Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
     if(R_FAILED(eventRes)) {

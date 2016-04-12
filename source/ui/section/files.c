@@ -22,7 +22,9 @@ typedef struct {
 
     FS_Archive archive;
     void* archivePath;
-    char path[PATH_MAX];
+
+    file_info currDir;
+    file_info parentDir;
 } files_data;
 
 #define FILES_ACTION_COUNT 3
@@ -153,22 +155,39 @@ static void files_repopulate(files_data* listData) {
         listData->cancelEvent = 0;
     }
 
-    if(!util_is_dir(&listData->archive, listData->path)) {
+    while(!util_is_dir(&listData->archive, listData->currDir.path)) {
         char parentPath[PATH_MAX];
-        util_get_parent_path(parentPath, listData->path, PATH_MAX);
 
-        strncpy(listData->path, parentPath, PATH_MAX);
+        util_get_parent_path(parentPath, listData->currDir.path, PATH_MAX);
+        strncpy(listData->currDir.path, parentPath, PATH_MAX);
+        util_get_path_file(listData->currDir.name, listData->currDir.path, NAME_MAX);
+
+        util_get_parent_path(parentPath, listData->currDir.path, PATH_MAX);
+        strncpy(listData->parentDir.path, parentPath, PATH_MAX);
+        util_get_path_file(listData->parentDir.name, listData->parentDir.path, NAME_MAX);
     }
 
-    listData->cancelEvent = task_populate_files(listData->items, &listData->count, FILES_MAX, &listData->archive, listData->path);
+    listData->cancelEvent = task_populate_files(listData->items, &listData->count, FILES_MAX, &listData->currDir);
     listData->populated = true;
+}
+
+static void files_navigate(files_data* listData, const char* path) {
+    strncpy(listData->currDir.path, path, PATH_MAX);
+    util_get_path_file(listData->currDir.name, listData->currDir.path, NAME_MAX);
+
+    char parentPath[PATH_MAX];
+    util_get_parent_path(parentPath, listData->currDir.path, PATH_MAX);
+    strncpy(listData->parentDir.path, parentPath, PATH_MAX);
+    util_get_path_file(listData->parentDir.name, listData->parentDir.path, NAME_MAX);
+
+    files_repopulate(listData);
 }
 
 static void files_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
     files_data* listData = (files_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        if(strcmp(listData->path, "/") == 0) {
+        if(strcmp(listData->currDir.path, "/") == 0) {
             if(listData->archive.handle != 0) {
                 FSUSER_CloseArchive(&listData->archive);
                 listData->archive.handle = 0;
@@ -192,36 +211,24 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
             free(listData);
             list_destroy(view);
             return;
-        } else if(*items != NULL && *itemCount != NULL) {
-            for(u32 i = 0; i < **itemCount; i++) {
-                char* name = (*items)[i].name;
-                file_info* fileInfo = (*items)[i].data;
-                if(fileInfo != NULL && strcmp(name, "..") == 0) {
-                    strncpy(listData->path, fileInfo->path, PATH_MAX);
-                    files_repopulate(listData);
-                    break;
-                }
-            }
+        } else {
+            files_navigate(listData, listData->parentDir.path);
         }
+    }
+
+    if(hidKeysDown() & KEY_Y) {
+        ui_push(files_action_create(&listData->currDir, &listData->populated));
+        return;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         file_info* fileInfo = (file_info*) selected->data;
 
-        if(strcmp(selected->name, ".") == 0) {
+        if(util_is_dir(&listData->archive, fileInfo->path)) {
+            files_navigate(listData, fileInfo->path);
+        } else {
             ui_push(files_action_create(fileInfo, &listData->populated));
             return;
-        } else if(strcmp(selected->name, "..") == 0) {
-            strncpy(listData->path, fileInfo->path, PATH_MAX);
-            files_repopulate(listData);
-        } else {
-            if(util_is_dir(&listData->archive, fileInfo->path)) {
-                strncpy(listData->path, fileInfo->path, PATH_MAX);
-                files_repopulate(listData);
-            } else {
-                ui_push(files_action_create(fileInfo, &listData->populated));
-                return;
-            }
         }
     }
 
@@ -238,7 +245,6 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
 void files_open(FS_Archive archive) {
     files_data* data = (files_data*) calloc(1, sizeof(files_data));
     data->archive = archive;
-    snprintf(data->path, PATH_MAX, "/");
 
     if(data->archive.lowPath.size > 0) {
         data->archivePath = calloc(1,  data->archive.lowPath.size);
@@ -260,7 +266,17 @@ void files_open(FS_Archive archive) {
         return;
     }
 
-    ui_push(list_create("Files", "A: Select, B: Back/Return, X: Refresh", data, files_update, files_draw_top));
+    data->currDir.archive = &data->archive;
+    snprintf(data->currDir.path, PATH_MAX, "/");
+    util_get_path_file(data->currDir.name, data->currDir.path, NAME_MAX);
+    data->currDir.isDirectory = true;
+    data->currDir.containsCias = false;
+    data->currDir.size = 0;
+    data->currDir.isCia = false;
+
+    memcpy(&data->parentDir, &data->currDir, sizeof(data->parentDir));
+
+    ui_push(list_create("Files", "A: Select, B: Back, X: Refresh, Y: Directory Action", data, files_update, files_draw_top));
 }
 
 void files_open_sd() {
