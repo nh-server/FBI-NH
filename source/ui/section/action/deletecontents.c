@@ -62,6 +62,10 @@ static void action_delete_dir_contents_update(ui_view* view, void* data, float* 
             res = FSUSER_DeleteFile(*archive, fsPath);
         }
 
+        if(R_SUCCEEDED(res) && archive->id == ARCHIVE_USER_SAVEDATA) {
+            res = FSUSER_ControlArchive(*archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+        }
+
         if(R_FAILED(res)) {
             if(deleteData->processed >= deleteData->total - 1) {
                 ui_pop();

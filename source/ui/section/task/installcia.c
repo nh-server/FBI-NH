@@ -1,7 +1,4 @@
-#include <sys/syslimits.h>
 #include <malloc.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <3ds.h>
@@ -9,7 +6,6 @@
 
 #include "../../list.h"
 #include "../../error.h"
-#include "../../../util.h"
 #include "task.h"
 
 typedef struct {
@@ -95,7 +91,10 @@ static void task_install_cia_thread(void* arg) {
 
                 AM_DeleteTitle(dest, titleId);
                 AM_DeleteTicket(titleId);
-                AM_QueryAvailableExternalTitleDatabase(NULL);
+
+                if(dest == 1) {
+                    AM_QueryAvailableExternalTitleDatabase(NULL);
+                }
 
                 if(R_FAILED(data->result->result = AM_StartCiaInstall(dest, &ciaHandle))) {
                     break;
@@ -115,7 +114,7 @@ static void task_install_cia_thread(void* arg) {
             if(R_FAILED(data->result->result)) {
                 AM_CancelCIAInstall(ciaHandle);
             } else if(R_SUCCEEDED(data->result->result = AM_FinishCiaInstall(ciaHandle))) {
-                if(titleId == 0x0004013800000002LL || titleId == 0x0004013820000002LL) {
+                if(titleId == 0x0004013800000002 || titleId == 0x0004013820000002) {
                     data->result->result = AM_InstallFirm(titleId);
                 }
             }
