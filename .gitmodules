@@ -1,6 +1,6 @@
 [submodule "buildtools"]
 	path = buildtools
 	url = git://github.com/Steveice10/buildtools
-[submodule "source/libkhax"]
-	path = source/libkhax
-	url = git://github.com/Myriachan/libkhax
+[submodule "source/svchax"]
+	path = source/svchax
+	url = git://github.com/aliaspider/svchax

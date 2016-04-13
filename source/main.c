@@ -1,12 +1,10 @@
 #include <malloc.h>
-#include <stdlib.h>
 
 #include <3ds.h>
 
 #include "screen.h"
 #include "util.h"
-#include "libkhax/khax.h"
-#include "mch2t/mch2t.h"
+#include "svchax/svchax.h"
 #include "ui/mainmenu.h"
 #include "ui/section/action/clipboard.h"
 #include "ui/section/task/task.h"
@@ -37,9 +35,9 @@ int main(int argc, const char* argv[]) {
     gfxInitDefault();
 
     if(argc > 0) {
-        Result res = osGetKernelVersion() > 0x022E0000 ? mch2t() : khaxInit();
-        if(R_FAILED(res)) {
-            util_panic("Failed to acquire kernel access: 0x%08lX", res);
+        svchax_init(true);
+        if(!__ctr_svchax || !__ctr_svchax_srv) {
+            util_panic("Failed to acquire kernel access.");
             return 1;
         }
     }
