@@ -88,6 +88,7 @@ static void networkinstall_close_client(network_install_data* data) {
     data->currTotal = 0;
 
     data->installCancelEvent = 0;
+    memset(&data->installResult, 0, sizeof(data->installResult));
 }
 
 static void networkinstall_install_update(ui_view* view, void* data, float* progress, char* progressText) {
@@ -105,8 +106,6 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
     if(!networkInstallData->installStarted || networkInstallData->installResult.finished) {
         if(networkInstallData->installResult.finished) {
             if(networkInstallData->installResult.failed) {
-                networkinstall_close_client(networkInstallData);
-
                 ui_pop();
                 progressbar_destroy(view);
 
@@ -119,6 +118,8 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
                 } else {
                     error_display_res(NULL, NULL, networkInstallData->installResult.result, "Failed to install CIA file.");
                 }
+
+                networkinstall_close_client(networkInstallData);
 
                 return;
             }
@@ -139,8 +140,6 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
         } else {
             networkInstallData->currProcessed = 0;
             networkInstallData->currTotal = 0;
-
-            memset(&networkInstallData->installResult, 0, sizeof(networkInstallData->installResult));
 
             u8 ack = 1;
             if(sendwait(networkInstallData->clientSocket, &ack, sizeof(ack), 0) < 0) {
