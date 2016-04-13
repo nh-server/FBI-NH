@@ -122,6 +122,23 @@ void action_delete_contents(file_info* info, bool* populated) {
     ui_push(prompt_create("Confirmation", "Delete the selected content?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }
 
+void action_delete_dir(file_info* info, bool* populated) {
+    delete_dir_contents_data* data = (delete_dir_contents_data*) calloc(1, sizeof(delete_dir_contents_data));
+    data->base = info;
+    data->populated = populated;
+    data->processed = 0;
+
+    Result res = 0;
+    if(R_FAILED(res = util_populate_contents(&data->contents, &data->total, info->archive, info->path, true, false, NULL, NULL))) {
+        error_display_res(info, ui_draw_file_info, res, "Failed to retrieve content list.");
+
+        free(data);
+        return;
+    }
+
+    ui_push(prompt_create("Confirmation", "Delete the current directory?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
+}
+
 void action_delete_dir_contents(file_info* info, bool* populated) {
     delete_dir_contents_data* data = (delete_dir_contents_data*) calloc(1, sizeof(delete_dir_contents_data));
     data->base = info;
@@ -136,7 +153,7 @@ void action_delete_dir_contents(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Delete all contents of the selected directory?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete all contents of the current directory?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }
 
 void action_delete_dir_cias(file_info* info, bool* populated) {
@@ -153,5 +170,5 @@ void action_delete_dir_cias(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Delete all CIAs in the selected directory?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
+    ui_push(prompt_create("Confirmation", "Delete all CIAs in the current directory?", COLOR_TEXT, true, data, NULL, action_delete_dir_contents_draw_top, action_delete_dir_contents_onresponse));
 }
