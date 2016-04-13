@@ -8,7 +8,7 @@
 #include "section/section.h"
 #include "../screen.h"
 
-#define MAINMENU_ITEM_COUNT 13
+#define MAINMENU_ITEM_COUNT 12
 
 static u32 mainmenu_item_count = MAINMENU_ITEM_COUNT;
 static list_item mainmenu_items[MAINMENU_ITEM_COUNT] = {
@@ -23,8 +23,7 @@ static list_item mainmenu_items[MAINMENU_ITEM_COUNT] = {
         {"Tickets", COLOR_TEXT, tickets_open},
         {"Ext Save Data", COLOR_TEXT, extsavedata_open},
         {"System Save Data", COLOR_TEXT, systemsavedata_open},
-        {"Network Install to SD", COLOR_TEXT, networkinstall_open_sd},
-        {"Network Install to NAND", COLOR_TEXT, networkinstall_open_nand},
+        {"Network Install", COLOR_TEXT, networkinstall_open},
 };
 
 static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
