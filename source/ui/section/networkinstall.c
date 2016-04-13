@@ -88,7 +88,6 @@ static void networkinstall_close_client(network_install_data* data) {
     data->currProcessed = 0;
     data->currTotal = 0;
 
-    memset(&data->installResult, 0, sizeof(data->installResult));
     data->installCancelEvent = 0;
 }
 
@@ -141,6 +140,8 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
         } else {
             networkInstallData->currProcessed = 0;
             networkInstallData->currTotal = 0;
+
+            memset(&networkInstallData->installResult, 0, sizeof(networkInstallData->installResult));
 
             u8 ack = 1;
             if(sendwait(networkInstallData->clientSocket, &ack, sizeof(ack), 0) < 0) {
@@ -281,6 +282,9 @@ void networkinstall_open(FS_MediaType dest) {
     data->currTotal = 0;
     data->processed = 0;
     data->total = 0;
+
+    memset(&data->installResult, 0, sizeof(data->installResult));
+    data->installCancelEvent = 0;
 
     ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
     view->name = "Network Install";
