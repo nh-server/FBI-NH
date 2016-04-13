@@ -240,9 +240,13 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
         float smdhInfoBoxY = y1 + (y2 - y1) / 4 - smdhInfoBoxHeight / 2;
         screen_draw_texture(TEXTURE_SMDH_INFO_BOX, smdhInfoBoxX, smdhInfoBoxY, smdhInfoBoxWidth, smdhInfoBoxHeight);
 
-        float smdhIconX = smdhInfoBoxX + 8;
-        float smdhIconY = smdhInfoBoxY + 8;
-        screen_draw_texture(info->smdhInfo.texture, smdhIconX, smdhIconY, 48, 48);
+        u32 smdhIconWidth;
+        u32 smdhIconHeight;
+        screen_get_texture_size(&smdhIconWidth, &smdhIconHeight, info->smdhInfo.texture);
+
+        float smdhIconX = smdhInfoBoxX + (64 - smdhIconWidth) / 2;
+        float smdhIconY = smdhInfoBoxY + (smdhInfoBoxHeight - smdhIconHeight) / 2;
+        screen_draw_texture(info->smdhInfo.texture, smdhIconX, smdhIconY, smdhIconWidth, smdhIconHeight);
 
         float shortDescriptionHeight;
         screen_get_string_size(NULL, &shortDescriptionHeight, info->smdhInfo.shortDescription, 0.5f, 0.5f);
@@ -253,9 +257,9 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
         float publisherHeight;
         screen_get_string_size(NULL, &publisherHeight, info->smdhInfo.publisher, 0.5f, 0.5f);
 
-        float smdhTextX = smdhIconX + 48 + 8;
+        float smdhTextX = smdhInfoBoxX + 64;
 
-        float smdhShortDescriptionY = smdhIconY + (48 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
+        float smdhShortDescriptionY = smdhInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
         screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
@@ -334,9 +338,13 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
                 float smdhInfoBoxY = y1 + (y2 - y1) / 4 - smdhInfoBoxHeight / 2;
                 screen_draw_texture(TEXTURE_SMDH_INFO_BOX, smdhInfoBoxX, smdhInfoBoxY, smdhInfoBoxWidth, smdhInfoBoxHeight);
 
-                float smdhIconX = smdhInfoBoxX + 8;
-                float smdhIconY = smdhInfoBoxY + 8;
-                screen_draw_texture(info->ciaInfo.smdhInfo.texture, smdhIconX, smdhIconY, 48, 48);
+                u32 smdhIconWidth;
+                u32 smdhIconHeight;
+                screen_get_texture_size(&smdhIconWidth, &smdhIconHeight, info->ciaInfo.smdhInfo.texture);
+
+                float smdhIconX = smdhInfoBoxX + (64 - smdhIconWidth) / 2;
+                float smdhIconY = smdhInfoBoxY + (smdhInfoBoxHeight - smdhIconHeight) / 2;
+                screen_draw_texture(info->ciaInfo.smdhInfo.texture, smdhIconX, smdhIconY, smdhIconWidth, smdhIconHeight);
 
                 float shortDescriptionHeight;
                 screen_get_string_size(NULL, &shortDescriptionHeight, info->ciaInfo.smdhInfo.shortDescription, 0.5f, 0.5f);
@@ -347,9 +355,9 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
                 float publisherHeight;
                 screen_get_string_size(NULL, &publisherHeight, info->ciaInfo.smdhInfo.publisher, 0.5f, 0.5f);
 
-                float smdhTextX = smdhIconX + 48 + 8;
+                float smdhTextX = smdhInfoBoxX + 64;
 
-                float smdhShortDescriptionY = smdhIconY + (48 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
+                float smdhShortDescriptionY = smdhInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
                 screen_draw_string(info->ciaInfo.smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
                 float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
@@ -502,9 +510,13 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
         float smdhInfoBoxY = y1 + (y2 - y1) / 4 - smdhInfoBoxHeight / 2;
         screen_draw_texture(TEXTURE_SMDH_INFO_BOX, smdhInfoBoxX, smdhInfoBoxY, smdhInfoBoxWidth, smdhInfoBoxHeight);
 
-        float smdhIconX = smdhInfoBoxX + 8;
-        float smdhIconY = smdhInfoBoxY + 8;
-        screen_draw_texture(info->smdhInfo.texture, smdhIconX, smdhIconY, 48, 48);
+        u32 smdhIconWidth;
+        u32 smdhIconHeight;
+        screen_get_texture_size(&smdhIconWidth, &smdhIconHeight, info->smdhInfo.texture);
+
+        float smdhIconX = smdhInfoBoxX + (64 - smdhIconWidth) / 2;
+        float smdhIconY = smdhInfoBoxY + (smdhInfoBoxHeight - smdhIconHeight) / 2;
+        screen_draw_texture(info->smdhInfo.texture, smdhIconX, smdhIconY, smdhIconWidth, smdhIconHeight);
 
         float shortDescriptionHeight;
         screen_get_string_size(NULL, &shortDescriptionHeight, info->smdhInfo.shortDescription, 0.5f, 0.5f);
@@ -515,9 +527,9 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
         float publisherHeight;
         screen_get_string_size(NULL, &publisherHeight, info->smdhInfo.publisher, 0.5f, 0.5f);
 
-        float smdhTextX = smdhIconX + 48 + 8;
+        float smdhTextX = smdhInfoBoxX + 64;
 
-        float smdhShortDescriptionY = smdhIconY + (48 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
+        float smdhShortDescriptionY = smdhInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
         screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
