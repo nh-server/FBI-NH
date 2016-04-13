@@ -184,6 +184,8 @@ void screen_init() {
         }
     }
 
+    fclose(fd);
+
     screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BG, "bottom_screen_bg.png", true);
     screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_TOP_BAR, "bottom_screen_top_bar.png", true);
     screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_TOP_BAR_SHADOW, "bottom_screen_top_bar_shadow.png", true);
@@ -353,6 +355,8 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
     int height;
     int depth;
     u8* image = stbi_load_from_file(fd, &width, &height, &depth, STBI_rgb_alpha);
+    fclose(fd);
+
     if(image == NULL || depth != STBI_rgb_alpha) {
         util_panic("Failed to load PNG file \"%s\".", path);
         return;
