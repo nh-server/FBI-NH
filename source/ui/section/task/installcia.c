@@ -14,7 +14,6 @@
 
 typedef struct {
     install_cia_result* result;
-    FS_MediaType dest;
     u64 size;
     void* data;
     Result (*read)(void* data, u32* bytesRead, void* buffer, u32 size);
@@ -86,9 +85,7 @@ static void task_install_cia_thread(void* arg) {
                 u32 certSize = *(u32*) &buffer[0x08];
                 titleId = bswap_64(*(u64*) &buffer[align(headerSize, 64) + align(certSize, 64) + 0x1DC]);
 
-                if((titleId >> 32) & 0x8000) {
-                    data->dest = MEDIATYPE_NAND;
-                }
+                FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
                 u8 n3ds = false;
                 if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
@@ -96,12 +93,11 @@ static void task_install_cia_thread(void* arg) {
                     break;
                 }
 
-                // TODO: Does this fix?
-                AM_DeleteTitle(data->dest, titleId);
+                AM_DeleteTitle(dest, titleId);
                 AM_DeleteTicket(titleId);
                 AM_QueryAvailableExternalTitleDatabase(NULL);
 
-                if(R_FAILED(data->result->result = AM_StartCiaInstall(data->dest, &ciaHandle))) {
+                if(R_FAILED(data->result->result = AM_StartCiaInstall(dest, &ciaHandle))) {
                     break;
                 }
             }
@@ -138,14 +134,13 @@ static void task_install_cia_thread(void* arg) {
     free(data);
 }
 
-Handle task_install_cia(install_cia_result* result, FS_MediaType dest, u64 size, void* data, Result (*read)(void* data, u32* bytesRead, void* buffer, u32 size)) {
+Handle task_install_cia(install_cia_result* result, u64 size, void* data, Result (*read)(void* data, u32* bytesRead, void* buffer, u32 size)) {
     if(result == NULL || size == 0 || read == NULL) {
         return 0;
     }
 
     install_cia_data* installData = (install_cia_data*) calloc(1, sizeof(install_cia_data));
     installData->result = result;
-    installData->dest = dest;
     installData->size = size;
     installData->data = data;
     installData->read = read;

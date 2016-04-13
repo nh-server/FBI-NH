@@ -84,4 +84,4 @@ Handle task_populate_pending_titles(list_item* items, u32* count, u32 max);
 Handle task_populate_system_save_data(list_item* items, u32* count, u32 max);
 Handle task_populate_tickets(list_item* items, u32* count, u32 max);
 Handle task_populate_titles(list_item* items, u32* count, u32 max);
-Handle task_install_cia(install_cia_result* result, FS_MediaType dest, u64 size, void* data, Result (*read)(void* data, u32* bytesRead, void* buffer, u32 size));
+Handle task_install_cia(install_cia_result* result, u64 size, void* data, Result (*read)(void* data, u32* bytesRead, void* buffer, u32 size));

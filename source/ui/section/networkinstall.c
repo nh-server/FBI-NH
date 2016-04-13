@@ -18,7 +18,6 @@
 #include "section.h"
 
 typedef struct {
-    FS_MediaType dest;
     int serverSocket;
     int clientSocket;
     bool installStarted;
@@ -165,7 +164,7 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
             }
 
             networkInstallData->currTotal = __builtin_bswap64(networkInstallData->currTotal);
-            networkInstallData->installCancelEvent = task_install_cia(&networkInstallData->installResult, networkInstallData->dest, networkInstallData->currTotal, networkInstallData, networkinstall_read);
+            networkInstallData->installCancelEvent = task_install_cia(&networkInstallData->installResult, networkInstallData->currTotal, networkInstallData, networkinstall_read);
             if(networkInstallData->installCancelEvent == 0) {
                 ui_pop();
                 progressbar_destroy(view);
@@ -245,7 +244,7 @@ static void networkinstall_wait_draw_bottom(ui_view* view, void* data, float x1,
     screen_draw_string(text, textX, textY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
-void networkinstall_open(FS_MediaType dest) {
+void networkinstall_open() {
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if(sock < 0) {
         error_display_errno(NULL, NULL, errno, "Failed to open server socket.");
@@ -274,7 +273,6 @@ void networkinstall_open(FS_MediaType dest) {
     }
 
     network_install_data* data = (network_install_data*) calloc(1, sizeof(network_install_data));
-    data->dest = dest;
     data->serverSocket = sock;
     data->clientSocket = 0;
     data->installStarted = false;
@@ -294,12 +292,4 @@ void networkinstall_open(FS_MediaType dest) {
     view->drawTop = NULL;
     view->drawBottom = networkinstall_wait_draw_bottom;
     ui_push(view);
-}
-
-void networkinstall_open_sd() {
-    networkinstall_open(MEDIATYPE_SD);
-}
-
-void networkinstall_open_nand() {
-    networkinstall_open(MEDIATYPE_NAND);
 }
