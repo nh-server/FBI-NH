@@ -52,7 +52,7 @@ static list_item cia_files_action_items[CIA_FILES_ACTION_COUNT] = {
 static u32 directories_action_count = DIRECTORIES_ACTION_COUNT;
 static list_item directories_action_items[DIRECTORIES_ACTION_COUNT] = {
         {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
-        {"Delete", COLOR_TEXT, action_delete_contents},
+        {"Delete", COLOR_TEXT, action_delete_dir},
         {"Copy", COLOR_TEXT, action_copy_contents},
         {"Paste", COLOR_TEXT, action_paste_contents},
 };
@@ -65,7 +65,7 @@ static list_item cia_directories_action_items[CIA_DIRECTORIES_ACTION_COUNT] = {
         {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete},
         {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias},
         {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
-        {"Delete", COLOR_TEXT, action_delete_contents},
+        {"Delete", COLOR_TEXT, action_delete_dir},
         {"Copy", COLOR_TEXT, action_copy_contents},
         {"Paste", COLOR_TEXT, action_paste_contents},
 };
