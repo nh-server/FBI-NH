@@ -114,7 +114,9 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
             }
 
             if(installData->delete) {
-                FSUSER_DeleteFile(*installData->base->archive, fsMakePath(PATH_ASCII, path));
+                if(R_SUCCEEDED(FSUSER_DeleteFile(*installData->base->archive, fsMakePath(PATH_ASCII, path))) && installData->base->archive->id == ARCHIVE_USER_SAVEDATA) {
+                    FSUSER_ControlArchive(*installData->base->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+                }
 
                 *installData->populated = false;
             }

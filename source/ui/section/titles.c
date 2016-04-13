@@ -17,7 +17,7 @@ typedef struct {
     bool populated;
 } titles_data;
 
-#define TITLES_ACTION_COUNT 5
+#define TITLES_ACTION_COUNT 6
 
 static u32 titles_action_count = TITLES_ACTION_COUNT;
 static list_item titles_action_items[TITLES_ACTION_COUNT] = {
@@ -26,6 +26,7 @@ static list_item titles_action_items[TITLES_ACTION_COUNT] = {
         {"Browse Save Data", COLOR_TEXT, action_browse_title_save_data},
         {"Import Secure Value", COLOR_TEXT, action_import_secure_value},
         {"Export Secure Value", COLOR_TEXT, action_export_secure_value},
+        {"Delete Secure Value", COLOR_TEXT, action_delete_secure_value},
 };
 
 #define CARD_TITLES_ACTION_COUNT 2
