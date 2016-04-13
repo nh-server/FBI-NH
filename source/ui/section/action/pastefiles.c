@@ -80,29 +80,26 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
         } else {
             Handle srcFileHandle;
             if(R_SUCCEEDED(res = FSUSER_OpenFile(&srcFileHandle, *srcArchive, srcFsPath, FS_OPEN_READ, 0))) {
-                u64 size = 0;
-                if(R_SUCCEEDED(res = FSFILE_GetSize(srcFileHandle, &size)) && R_SUCCEEDED(res = FSUSER_CreateFile(*dstArchive, dstFsPath, 0, size))) {
-                    Handle dstFileHandle;
-                    if(R_SUCCEEDED(res = FSUSER_OpenFile(&dstFileHandle, *dstArchive, dstFsPath, FS_OPEN_WRITE, 0))) {
-                        u32 bytesRead = 0;
-                        u32 offset = 0;
-                        u8* buffer = (u8*) calloc(1, 1024 * 512);
-                        while(R_SUCCEEDED(FSFILE_Read(srcFileHandle, &bytesRead, offset, buffer, 1024 * 512)) && bytesRead > 0) {
-                            u32 bytesWritten = 0;
-                            if(R_FAILED(res = FSFILE_Write(dstFileHandle, &bytesWritten, offset, buffer, bytesRead, 0))) {
-                                break;
-                            }
-
-                            offset += bytesWritten;
+                Handle dstFileHandle;
+                if(R_SUCCEEDED(res = FSUSER_OpenFile(&dstFileHandle, *dstArchive, dstFsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
+                    u32 bytesRead = 0;
+                    u32 offset = 0;
+                    u8* buffer = (u8*) calloc(1, 1024 * 512);
+                    while(R_SUCCEEDED(FSFILE_Read(srcFileHandle, &bytesRead, offset, buffer, 1024 * 512)) && bytesRead > 0) {
+                        u32 bytesWritten = 0;
+                        if(R_FAILED(res = FSFILE_Write(dstFileHandle, &bytesWritten, offset, buffer, bytesRead, 0))) {
+                            break;
                         }
 
-                        free(buffer);
+                        offset += bytesWritten;
+                    }
 
-                        FSFILE_Close(dstFileHandle);
+                    free(buffer);
 
-                        if(R_SUCCEEDED(res) && dstArchive->id == ARCHIVE_USER_SAVEDATA) {
-                            res = FSUSER_ControlArchive(*dstArchive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
-                        }
+                    FSFILE_Close(dstFileHandle);
+
+                    if(R_SUCCEEDED(res) && dstArchive->id == ARCHIVE_USER_SAVEDATA) {
+                        res = FSUSER_ControlArchive(*dstArchive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
                     }
                 }
 
