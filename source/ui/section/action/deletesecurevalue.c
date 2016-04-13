@@ -16,7 +16,9 @@ static void action_delete_secure_value_end_onresponse(ui_view* view, void* data,
 static void action_delete_secure_value_update(ui_view* view, void* data, float* progress, char* progressText) {
     title_info* info = (title_info*) data;
 
-    Result res = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, (SECUREVALUE_SLOT_SD << 32) | (info->titleId & 0xFFFFFFF));
+    u64 param = (SECUREVALUE_SLOT_SD << 32) | (info->titleId & 0xFFFFFFF);
+    u8 out = 0;
+    Result res = FSUSER_ControlSecureSave(SECURESAVE_ACTION_DELETE, &param, sizeof(param), &out, sizeof(out));
 
     progressbar_destroy(view);
     ui_pop();
