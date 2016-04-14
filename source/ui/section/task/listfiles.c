@@ -79,34 +79,37 @@ static void task_populate_files_thread(void* arg) {
                                 if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *data->dir->archive, fsMakePath(PATH_ASCII, fileInfo->path), FS_OPEN_READ, 0))) {
                                     FSFILE_GetSize(fileHandle, &fileInfo->size);
 
-                                    AM_TitleEntry titleEntry;
-                                    if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
-                                        data->dir->containsCias = true;
+                                    size_t len = strlen(fileInfo->path);
+                                    if(len > 4 && strcasecmp(&fileInfo->path[len - 4], ".cia") == 0) {
+                                        AM_TitleEntry titleEntry;
+                                        if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
+                                            data->dir->containsCias = true;
 
-                                        fileInfo->isCia = true;
-                                        fileInfo->ciaInfo.titleId = titleEntry.titleID;
-                                        fileInfo->ciaInfo.version = titleEntry.version;
-                                        fileInfo->ciaInfo.installedSizeSD = titleEntry.size;
-                                        fileInfo->ciaInfo.hasSmdh = false;
+                                            fileInfo->isCia = true;
+                                            fileInfo->ciaInfo.titleId = titleEntry.titleID;
+                                            fileInfo->ciaInfo.version = titleEntry.version;
+                                            fileInfo->ciaInfo.installedSizeSD = titleEntry.size;
+                                            fileInfo->ciaInfo.hasSmdh = false;
 
-                                        if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
-                                            fileInfo->ciaInfo.installedSizeNAND = titleEntry.size;
-                                        } else {
-                                            fileInfo->ciaInfo.installedSizeNAND = 0;
-                                        }
+                                            if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
+                                                fileInfo->ciaInfo.installedSizeNAND = titleEntry.size;
+                                            } else {
+                                                fileInfo->ciaInfo.installedSizeNAND = 0;
+                                            }
 
-                                        u32 bytesRead;
-                                        if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, fileInfo->size - sizeof(SMDH), &smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
-                                            if(smdh.magic[0] == 'S' && smdh.magic[1] == 'M' && smdh.magic[2] == 'D' &&
-                                                smdh.magic[3] == 'H') {
-                                                u8 systemLanguage = CFG_LANGUAGE_EN;
-                                                CFGU_GetSystemLanguage(&systemLanguage);
+                                            u32 bytesRead;
+                                            if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, fileInfo->size - sizeof(SMDH), &smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
+                                                if(smdh.magic[0] == 'S' && smdh.magic[1] == 'M' && smdh.magic[2] == 'D' &&
+                                                   smdh.magic[3] == 'H') {
+                                                    u8 systemLanguage = CFG_LANGUAGE_EN;
+                                                    CFGU_GetSystemLanguage(&systemLanguage);
 
-                                                fileInfo->ciaInfo.hasSmdh = true;
-                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.smdhInfo.shortDescription));
-                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.smdhInfo.longDescription));
-                                                utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.smdhInfo.publisher));
-                                                fileInfo->ciaInfo.smdhInfo.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
+                                                    fileInfo->ciaInfo.hasSmdh = true;
+                                                    utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.smdhInfo.shortDescription));
+                                                    utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.smdhInfo.longDescription));
+                                                    utf16_to_utf8((uint8_t *) fileInfo->ciaInfo.smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.smdhInfo.publisher));
+                                                    fileInfo->ciaInfo.smdhInfo.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
+                                                }
                                             }
                                         }
                                     }
