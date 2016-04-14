@@ -89,11 +89,14 @@ static void task_install_cia_thread(void* arg) {
                     break;
                 }
 
-                AM_DeleteTitle(dest, titleId);
-                AM_DeleteTicket(titleId);
+                // Deleting FBI before it reinstalls itself causes issues.
+                if(((titleId >> 8) & 0xFFFFF) != 0xF8001) {
+                    AM_DeleteTitle(dest, titleId);
+                    AM_DeleteTicket(titleId);
 
-                if(dest == 1) {
-                    AM_QueryAvailableExternalTitleDatabase(NULL);
+                    if(dest == 1) {
+                        AM_QueryAvailableExternalTitleDatabase(NULL);
+                    }
                 }
 
                 if(R_FAILED(data->result->result = AM_StartCiaInstall(dest, &ciaHandle))) {
