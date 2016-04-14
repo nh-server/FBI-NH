@@ -163,16 +163,21 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
             }
 
             networkInstallData->currTotal = __builtin_bswap64(networkInstallData->currTotal);
-            networkInstallData->installCancelEvent = task_install_cia(&networkInstallData->installResult, networkInstallData->currTotal, networkInstallData, networkinstall_read);
-            if(networkInstallData->installCancelEvent == 0) {
-                ui_pop();
-                progressbar_destroy(view);
-                return;
+
+            if(networkInstallData->currTotal != 0) {
+                networkInstallData->installCancelEvent = task_install_cia(&networkInstallData->installResult, networkInstallData->currTotal, networkInstallData, networkinstall_read);
+                if(networkInstallData->installCancelEvent == 0) {
+                    ui_pop();
+                    progressbar_destroy(view);
+                    return;
+                }
+            } else {
+                networkInstallData->processed++;
             }
         }
     }
 
-    *progress = (float) ((double) networkInstallData->currProcessed / (double) networkInstallData->currTotal);
+    *progress = networkInstallData->currTotal != 0 ? (float) ((double) networkInstallData->currProcessed / (double) networkInstallData->currTotal) : 1;
     snprintf(progressText, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", networkInstallData->processed, networkInstallData->total, networkInstallData->currProcessed / 1024.0 / 1024.0, networkInstallData->currTotal / 1024.0 / 1024.0);
 }
 
