@@ -12,26 +12,6 @@ typedef struct {
 } smdh_info;
 
 typedef struct {
-    u64 titleId;
-    u16 version;
-    u64 installedSizeSD;
-    u64 installedSizeNAND;
-    bool hasSmdh;
-    smdh_info smdhInfo;
-} cia_info;
-
-typedef struct {
-    FS_Archive* archive;
-    char name[NAME_MAX];
-    char path[PATH_MAX];
-    bool isDirectory;
-    bool containsCias;
-    u64 size;
-    bool isCia;
-    cia_info ciaInfo;
-} file_info;
-
-typedef struct {
     FS_MediaType mediaType;
     u64 titleId;
     char productCode[0x10];
@@ -63,6 +43,30 @@ typedef struct {
 typedef struct {
     u32 systemSaveDataId;
 } system_save_data_info;
+
+typedef struct {
+    u64 titleId;
+    u16 version;
+    u64 installedSize;
+    bool hasSmdh;
+    smdh_info smdhInfo;
+} cia_info;
+
+typedef struct {
+    FS_Archive* archive;
+    char name[NAME_MAX];
+    char path[PATH_MAX];
+    bool isDirectory;
+    u64 size;
+
+    bool containsCias;
+    bool isCia;
+    cia_info ciaInfo;
+
+    bool containsTickets;
+    bool isTicket;
+    ticket_info ticketInfo;
+} file_info;
 
 typedef struct {
     bool finished;

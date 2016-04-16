@@ -47,6 +47,16 @@ static list_item cia_files_action_items[CIA_FILES_ACTION_COUNT] = {
         {"Paste", COLOR_TEXT, action_paste_contents},
 };
 
+#define TICKET_FILES_ACTION_COUNT 4
+
+static u32 ticket_files_action_count = TICKET_FILES_ACTION_COUNT;
+static list_item ticket_files_action_items[TICKET_FILES_ACTION_COUNT] = {
+        {"Install ticket", COLOR_TEXT, action_install_tickets},
+        {"Delete", COLOR_TEXT, action_delete_contents},
+        {"Copy", COLOR_TEXT, action_copy_contents},
+        {"Paste", COLOR_TEXT, action_paste_contents},
+};
+
 #define DIRECTORIES_ACTION_COUNT 4
 
 static u32 directories_action_count = DIRECTORIES_ACTION_COUNT;
@@ -63,6 +73,31 @@ static u32 cia_directories_action_count = CIA_DIRECTORIES_ACTION_COUNT;
 static list_item cia_directories_action_items[CIA_DIRECTORIES_ACTION_COUNT] = {
         {"Install all CIAs", COLOR_TEXT, action_install_cias},
         {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete},
+        {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias},
+        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
+        {"Delete", COLOR_TEXT, action_delete_dir},
+        {"Copy", COLOR_TEXT, action_copy_contents},
+        {"Paste", COLOR_TEXT, action_paste_contents},
+};
+
+#define TICKET_DIRECTORIES_ACTION_COUNT 5
+
+static u32 ticket_directories_action_count = TICKET_DIRECTORIES_ACTION_COUNT;
+static list_item ticket_directories_action_items[TICKET_DIRECTORIES_ACTION_COUNT] = {
+        {"Install all tickets", COLOR_TEXT, action_install_tickets},
+        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
+        {"Delete", COLOR_TEXT, action_delete_dir},
+        {"Copy", COLOR_TEXT, action_copy_contents},
+        {"Paste", COLOR_TEXT, action_paste_contents},
+};
+
+#define CIA_TICKET_DIRECTORIES_ACTION_COUNT 8
+
+static u32 cia_ticket_directories_action_count = CIA_TICKET_DIRECTORIES_ACTION_COUNT;
+static list_item cia_ticket_directories_action_items[CIA_TICKET_DIRECTORIES_ACTION_COUNT] = {
+        {"Install all CIAs", COLOR_TEXT, action_install_cias},
+        {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete},
+        {"Install all tickets", COLOR_TEXT, action_install_tickets},
         {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias},
         {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
         {"Delete", COLOR_TEXT, action_delete_dir},
@@ -105,10 +140,20 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
     }
 
     if(actionData->info->isDirectory) {
-        if(actionData->info->containsCias) {
+        if(actionData->info->containsCias && actionData->info->containsTickets) {
+            if(*itemCount != &cia_ticket_directories_action_count || *items != cia_ticket_directories_action_items) {
+                *itemCount = &cia_ticket_directories_action_count;
+                *items = cia_ticket_directories_action_items;
+            }
+        } else if(actionData->info->containsCias) {
             if(*itemCount != &cia_directories_action_count || *items != cia_directories_action_items) {
                 *itemCount = &cia_directories_action_count;
                 *items = cia_directories_action_items;
+            }
+        } else if(actionData->info->containsTickets) {
+            if(*itemCount != &ticket_directories_action_count || *items != ticket_directories_action_items) {
+                *itemCount = &ticket_directories_action_count;
+                *items = ticket_directories_action_items;
             }
         } else {
             if(*itemCount != &directories_action_count || *items != directories_action_items) {
@@ -121,6 +166,11 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
             if(*itemCount != &cia_files_action_count || *items != cia_files_action_items) {
                 *itemCount = &cia_files_action_count;
                 *items = cia_files_action_items;
+            }
+        } else if(actionData->info->isTicket) {
+            if(*itemCount != &ticket_files_action_count || *items != ticket_files_action_items) {
+                *itemCount = &ticket_files_action_count;
+                *items = ticket_files_action_items;
             }
         } else {
             if(*itemCount != &files_action_count || *items != files_action_items) {
