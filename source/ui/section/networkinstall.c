@@ -176,7 +176,7 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
                     return;
                 }
             } else {
-                networkInstallData->processed++;
+                networkInstallData->installResult.finished = true;
             }
         }
     }
