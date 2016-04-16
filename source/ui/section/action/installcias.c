@@ -49,6 +49,11 @@ static void action_install_cias_draw_top(ui_view* view, void* data, float x1, fl
 }
 
 static void action_install_cias_free_data(install_cias_data* data) {
+    if(data->currHandle != 0) {
+        FSFILE_Close(data->currHandle);
+        data->currHandle = 0;
+    }
+
     util_free_contents(data->contents, data->total);
     free(data);
 }
@@ -72,17 +77,18 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
     }
 
     if(!installData->installStarted || installData->installResult.finished) {
-        char* path = installData->contents[installData->processed];
-
         if(installData->currHandle != 0) {
             FSFILE_Close(installData->currHandle);
             installData->currHandle = 0;
         }
 
         if(installData->installResult.finished) {
+            char* path = installData->contents[installData->processed];
+
             if(installData->installResult.failed) {
                 if(installData->installResult.cancelled || installData->processed >= installData->total - 1) {
                     ui_pop();
+                    progressbar_destroy(view);
                 }
 
                 if(installData->installResult.cancelled) {
@@ -108,12 +114,9 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
                         action_install_cias_free_data(installData);
                     }
 
-                    progressbar_destroy(view);
                     return;
                 }
-            }
-
-            if(installData->delete) {
+            } else if(installData->delete) {
                 if(R_SUCCEEDED(FSUSER_DeleteFile(*installData->base->archive, fsMakePath(PATH_ASCII, path))) && installData->base->archive->id == ARCHIVE_USER_SAVEDATA) {
                     FSUSER_ControlArchive(*installData->base->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
                 }
@@ -122,9 +125,13 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
             }
 
             installData->processed++;
-        }
 
-        installData->installStarted = true;
+            installData->currProcessed = 0;
+            installData->currTotal = 0;
+
+            memset(&installData->installResult, 0, sizeof(installData->installResult));
+            installData->installCancelEvent = 0;
+        }
 
         if(installData->processed >= installData->total) {
             ui_pop();
@@ -133,20 +140,30 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
             ui_push(prompt_create("Success", "Install finished.", COLOR_TEXT, false, data, NULL, action_install_cias_draw_top, action_install_cias_done_onresponse));
             return;
         } else {
-            FS_Archive* archive = installData->base->archive;
-            FS_Path fsPath = fsMakePath(PATH_ASCII, path);
+            char* path = installData->contents[installData->processed];
 
             Result res = 0;
 
-            if(R_SUCCEEDED(res = FSUSER_OpenFile(&installData->currHandle, *archive, fsPath, FS_OPEN_READ, 0))) {
+            if(R_SUCCEEDED(res = FSUSER_OpenFile(&installData->currHandle, *installData->base->archive, fsMakePath(PATH_ASCII, path), FS_OPEN_READ, 0))) {
                 u64 size = 0;
                 if(R_SUCCEEDED(res = FSFILE_GetSize(installData->currHandle, &size))) {
                     installData->currTotal = size;
 
                     installData->installCancelEvent = task_install_cia(&installData->installResult, installData->currTotal, installData, action_install_cias_read);
-                    if(installData->installCancelEvent == 0) {
+                    if(installData->installCancelEvent != 0) {
+                        installData->installStarted = true;
+                    } else {
                         ui_pop();
                         progressbar_destroy(view);
+
+                        if(strlen(path) > 48) {
+                            error_display_res(installData->base, ui_draw_file_info, res, "Failed to start CIA install.\n%.45s...", path);
+                        } else {
+                            error_display_res(installData->base, ui_draw_file_info, res, "Failed to start CIA install.\n%.48s", path);
+                        }
+
+                        action_install_cias_free_data(installData);
+
                         return;
                     }
                 }
@@ -160,6 +177,7 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
 
                 if(installData->processed >= installData->total - 1) {
                     ui_pop();
+                    progressbar_destroy(view);
                 }
 
                 if(strlen(path) > 48) {
@@ -170,7 +188,7 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
 
                 if(installData->processed >= installData->total - 1) {
                     action_install_cias_free_data(installData);
-                    progressbar_destroy(view);
+
                     return;
                 }
             }
@@ -198,10 +216,14 @@ static void action_install_cias_internal(file_info* info, bool* populated, bool 
     data->base = info;
     data->delete = delete;
     data->populated = populated;
+    data->currHandle = 0;
     data->installStarted = false;
     data->currProcessed = 0;
     data->currTotal = 0;
     data->processed = 0;
+
+    memset(&data->installResult, 0, sizeof(data->installResult));
+    data->installCancelEvent = 0;
 
     Result res = 0;
     if(R_FAILED(res = util_populate_contents(&data->contents, &data->total, info->archive, info->path, false, false, ".cia", util_filter_file_extension))) {

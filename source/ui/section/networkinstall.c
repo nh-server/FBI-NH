@@ -66,7 +66,7 @@ static Result networkinstall_read(void* data, u32* bytesRead, void* buffer, u32 
             *bytesRead = (u32) ret;
         }
     } else {
-        res = -2;
+        res = -1;
     }
 
     return res;
@@ -167,8 +167,12 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
             if(networkInstallData->currTotal != 0) {
                 networkInstallData->installCancelEvent = task_install_cia(&networkInstallData->installResult, networkInstallData->currTotal, networkInstallData, networkinstall_read);
                 if(networkInstallData->installCancelEvent == 0) {
+                    networkinstall_close_client(networkInstallData);
+
                     ui_pop();
                     progressbar_destroy(view);
+
+                    error_display(NULL, NULL, "Failed to start CIA install.");
                     return;
                 }
             } else {
