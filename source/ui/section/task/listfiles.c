@@ -112,10 +112,11 @@ static void task_populate_files_thread(void* arg) {
 
                                             u8 sigType = 0;
                                             if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 0, &sigType, sizeof(sigType))) && bytesRead == sizeof(sigType) && sigType <= 5) {
-                                                static u32 sigSizes[6] = {0x23C, 0x13C, 0x7C, 0x23C, 0x13C, 0x7C};
+                                                static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
+                                                static u32 titleIdOffset = 0x9C;
 
                                                 u64 titleId = 0;
-                                                if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, sigSizes[sigType] + 0x9C, &titleId, sizeof(titleId))) && bytesRead == sizeof(titleId)) {
+                                                if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, dataOffsets[sigType] + titleIdOffset, &titleId, sizeof(titleId))) && bytesRead == sizeof(titleId)) {
                                                     data->dir->containsTickets = true;
 
                                                     fileInfo->isTicket = true;
