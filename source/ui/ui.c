@@ -387,25 +387,25 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
             float versionY = titleIdY + titleIdHeight + 2;
             screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-            snprintf(buf, 64, "Installed Size (SD): %.2f MB", info->ciaInfo.installedSizeSD / 1024.0 / 1024.0);
+            snprintf(buf, 64, "Installed Size: %.2f MB", info->ciaInfo.installedSize / 1024.0 / 1024.0);
 
-            float installedSizeSDWidth;
-            float installedSizeSDHeight;
-            screen_get_string_size(&installedSizeSDWidth, &installedSizeSDHeight, buf, 0.5f, 0.5f);
+            float installedSizeWidth;
+            float installedSizeHeight;
+            screen_get_string_size(&installedSizeWidth, &installedSizeHeight, buf, 0.5f, 0.5f);
 
-            float installedSizeSDX = x1 + (x2 - x1 - installedSizeSDWidth) / 2;
-            float installedSizeSDY = versionY + versionHeight + 2;
-            screen_draw_string(buf, installedSizeSDX, installedSizeSDY, 0.5f, 0.5f, COLOR_TEXT, false);
+            float installedSizeX = x1 + (x2 - x1 - installedSizeWidth) / 2;
+            float installedSizeY = versionY + versionHeight + 2;
+            screen_draw_string(buf, installedSizeX, installedSizeY, 0.5f, 0.5f, COLOR_TEXT, false);
+        } else if(info->isTicket) {
+            snprintf(buf, 64, "Ticket ID: %016llX", info->ticketInfo.ticketId);
 
-            snprintf(buf, 64, "Installed Size (NAND): %.2f MB", info->ciaInfo.installedSizeNAND / 1024.0 / 1024.0);
+            float ticketIdWidth;
+            float ticketIdHeight;
+            screen_get_string_size(&ticketIdWidth, &ticketIdHeight, buf, 0.5f, 0.5f);
 
-            float installedSizeNANDWidth;
-            float installedSizeNANDHeight;
-            screen_get_string_size(&installedSizeNANDWidth, &installedSizeNANDHeight, buf, 0.5f, 0.5f);
-
-            float installedSizeNANDX = x1 + (x2 - x1 - installedSizeNANDWidth) / 2;
-            float installedSizeNANDY = installedSizeSDY + installedSizeSDHeight + 2;
-            screen_draw_string(buf, installedSizeNANDX, installedSizeNANDY, 0.5f, 0.5f, COLOR_TEXT, false);
+            float ticketIdX = x1 + (x2 - x1 - ticketIdWidth) / 2;
+            float ticketIdY = sizeY + sizeHeight + 2;
+            screen_draw_string(buf, ticketIdX, ticketIdY, 0.5f, 0.5f, COLOR_TEXT, false);
         }
     } else {
         snprintf(buf, 64, "Directory");
