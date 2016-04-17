@@ -4,7 +4,6 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "task/task.h"
 #include "../../screen.h"
 #include "section.h"
 
