@@ -111,7 +111,7 @@ static void task_populate_files_thread(void* arg) {
                                             u32 bytesRead = 0;
 
                                             u8 sigType = 0;
-                                            if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 0, &sigType, sizeof(sigType))) && bytesRead == sizeof(sigType) && sigType <= 5) {
+                                            if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 3, &sigType, sizeof(sigType))) && bytesRead == sizeof(sigType) && sigType <= 5) {
                                                 static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
                                                 static u32 titleIdOffset = 0x9C;
 
@@ -120,7 +120,7 @@ static void task_populate_files_thread(void* arg) {
                                                     data->dir->containsTickets = true;
 
                                                     fileInfo->isTicket = true;
-                                                    fileInfo->ticketInfo.ticketId = titleId;
+                                                    fileInfo->ticketInfo.ticketId = __builtin_bswap64(titleId);
                                                 }
                                             }
                                         }
