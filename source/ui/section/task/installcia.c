@@ -17,20 +17,6 @@ typedef struct {
     Handle cancelEvent;
 } install_cia_data;
 
-#define bswap_64(x) \
-({ \
-	uint64_t __x = (x); \
-	((uint64_t)( \
-		(uint64_t)(((uint64_t)(__x) & (uint64_t)0x00000000000000ffULL) << 56) | \
-		(uint64_t)(((uint64_t)(__x) & (uint64_t)0x000000000000ff00ULL) << 40) | \
-		(uint64_t)(((uint64_t)(__x) & (uint64_t)0x0000000000ff0000ULL) << 24) | \
-		(uint64_t)(((uint64_t)(__x) & (uint64_t)0x00000000ff000000ULL) <<  8) | \
-	    (uint64_t)(((uint64_t)(__x) & (uint64_t)0x000000ff00000000ULL) >>  8) | \
-		(uint64_t)(((uint64_t)(__x) & (uint64_t)0x0000ff0000000000ULL) >> 24) | \
-		(uint64_t)(((uint64_t)(__x) & (uint64_t)0x00ff000000000000ULL) >> 40) | \
-		(uint64_t)(((uint64_t)(__x) & (uint64_t)0xff00000000000000ULL) >> 56) )); \
-})
-
 static u32 align(u32 offset, u32 alignment) {
     return (offset + (alignment - 1)) & ~(alignment - 1);
 }
@@ -79,7 +65,7 @@ static void task_install_cia_thread(void* arg) {
 
                 u32 headerSize = *(u32*) &buffer[0x00];
                 u32 certSize = *(u32*) &buffer[0x08];
-                titleId = bswap_64(*(u64*) &buffer[align(headerSize, 64) + align(certSize, 64) + 0x1DC]);
+                titleId = __builtin_bswap64(*(u64*) &buffer[align(headerSize, 64) + align(certSize, 64) + 0x1DC]);
 
                 FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
