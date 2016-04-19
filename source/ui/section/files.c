@@ -306,7 +306,7 @@ void files_open(FS_Archive archive) {
 
     Result res = 0;
     if(R_FAILED(res = FSUSER_OpenArchive(&data->archive))) {
-        error_display_res(NULL, NULL, res, "Failed to open file listing archive.");
+        error_display_res(NULL, NULL, NULL, res, "Failed to open file listing archive.");
 
         if(data->archivePath != NULL) {
             free(data->archivePath);

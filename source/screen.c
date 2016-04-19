@@ -134,7 +134,7 @@ void screen_init() {
     }
 
     TGLP_s* glyphInfo = fontGetGlyphInfo();
-    glyphSheets = calloc(1, glyphInfo->nSheets * sizeof(C3D_Tex));
+    glyphSheets = calloc(glyphInfo->nSheets, sizeof(C3D_Tex));
     for(int i = 0; i < glyphInfo->nSheets; i++) {
         C3D_Tex* tex = &glyphSheets[i];
         tex->data = fontGetGlyphSheetTex(i);

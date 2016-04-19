@@ -9,12 +9,6 @@
 #include "prompt.h"
 #include "../screen.h"
 
-typedef struct {
-    char fullText[4096];
-    void* data;
-    void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2);
-} error_data;
-
 static const char* level_to_string(Result res) {
     switch(R_LEVEL(res)) {
         case RL_SUCCESS:
@@ -546,6 +540,13 @@ static const char* description_to_string(Result res) {
     }
 }
 
+typedef struct {
+    char fullText[4096];
+    void* data;
+    volatile bool* dismissed;
+    void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2);
+} error_data;
+
 static void error_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     error_data* errorData = (error_data*) data;
 
@@ -555,13 +556,20 @@ static void error_draw_top(ui_view* view, void* data, float x1, float y1, float 
 }
 
 static void error_onresponse(ui_view* view, void* data, bool response) {
+    error_data* errorData = (error_data*) data;
+
+    if(errorData->dismissed != NULL) {
+        *errorData->dismissed = true;
+    }
+
     prompt_destroy(view);
     free(data);
 }
 
-void error_display(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), const char* text, ...) {
+void error_display(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), const char* text, ...) {
     error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
     errorData->data = data;
+    errorData->dismissed = dismissed;
     errorData->drawTop = drawTop;
 
     va_list list;
@@ -572,9 +580,10 @@ void error_display(void* data, void (*drawTop)(ui_view* view, void* data, float 
     ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
 }
 
-void error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
+void error_display_res(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
     error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
     errorData->data = data;
+    errorData->dismissed = dismissed;
     errorData->drawTop = drawTop;
 
     char textBuf[1024];
@@ -592,9 +601,10 @@ void error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, fl
     ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
 }
 
-void error_display_errno(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), int err, const char* text, ...) {
+void error_display_errno(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), int err, const char* text, ...) {
     error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
     errorData->data = data;
+    errorData->dismissed = dismissed;
     errorData->drawTop = drawTop;
 
     char textBuf[1024];

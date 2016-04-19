@@ -296,7 +296,7 @@ static void task_populate_titles_thread(void* arg) {
 
     Result res = 0;
     if(R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_GAME_CARD, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_SD, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_NAND, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_NAND, true))) {
-        error_display_res(NULL, NULL, res, "Failed to load title listing.");
+        error_display_res(NULL, NULL, NULL, res, "Failed to load title listing.");
     }
 
     svcCloseHandle(data->cancelEvent);
@@ -341,14 +341,14 @@ Handle task_populate_titles(list_item* items, u32* count, u32 max) {
 
     Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
     if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, eventRes, "Failed to create title list cancel event.");
+        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create title list cancel event.");
 
         free(data);
         return 0;
     }
 
     if(threadCreate(task_populate_titles_thread, data, 0x4000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, "Failed to create title list thread.");
+        error_display(NULL, NULL, NULL, "Failed to create title list thread.");
 
         svcCloseHandle(data->cancelEvent);
         free(data);

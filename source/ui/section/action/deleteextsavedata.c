@@ -32,7 +32,7 @@ static void action_delete_ext_save_data_update(ui_view* view, void* data, float*
     ui_pop();
 
     if(R_FAILED(res)) {
-        error_display_res(deleteData->info, ui_draw_ext_save_data_info, res, "Failed to delete ext save data.");
+        error_display_res(NULL, deleteData->info, ui_draw_ext_save_data_info, res, "Failed to delete ext save data.");
     } else {
         *deleteData->populated = false;
 

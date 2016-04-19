@@ -30,7 +30,7 @@ static void action_delete_title_update(ui_view* view, void* data, float* progres
     ui_pop();
 
     if(R_FAILED(res)) {
-        error_display_res(deleteData->info, ui_draw_title_info, res, "Failed to delete title.");
+        error_display_res(NULL, deleteData->info, ui_draw_title_info, res, "Failed to delete title.");
     } else {
         *deleteData->populated = false;
 
