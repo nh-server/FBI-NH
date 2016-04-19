@@ -30,7 +30,7 @@ static void action_delete_ticket_update(ui_view* view, void* data, float* progre
     ui_pop();
 
     if(R_FAILED(res)) {
-        error_display_res(deleteData->info, ui_draw_ticket_info, res, "Failed to delete ticket.");
+        error_display_res(NULL, deleteData->info, ui_draw_ticket_info, res, "Failed to delete ticket.");
     } else {
         *deleteData->populated = false;
 

@@ -31,7 +31,7 @@ static void action_delete_system_save_data_update(ui_view* view, void* data, flo
     ui_pop();
 
     if(R_FAILED(res)) {
-        error_display_res(deleteData->info, ui_draw_system_save_data_info, res, "Failed to delete system save data.");
+        error_display_res(NULL, deleteData->info, ui_draw_system_save_data_info, res, "Failed to delete system save data.");
     } else {
         *deleteData->populated = false;
 

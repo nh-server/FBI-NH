@@ -79,7 +79,7 @@ static void task_populate_pending_titles_thread(void* arg) {
 
     Result res = 0;
     if(R_FAILED(res = task_populate_pending_titles_from(data, MEDIATYPE_SD)) || R_FAILED(res = task_populate_pending_titles_from(data, MEDIATYPE_NAND))) {
-        error_display_res(NULL, NULL, res, "Failed to load pending title listing.");
+        error_display_res(NULL, NULL, NULL, res, "Failed to load pending title listing.");
     }
 
     svcCloseHandle(data->cancelEvent);
@@ -119,14 +119,14 @@ Handle task_populate_pending_titles(list_item* items, u32* count, u32 max) {
 
     Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
     if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, eventRes, "Failed to create pending title list cancel event.");
+        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create pending title list cancel event.");
 
         free(data);
         return 0;
     }
 
     if(threadCreate(task_populate_pending_titles_thread, data, 0x4000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, "Failed to create pending title list thread.");
+        error_display(NULL, NULL, NULL, "Failed to create pending title list thread.");
 
         svcCloseHandle(data->cancelEvent);
         free(data);

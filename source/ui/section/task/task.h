@@ -69,15 +69,36 @@ typedef struct {
 } file_info;
 
 typedef struct {
-    bool finished;
-    bool failed;
-    bool cancelled;
-    bool ioerr;
-    bool wrongSystem;
+    void* data;
 
-    Result result;
-    int ioerrno;
-} install_cia_result;
+    bool moveEmpty;
+
+    bool finished;
+    bool premature;
+
+    u32 processed;
+    u32 total;
+
+    u64 currProcessed;
+    u64 currTotal;
+
+    Result (*isSrcDirectory)(void* data, u32 index, bool* isDirectory);
+    Result (*makeDstDirectory)(void* data, u32 index);
+
+    Result (*openSrc)(void* data, u32 index, u32* handle);
+    Result (*closeSrc)(void* data, u32 index, bool succeeded, u32 handle);
+
+    Result (*getSrcSize)(void* data, u32 handle, u64* size);
+    Result (*readSrc)(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size);
+
+    Result (*openDst)(void* data, u32 index, void* initialReadBlock, u32* handle);
+    Result (*closeDst)(void* data, u32 index, bool succeeded, u32 handle);
+
+    Result (*writeDst)(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size);
+
+    bool (*resultError)(void* data, u32 index, Result res);
+    bool (*ioError)(void* data, u32 index, int err);
+} move_data_info;
 
 bool task_is_quit_all();
 void task_quit_all();
@@ -88,4 +109,4 @@ Handle task_populate_pending_titles(list_item* items, u32* count, u32 max);
 Handle task_populate_system_save_data(list_item* items, u32* count, u32 max);
 Handle task_populate_tickets(list_item* items, u32* count, u32 max);
 Handle task_populate_titles(list_item* items, u32* count, u32 max);
-Handle task_install_cia(install_cia_result* result, u64 size, void* data, Result (*read)(void* data, u32* bytesRead, void* buffer, u32 size));
+Handle task_move_data(move_data_info* info);

@@ -36,7 +36,7 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
         progressbar_destroy(view);
         ui_pop();
 
-        error_display_res(info, ui_draw_title_info, res, "Failed to import secure value.");
+        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to import secure value.");
 
         return;
     }

@@ -105,7 +105,7 @@ static void task_populate_ext_save_data_thread(void* arg) {
 
     Result res = 0;
     if(R_FAILED(res = task_populate_ext_save_data_from(data, MEDIATYPE_SD)) || R_FAILED(res = task_populate_ext_save_data_from(data, MEDIATYPE_NAND))) {
-        error_display_res(NULL, NULL, res, "Failed to load ext save data listing.");
+        error_display_res(NULL, NULL, NULL, res, "Failed to load ext save data listing.");
     }
 
     svcCloseHandle(data->cancelEvent);
@@ -150,14 +150,14 @@ Handle task_populate_ext_save_data(list_item* items, u32* count, u32 max) {
 
     Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
     if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, eventRes, "Failed to create ext save data list cancel event.");
+        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create ext save data list cancel event.");
 
         free(data);
         return 0;
     }
 
     if(threadCreate(task_populate_ext_save_data_thread, data, 0x4000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, "Failed to create ext save data list thread.");
+        error_display(NULL, NULL, NULL, "Failed to create ext save data list thread.");
 
         svcCloseHandle(data->cancelEvent);
         free(data);
