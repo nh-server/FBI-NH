@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <3ds/services/fs.h>
 
 #include "util.h"
 #include "ui/section/task/task.h"
@@ -125,22 +126,27 @@ void util_panic(const char* s, ...) {
 }
 
 bool util_is_dir(FS_Archive* archive, const char* path) {
-    Handle dirHandle = 0;
-    if(R_SUCCEEDED(FSUSER_OpenDirectory(&dirHandle, *archive, fsMakePath(PATH_ASCII, path)))) {
-        FSDIR_Close(dirHandle);
+    FS_Path* fsPath = util_make_path_utf8(path);
 
-        return true;
+    Result res = 0;
+    Handle dirHandle = 0;
+    if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *archive, *fsPath))) {
+        FSDIR_Close(dirHandle);
     }
 
-    return false;
+    util_free_path_utf8(fsPath);
+
+    return R_SUCCEEDED(res);
 }
 
 static Result util_traverse_dir_internal(FS_Archive* archive, const char* path, bool recursive, bool dirsFirst, void* data, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes),
                                                                                                                             void (*process)(void* data, FS_Archive* archive, const char* path, u32 attributes)) {
     Result res = 0;
 
+    FS_Path* fsPath = util_make_path_utf8(path);
+
     Handle handle = 0;
-    if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&handle, *archive, fsMakePath(PATH_ASCII, path)))) {
+    if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&handle, *archive, *fsPath))) {
         size_t pathLen = strlen(path);
         char* pathBuf = (char*) calloc(1, PATH_MAX);
         strncpy(pathBuf, path, PATH_MAX);
@@ -186,6 +192,8 @@ static Result util_traverse_dir_internal(FS_Archive* archive, const char* path, 
         FSDIR_Close(handle);
     }
 
+    util_free_path_utf8(fsPath);
+
     return res;
 }
 
@@ -212,14 +220,18 @@ static Result util_traverse_file(FS_Archive* archive, const char* path, bool rec
                                                                                                         void (*process)(void* data, FS_Archive* archive, const char* path, u32 attributes)) {
     Result res = 0;
 
+    FS_Path* fsPath = util_make_path_utf8(path);
+
     Handle handle = 0;
-    if(R_SUCCEEDED(res = FSUSER_OpenFile(&handle, *archive, fsMakePath(PATH_ASCII, path), FS_OPEN_READ, 0))) {
+    if(R_SUCCEEDED(res = FSUSER_OpenFile(&handle, *archive, *fsPath, FS_OPEN_READ, 0))) {
         if(process != NULL && (filter == NULL || filter(data, archive, path, 0))) {
             process(data, archive, path, 0);
         }
 
         FSFILE_Close(handle);
     }
+
+    util_free_path_utf8(fsPath);
 
     return res;
 }
@@ -395,13 +407,34 @@ Result util_ensure_dir(FS_Archive* archive, const char* path) {
     Result res = 0;
 
     if(!util_is_dir(archive, path)) {
-        FS_Path fsPath = fsMakePath(PATH_ASCII, path);
+        FS_Path* fsPath = util_make_path_utf8(path);
 
-        FSUSER_DeleteFile(*archive, fsPath);
-        res = FSUSER_CreateDirectory(*archive, fsPath, 0);
+        FSUSER_DeleteFile(*archive, *fsPath);
+        res = FSUSER_CreateDirectory(*archive, *fsPath, 0);
+
+        util_free_path_utf8(fsPath);
     }
 
     return res;
+}
+
+FS_Path* util_make_path_utf8(const char* path) {
+    size_t len = strlen(path);
+
+    u16* utf16 = (u16*) calloc(len + 1, sizeof(u16));
+    ssize_t utf16Len = utf8_to_utf16(utf16, (const uint8_t*) path, len);
+
+    FS_Path* fsPath = (FS_Path*) calloc(1, sizeof(FS_Path));
+    fsPath->type = PATH_UTF16;
+    fsPath->size = (utf16Len + 1) * sizeof(u16);
+    fsPath->data = utf16;
+
+    return fsPath;
+}
+
+void util_free_path_utf8(FS_Path* path) {
+    free((void*) path->data);
+    free(path);
 }
 
 int util_compare_u32(const void* e1, const void* e2) {

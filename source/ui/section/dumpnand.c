@@ -42,7 +42,7 @@ Result dumpnand_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u
 
 Result dumpnand_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (u8*) ""}};
-    return FSUSER_OpenFileDirectly(handle, sdmcArchive, fsMakePath(PATH_ASCII, "/NAND.bin"), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+    return FSUSER_OpenFileDirectly(handle, sdmcArchive, fsMakePath(PATH_UTF16, u"/NAND.bin"), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 }
 
 Result dumpnand_close_dst(void* data, u32 index, bool succeeded, u32 handle) {

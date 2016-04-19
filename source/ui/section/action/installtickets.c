@@ -32,7 +32,13 @@ Result action_install_tickets_make_dst_directory(void* data, u32 index) {
 Result action_install_tickets_open_src(void* data, u32 index, u32* handle) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
-    return FSUSER_OpenFile(handle, *installData->base->archive, fsMakePath(PATH_ASCII, installData->contents[index]), FS_OPEN_READ, 0);
+    FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
+
+    Result res = FSUSER_OpenFile(handle, *installData->base->archive, *fsPath, FS_OPEN_READ, 0);
+
+    util_free_path_utf8(fsPath);
+
+    return res;
 }
 
 Result action_install_tickets_close_src(void* data, u32 index, bool succeeded, u32 handle) {

@@ -57,6 +57,9 @@ void util_get_path_file(char* out, const char* path, u32 size);
 void util_get_parent_path(char* out, const char* path, u32 size);
 Result util_ensure_dir(FS_Archive* archive, const char* path);
 
+FS_Path* util_make_path_utf8(const char* path);
+void util_free_path_utf8(FS_Path* path);
+
 int util_compare_u32(const void* e1, const void* e2);
 int util_compare_u64(const void* e1, const void* e2);
 int util_compare_directory_entries(const void* e1, const void* e2);

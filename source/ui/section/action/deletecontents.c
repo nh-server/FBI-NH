@@ -54,14 +54,17 @@ static void action_delete_contents_update(ui_view* view, void* data, float* prog
     } else {
         FS_Archive* archive = deleteData->base->archive;
         char* path = deleteData->contents[deleteData->processed];
-        FS_Path fsPath = fsMakePath(PATH_ASCII, path);
+
+        FS_Path* fsPath = util_make_path_utf8(path);
 
         Result res = 0;
         if(util_is_dir(archive, path)) {
-            res = FSUSER_DeleteDirectory(*archive, fsPath);
+            res = FSUSER_DeleteDirectory(*archive, *fsPath);
         } else {
-            res = FSUSER_DeleteFile(*archive, fsPath);
+            res = FSUSER_DeleteFile(*archive, *fsPath);
         }
+
+        util_free_path_utf8(fsPath);
 
         if(R_SUCCEEDED(res) && archive->id == ARCHIVE_USER_SAVEDATA) {
             res = FSUSER_ControlArchive(*archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
