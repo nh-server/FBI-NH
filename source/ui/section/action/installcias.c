@@ -20,7 +20,7 @@ typedef struct {
 
     u64 currTitleId;
 
-    move_data_info installInfo;
+    copy_data_info installInfo;
     Handle cancelEvent;
 } install_cias_data;
 
@@ -213,7 +213,7 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
     install_cias_data* installData = (install_cias_data*) data;
 
     if(response) {
-        installData->cancelEvent = task_move_data(&installData->installInfo);
+        installData->cancelEvent = task_copy_data(&installData->installInfo);
         if(installData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Installing CIA(s)", "Press B to cancel.", data, action_install_cias_update, action_install_cias_draw_top);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", installData->installInfo.total);
@@ -238,7 +238,7 @@ static void action_install_cias_internal(file_info* info, bool* populated, bool 
 
     data->installInfo.data = data;
 
-    data->installInfo.moveEmpty = false;
+    data->installInfo.copyEmpty = false;
 
     data->installInfo.isSrcDirectory = action_install_cias_is_src_directory;
     data->installInfo.makeDstDirectory = action_install_cias_make_dst_directory;

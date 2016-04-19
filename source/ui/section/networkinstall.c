@@ -23,7 +23,7 @@ typedef struct {
 
     u64 currTitleId;
 
-    move_data_info installInfo;
+    copy_data_info installInfo;
     Handle cancelEvent;
 } network_install_data;
 
@@ -232,7 +232,7 @@ static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool re
     network_install_data* networkInstallData = (network_install_data*) data;
 
     if(response) {
-        networkInstallData->cancelEvent = task_move_data(&networkInstallData->installInfo);
+        networkInstallData->cancelEvent = task_copy_data(&networkInstallData->installInfo);
         if(networkInstallData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Installing CIA(s)", "Press B to cancel.", data, networkinstall_install_update, NULL);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", networkInstallData->installInfo.total);
@@ -335,7 +335,7 @@ void networkinstall_open() {
 
     data->installInfo.data = data;
 
-    data->installInfo.moveEmpty = false;
+    data->installInfo.copyEmpty = false;
 
     data->installInfo.isSrcDirectory = networkinstall_is_src_directory;
     data->installInfo.makeDstDirectory = networkinstall_make_dst_directory;

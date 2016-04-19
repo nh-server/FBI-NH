@@ -9,12 +9,12 @@
 #include "task.h"
 
 typedef struct {
-    move_data_info* info;
+    copy_data_info* info;
 
     Handle cancelEvent;
-} move_data_data;
+} copy_data_data;
 
-static bool task_move_data_item(move_data_data* data, u32 index) {
+static bool task_copy_data_item(copy_data_data* data, u32 index) {
     data->info->currProcessed = 0;
     data->info->currTotal = 0;
 
@@ -28,7 +28,7 @@ static bool task_move_data_item(move_data_data* data, u32 index) {
         if(R_SUCCEEDED(res = data->info->openSrc(data->info->data, index, &srcHandle))) {
             if(R_SUCCEEDED(res = data->info->getSrcSize(data->info->data, srcHandle, &data->info->currTotal))) {
                 if(data->info->currTotal == 0) {
-                    if(data->info->moveEmpty) {
+                    if(data->info->copyEmpty) {
                         u32 dstHandle = 0;
                         if(R_SUCCEEDED(res = data->info->openDst(data->info->data, index, NULL, &dstHandle))) {
                             res = data->info->closeDst(data->info->data, index, true, dstHandle);
@@ -105,8 +105,8 @@ static bool task_move_data_item(move_data_data* data, u32 index) {
     return true;
 }
 
-static void task_move_data_thread(void* arg) {
-    move_data_data* data = (move_data_data*) arg;
+static void task_copy_data_thread(void* arg) {
+    copy_data_data* data = (copy_data_data*) arg;
 
     data->info->finished = false;
     data->info->premature = false;
@@ -114,7 +114,7 @@ static void task_move_data_thread(void* arg) {
     data->info->processed = 0;
 
     for(data->info->processed = 0; data->info->processed < data->info->total; data->info->processed++) {
-        if(!task_move_data_item(data, data->info->processed)) {
+        if(!task_copy_data_item(data, data->info->processed)) {
             data->info->premature = true;
             break;
         }
@@ -126,7 +126,7 @@ static void task_move_data_thread(void* arg) {
     free(data);
 }
 
-static void task_move_data_reset_info(move_data_info* info) {
+static void task_copy_data_reset_info(copy_data_info* info) {
     info->finished = false;
     info->premature = false;
 
@@ -136,14 +136,14 @@ static void task_move_data_reset_info(move_data_info* info) {
     info->currTotal = 0;
 }
 
-Handle task_move_data(move_data_info* info) {
+Handle task_copy_data(copy_data_info* info) {
     if(info == NULL) {
         return 0;
     }
 
-    task_move_data_reset_info(info);
+    task_copy_data_reset_info(info);
 
-    move_data_data* installData = (move_data_data*) calloc(1, sizeof(move_data_data));
+    copy_data_data* installData = (copy_data_data*) calloc(1, sizeof(copy_data_data));
     installData->info = info;
 
     Result eventRes = svcCreateEvent(&installData->cancelEvent, 1);
@@ -154,7 +154,7 @@ Handle task_move_data(move_data_info* info) {
         return 0;
     }
 
-    if(threadCreate(task_move_data_thread, installData, 0x4000, 0x18, 1, true) == NULL) {
+    if(threadCreate(task_copy_data_thread, installData, 0x4000, 0x18, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create CIA installation thread.");
 
         svcCloseHandle(installData->cancelEvent);
