@@ -10,7 +10,7 @@
 #include "../../screen.h"
 
 typedef struct {
-    move_data_info dumpInfo;
+    copy_data_info dumpInfo;
     Handle cancelEvent;
 } dump_nand_data;
 
@@ -102,7 +102,7 @@ static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
         dump_nand_data* dumpData = (dump_nand_data*) data;
 
-        dumpData->cancelEvent = task_move_data(&dumpData->dumpInfo);
+        dumpData->cancelEvent = task_copy_data(&dumpData->dumpInfo);
         if(dumpData->cancelEvent != 0) {
             ui_push(progressbar_create("Dumping NAND", "Press B to cancel.", data, dumpnand_update, NULL));
         } else {
@@ -118,7 +118,7 @@ void dump_nand() {
 
     data->dumpInfo.data = data;
 
-    data->dumpInfo.moveEmpty = true;
+    data->dumpInfo.copyEmpty = true;
 
     data->dumpInfo.total = 1;
 

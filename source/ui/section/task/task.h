@@ -71,7 +71,7 @@ typedef struct {
 typedef struct {
     void* data;
 
-    bool moveEmpty;
+    bool copyEmpty;
 
     bool finished;
     bool premature;
@@ -98,7 +98,7 @@ typedef struct {
 
     bool (*resultError)(void* data, u32 index, Result res);
     bool (*ioError)(void* data, u32 index, int err);
-} move_data_info;
+} copy_data_info;
 
 bool task_is_quit_all();
 void task_quit_all();
@@ -109,4 +109,4 @@ Handle task_populate_pending_titles(list_item* items, u32* count, u32 max);
 Handle task_populate_system_save_data(list_item* items, u32* count, u32 max);
 Handle task_populate_tickets(list_item* items, u32* count, u32 max);
 Handle task_populate_titles(list_item* items, u32* count, u32 max);
-Handle task_move_data(move_data_info* info);
+Handle task_copy_data(copy_data_info* info);

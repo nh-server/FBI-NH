@@ -18,7 +18,7 @@ typedef struct {
     bool* populated;
     char** contents;
 
-    move_data_info pasteInfo;
+    copy_data_info pasteInfo;
     Handle cancelEvent;
 } paste_files_data;
 
@@ -178,7 +178,7 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
 
     paste_files_data* pasteData = (paste_files_data*) data;
     if(response) {
-        pasteData->cancelEvent = task_move_data(&pasteData->pasteInfo);
+        pasteData->cancelEvent = task_copy_data(&pasteData->pasteInfo);
         if(pasteData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Pasting Contents", "Press B to cancel.", data, action_paste_files_update, action_paste_files_draw_top);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", ((paste_files_data*) data)->pasteInfo.total);
@@ -203,7 +203,7 @@ void action_paste_contents(file_info* info, bool* populated) {
 
     data->pasteInfo.data = data;
 
-    data->pasteInfo.moveEmpty = true;
+    data->pasteInfo.copyEmpty = true;
 
     data->pasteInfo.isSrcDirectory = action_paste_files_is_src_directory;
     data->pasteInfo.makeDstDirectory = action_paste_files_make_dst_directory;

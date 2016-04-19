@@ -16,7 +16,7 @@ typedef struct {
     file_info* base;
     char** contents;
 
-    move_data_info installInfo;
+    copy_data_info installInfo;
     Handle cancelEvent;
 } install_tickets_data;
 
@@ -151,7 +151,7 @@ static void action_install_tickets_onresponse(ui_view* view, void* data, bool re
     install_tickets_data* installData = (install_tickets_data*) data;
 
     if(response) {
-        installData->cancelEvent = task_move_data(&installData->installInfo);
+        installData->cancelEvent = task_copy_data(&installData->installInfo);
         if(installData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Installing ticket(s)", "Press B to cancel.", data, action_install_tickets_update, action_install_tickets_draw_top);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", installData->installInfo.total);
@@ -172,7 +172,7 @@ void action_install_tickets(file_info* info, bool* populated) {
 
     data->installInfo.data = data;
 
-    data->installInfo.moveEmpty = false;
+    data->installInfo.copyEmpty = false;
 
     data->installInfo.isSrcDirectory = action_install_tickets_is_src_directory;
     data->installInfo.makeDstDirectory = action_install_tickets_make_dst_directory;
