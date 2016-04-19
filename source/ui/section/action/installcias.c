@@ -20,20 +20,20 @@ typedef struct {
 
     u64 currTitleId;
 
-    copy_data_info installInfo;
+    data_op_info installInfo;
     Handle cancelEvent;
 } install_cias_data;
 
-Result action_install_cias_is_src_directory(void* data, u32 index, bool* isDirectory) {
+static Result action_install_cias_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
     return 0;
 }
 
-Result action_install_cias_make_dst_directory(void* data, u32 index) {
+static Result action_install_cias_make_dst_directory(void* data, u32 index) {
     return 0;
 }
 
-Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
+static Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
     FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
@@ -45,7 +45,7 @@ Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
     return res;
 }
 
-Result action_install_cias_close_src(void* data, u32 index, bool succeeded, u32 handle) {
+static Result action_install_cias_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
     Result res = 0;
@@ -60,15 +60,15 @@ Result action_install_cias_close_src(void* data, u32 index, bool succeeded, u32 
     return res;
 }
 
-Result action_install_cias_get_src_size(void* data, u32 handle, u64* size) {
+static Result action_install_cias_get_src_size(void* data, u32 handle, u64* size) {
     return FSFILE_GetSize(handle, size);
 }
 
-Result action_install_cias_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
+static Result action_install_cias_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
     u8* buffer = (u8*) initialReadBlock;
@@ -102,7 +102,7 @@ Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBloc
     return res;
 }
 
-Result action_install_cias_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
+static Result action_install_cias_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     if(succeeded) {
         install_cias_data* installData = (install_cias_data*) data;
 
@@ -119,7 +119,7 @@ Result action_install_cias_close_dst(void* data, u32 index, bool succeeded, u32 
     }
 }
 
-Result action_install_cias_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
+static Result action_install_cias_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
@@ -223,7 +223,7 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
     install_cias_data* installData = (install_cias_data*) data;
 
     if(response) {
-        installData->cancelEvent = task_copy_data(&installData->installInfo);
+        installData->cancelEvent = task_data_op(&installData->installInfo);
         if(installData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Installing CIA(s)", "Press B to cancel.", data, action_install_cias_update, action_install_cias_draw_top);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", installData->installInfo.total);
@@ -247,6 +247,8 @@ static void action_install_cias_internal(file_info* info, bool* populated, bool 
     data->currTitleId = 0;
 
     data->installInfo.data = data;
+
+    data->installInfo.op = DATAOP_COPY;
 
     data->installInfo.copyEmpty = false;
 

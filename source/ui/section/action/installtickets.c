@@ -16,20 +16,20 @@ typedef struct {
     file_info* base;
     char** contents;
 
-    copy_data_info installInfo;
+    data_op_info installInfo;
     Handle cancelEvent;
 } install_tickets_data;
 
-Result action_install_tickets_is_src_directory(void* data, u32 index, bool* isDirectory) {
+static Result action_install_tickets_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
     return 0;
 }
 
-Result action_install_tickets_make_dst_directory(void* data, u32 index) {
+static Result action_install_tickets_make_dst_directory(void* data, u32 index) {
     return 0;
 }
 
-Result action_install_tickets_open_src(void* data, u32 index, u32* handle) {
+static Result action_install_tickets_open_src(void* data, u32 index, u32* handle) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
     FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
@@ -41,23 +41,23 @@ Result action_install_tickets_open_src(void* data, u32 index, u32* handle) {
     return res;
 }
 
-Result action_install_tickets_close_src(void* data, u32 index, bool succeeded, u32 handle) {
+static Result action_install_tickets_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     return FSFILE_Close(handle);
 }
 
-Result action_install_tickets_get_src_size(void* data, u32 handle, u64* size) {
+static Result action_install_tickets_get_src_size(void* data, u32 handle, u64* size) {
     return FSFILE_GetSize(handle, size);
 }
 
-Result action_install_tickets_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
+static Result action_install_tickets_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-Result action_install_tickets_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_install_tickets_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     return AM_InstallTicketBegin(handle);
 }
 
-Result action_install_tickets_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
+static Result action_install_tickets_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     if(succeeded) {
         return AM_InstallTicketFinalize(handle);
     } else {
@@ -65,11 +65,11 @@ Result action_install_tickets_close_dst(void* data, u32 index, bool succeeded, u
     }
 }
 
-Result action_install_tickets_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
+static Result action_install_tickets_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-bool action_install_tickets_result_error(void* data, u32 index, Result res) {
+static bool action_install_tickets_result_error(void* data, u32 index, Result res) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
     if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
@@ -93,7 +93,7 @@ bool action_install_tickets_result_error(void* data, u32 index, Result res) {
     return index < installData->installInfo.total - 1;
 }
 
-bool action_install_tickets_io_error(void* data, u32 index, int err) {
+static bool action_install_tickets_io_error(void* data, u32 index, int err) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
     char* path = installData->contents[index];
@@ -157,7 +157,7 @@ static void action_install_tickets_onresponse(ui_view* view, void* data, bool re
     install_tickets_data* installData = (install_tickets_data*) data;
 
     if(response) {
-        installData->cancelEvent = task_copy_data(&installData->installInfo);
+        installData->cancelEvent = task_data_op(&installData->installInfo);
         if(installData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Installing ticket(s)", "Press B to cancel.", data, action_install_tickets_update, action_install_tickets_draw_top);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", installData->installInfo.total);
@@ -177,6 +177,8 @@ void action_install_tickets(file_info* info, bool* populated) {
     data->base = info;
 
     data->installInfo.data = data;
+
+    data->installInfo.op = DATAOP_COPY;
 
     data->installInfo.copyEmpty = false;
 

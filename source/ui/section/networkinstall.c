@@ -23,7 +23,7 @@ typedef struct {
 
     u64 currTitleId;
 
-    copy_data_info installInfo;
+    data_op_info installInfo;
     Handle cancelEvent;
 } network_install_data;
 
@@ -51,16 +51,16 @@ static int sendwait(int sockfd, void* buf, size_t len, int flags) {
     return ret < 0 ? ret : (int) written;
 }
 
-Result networkinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
+static Result networkinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
     return 0;
 }
 
-Result networkinstall_make_dst_directory(void* data, u32 index) {
+static Result networkinstall_make_dst_directory(void* data, u32 index) {
     return 0;
 }
 
-Result networkinstall_open_src(void* data, u32 index, u32* handle) {
+static Result networkinstall_open_src(void* data, u32 index, u32* handle) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     u8 ack = 1;
@@ -71,11 +71,11 @@ Result networkinstall_open_src(void* data, u32 index, u32* handle) {
     return 0;
 }
 
-Result networkinstall_close_src(void* data, u32 index, bool succeeded, u32 handle) {
+static Result networkinstall_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     return 0;
 }
 
-Result networkinstall_get_src_size(void* data, u32 handle, u64* size) {
+static Result networkinstall_get_src_size(void* data, u32 handle, u64* size) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     u64 netSize = 0;
@@ -87,7 +87,7 @@ Result networkinstall_get_src_size(void* data, u32 handle, u64* size) {
     return 0;
 }
 
-Result networkinstall_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
+static Result networkinstall_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     int ret = 0;
@@ -99,7 +99,7 @@ Result networkinstall_read_src(void* data, u32 handle, u32* bytesRead, void* buf
     return 0;
 }
 
-Result networkinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     u8* buffer = (u8*) initialReadBlock;
@@ -133,7 +133,7 @@ Result networkinstall_open_dst(void* data, u32 index, void* initialReadBlock, u3
     return res;
 }
 
-Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
+static Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     if(succeeded) {
         network_install_data* networkInstallData = (network_install_data*) data;
 
@@ -150,11 +150,11 @@ Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u32 handl
     }
 }
 
-Result networkinstall_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
+static Result networkinstall_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-bool networkinstall_result_error(void* data, u32 index, Result res) {
+static bool networkinstall_result_error(void* data, u32 index, Result res) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
@@ -176,7 +176,7 @@ bool networkinstall_result_error(void* data, u32 index, Result res) {
     return index < networkInstallData->installInfo.total - 1;
 }
 
-bool networkinstall_io_error(void* data, u32 index, int err) {
+static bool networkinstall_io_error(void* data, u32 index, int err) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     volatile bool dismissed = false;
@@ -232,7 +232,7 @@ static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool re
     network_install_data* networkInstallData = (network_install_data*) data;
 
     if(response) {
-        networkInstallData->cancelEvent = task_copy_data(&networkInstallData->installInfo);
+        networkInstallData->cancelEvent = task_data_op(&networkInstallData->installInfo);
         if(networkInstallData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Installing CIA(s)", "Press B to cancel.", data, networkinstall_install_update, NULL);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", networkInstallData->installInfo.total);
@@ -334,6 +334,8 @@ void networkinstall_open() {
     data->currTitleId = 0;
 
     data->installInfo.data = data;
+
+    data->installInfo.op = DATAOP_COPY;
 
     data->installInfo.copyEmpty = false;
 

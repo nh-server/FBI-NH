@@ -18,7 +18,7 @@ typedef struct {
     bool* populated;
     char** contents;
 
-    copy_data_info pasteInfo;
+    data_op_info pasteInfo;
     Handle cancelEvent;
 } paste_files_data;
 
@@ -34,14 +34,14 @@ static void action_paste_files_get_dst_path(paste_files_data* data, u32 index, c
     snprintf(dstPath, PATH_MAX, "%s%s", baseDstPath, data->contents[index] + strlen(dstPath));
 }
 
-Result action_paste_files_is_src_directory(void* data, u32 index, bool* isDirectory) {
+static Result action_paste_files_is_src_directory(void* data, u32 index, bool* isDirectory) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     *isDirectory = util_is_dir(pasteData->base->archive, pasteData->contents[index]);
     return 0;
 }
 
-Result action_paste_files_make_dst_directory(void* data, u32 index) {
+static Result action_paste_files_make_dst_directory(void* data, u32 index) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     char dstPath[PATH_MAX];
@@ -56,7 +56,7 @@ Result action_paste_files_make_dst_directory(void* data, u32 index) {
     return res;
 }
 
-Result action_paste_files_open_src(void* data, u32 index, u32* handle) {
+static Result action_paste_files_open_src(void* data, u32 index, u32* handle) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     FS_Path* fsPath = util_make_path_utf8(pasteData->contents[index]);
@@ -68,19 +68,19 @@ Result action_paste_files_open_src(void* data, u32 index, u32* handle) {
     return res;
 }
 
-Result action_paste_files_close_src(void* data, u32 index, bool succeeded, u32 handle) {
+static Result action_paste_files_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     return FSFILE_Close(handle);
 }
 
-Result action_paste_files_get_src_size(void* data, u32 handle, u64* size) {
+static Result action_paste_files_get_src_size(void* data, u32 handle, u64* size) {
     return FSFILE_GetSize(handle, size);
 }
 
-Result action_paste_files_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
+static Result action_paste_files_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-Result action_paste_files_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_paste_files_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     char dstPath[PATH_MAX];
@@ -95,15 +95,15 @@ Result action_paste_files_open_dst(void* data, u32 index, void* initialReadBlock
     return res;
 }
 
-Result action_paste_files_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
+static Result action_paste_files_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     return FSFILE_Close(handle);
 }
 
-Result action_paste_files_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
+static Result action_paste_files_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-bool action_paste_files_result_error(void* data, u32 index, Result res) {
+static bool action_paste_files_result_error(void* data, u32 index, Result res) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
@@ -127,7 +127,7 @@ bool action_paste_files_result_error(void* data, u32 index, Result res) {
     return index < pasteData->pasteInfo.total - 1;
 }
 
-bool action_paste_files_io_error(void* data, u32 index, int err) {
+static bool action_paste_files_io_error(void* data, u32 index, int err) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     char* path = pasteData->contents[index];
@@ -171,6 +171,10 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
     if(pasteData->pasteInfo.finished) {
         *pasteData->populated = false;
 
+        if(pasteData->base->archive->id == ARCHIVE_USER_SAVEDATA) {
+            FSUSER_ControlArchive(*pasteData->base->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+        }
+
         ui_pop();
         progressbar_destroy(view);
 
@@ -196,7 +200,7 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
 
     paste_files_data* pasteData = (paste_files_data*) data;
     if(response) {
-        pasteData->cancelEvent = task_copy_data(&pasteData->pasteInfo);
+        pasteData->cancelEvent = task_data_op(&pasteData->pasteInfo);
         if(pasteData->cancelEvent != 0) {
             ui_view* progressView = progressbar_create("Pasting Contents", "Press B to cancel.", data, action_paste_files_update, action_paste_files_draw_top);
             snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", ((paste_files_data*) data)->pasteInfo.total);
@@ -220,6 +224,8 @@ void action_paste_contents(file_info* info, bool* populated) {
     data->populated = populated;
 
     data->pasteInfo.data = data;
+
+    data->pasteInfo.op = DATAOP_COPY;
 
     data->pasteInfo.copyEmpty = true;
 

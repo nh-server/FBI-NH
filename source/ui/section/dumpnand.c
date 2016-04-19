@@ -10,50 +10,50 @@
 #include "../../screen.h"
 
 typedef struct {
-    copy_data_info dumpInfo;
+    data_op_info dumpInfo;
     Handle cancelEvent;
 } dump_nand_data;
 
-Result dumpnand_is_src_directory(void* data, u32 index, bool* isDirectory) {
+static Result dumpnand_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
     return 0;
 }
 
-Result dumpnand_make_dst_directory(void* data, u32 index) {
+static Result dumpnand_make_dst_directory(void* data, u32 index) {
     return 0;
 }
 
-Result dumpnand_open_src(void* data, u32 index, u32* handle) {
+static Result dumpnand_open_src(void* data, u32 index, u32* handle) {
     FS_Archive wnandArchive = {ARCHIVE_NAND_W_FS, fsMakePath(PATH_EMPTY, "")};
     return FSUSER_OpenFileDirectly(handle, wnandArchive, fsMakePath(PATH_UTF16, u"/"), FS_OPEN_READ, 0);
 }
 
-Result dumpnand_close_src(void* data, u32 index, bool succeeded, u32 handle) {
+static Result dumpnand_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     return FSFILE_Close(handle);
 }
 
-Result dumpnand_get_src_size(void* data, u32 handle, u64* size) {
+static Result dumpnand_get_src_size(void* data, u32 handle, u64* size) {
     return FSFILE_GetSize(handle, size);
 }
 
-Result dumpnand_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
+static Result dumpnand_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-Result dumpnand_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result dumpnand_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (u8*) ""}};
     return FSUSER_OpenFileDirectly(handle, sdmcArchive, fsMakePath(PATH_UTF16, u"/NAND.bin"), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 }
 
-Result dumpnand_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
+static Result dumpnand_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     return FSFILE_Close(handle);
 }
 
-Result dumpnand_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
+static Result dumpnand_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-bool dumpnand_result_error(void* data, u32 index, Result res) {
+static bool dumpnand_result_error(void* data, u32 index, Result res) {
     if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
         ui_push(prompt_create("Failure", "Dump cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL));
     } else {
@@ -63,7 +63,7 @@ bool dumpnand_result_error(void* data, u32 index, Result res) {
     return false;
 }
 
-bool dumpnand_io_error(void* data, u32 index, int err) {
+static bool dumpnand_io_error(void* data, u32 index, int err) {
     error_display_errno(NULL, NULL, NULL, err, "Failed to dump NAND.");
     return false;
 }
@@ -102,7 +102,7 @@ static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
         dump_nand_data* dumpData = (dump_nand_data*) data;
 
-        dumpData->cancelEvent = task_copy_data(&dumpData->dumpInfo);
+        dumpData->cancelEvent = task_data_op(&dumpData->dumpInfo);
         if(dumpData->cancelEvent != 0) {
             ui_push(progressbar_create("Dumping NAND", "Press B to cancel.", data, dumpnand_update, NULL));
         } else {
@@ -117,6 +117,8 @@ void dump_nand() {
     dump_nand_data* data = (dump_nand_data*) calloc(1, sizeof(dump_nand_data));
 
     data->dumpInfo.data = data;
+
+    data->dumpInfo.op = DATAOP_COPY;
 
     data->dumpInfo.copyEmpty = true;
 
