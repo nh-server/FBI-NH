@@ -9,12 +9,12 @@
 #include "task.h"
 
 typedef struct {
-    copy_data_info* info;
+    data_op_info* info;
 
     Handle cancelEvent;
-} copy_data_data;
+} data_op_data;
 
-static bool task_copy_data_item(copy_data_data* data, u32 index) {
+static bool task_data_op_copy(data_op_data* data, u32 index) {
     data->info->currProcessed = 0;
     data->info->currTotal = 0;
 
@@ -105,8 +105,21 @@ static bool task_copy_data_item(copy_data_data* data, u32 index) {
     return true;
 }
 
-static void task_copy_data_thread(void* arg) {
-    copy_data_data* data = (copy_data_data*) arg;
+static bool task_data_op_delete(data_op_data* data, u32 index) {
+    Result res = 0;
+    if(R_FAILED(res = data->info->delete(data->info->data, index))) {
+        if(res == -1) {
+            return data->info->ioError(data->info->data, index, errno);
+        } else {
+            return data->info->resultError(data->info->data, index, res);
+        }
+    }
+
+    return true;
+}
+
+static void task_data_op_thread(void* arg) {
+    data_op_data* data = (data_op_data*) arg;
 
     data->info->finished = false;
     data->info->premature = false;
@@ -114,7 +127,20 @@ static void task_copy_data_thread(void* arg) {
     data->info->processed = 0;
 
     for(data->info->processed = 0; data->info->processed < data->info->total; data->info->processed++) {
-        if(!task_copy_data_item(data, data->info->processed)) {
+        bool cont = false;
+
+        switch(data->info->op) {
+            case DATAOP_COPY:
+                cont = task_data_op_copy(data, data->info->processed);
+                break;
+            case DATAOP_DELETE:
+                cont = task_data_op_delete(data, data->info->processed);
+                break;
+            default:
+                break;
+        }
+
+        if(!cont) {
             data->info->premature = true;
             break;
         }
@@ -126,7 +152,7 @@ static void task_copy_data_thread(void* arg) {
     free(data);
 }
 
-static void task_copy_data_reset_info(copy_data_info* info) {
+static void task_data_op_reset_info(data_op_info* info) {
     info->finished = false;
     info->premature = false;
 
@@ -136,14 +162,14 @@ static void task_copy_data_reset_info(copy_data_info* info) {
     info->currTotal = 0;
 }
 
-Handle task_copy_data(copy_data_info* info) {
+Handle task_data_op(data_op_info* info) {
     if(info == NULL) {
         return 0;
     }
 
-    task_copy_data_reset_info(info);
+    task_data_op_reset_info(info);
 
-    copy_data_data* installData = (copy_data_data*) calloc(1, sizeof(copy_data_data));
+    data_op_data* installData = (data_op_data*) calloc(1, sizeof(data_op_data));
     installData->info = info;
 
     Result eventRes = svcCreateEvent(&installData->cancelEvent, 1);
@@ -154,7 +180,7 @@ Handle task_copy_data(copy_data_info* info) {
         return 0;
     }
 
-    if(threadCreate(task_copy_data_thread, installData, 0x4000, 0x18, 1, true) == NULL) {
+    if(threadCreate(task_data_op_thread, installData, 0x4000, 0x18, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create CIA installation thread.");
 
         svcCloseHandle(installData->cancelEvent);

@@ -68,9 +68,17 @@ typedef struct {
     ticket_info ticketInfo;
 } file_info;
 
+typedef enum {
+    DATAOP_COPY,
+    DATAOP_DELETE
+} DataOp;
+
 typedef struct {
     void* data;
 
+    DataOp op;
+
+    // Copy
     bool copyEmpty;
 
     bool finished;
@@ -96,9 +104,13 @@ typedef struct {
 
     Result (*writeDst)(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size);
 
+    // Delete
+    Result (*delete)(void* data, u32 index);
+
+    // Errors
     bool (*resultError)(void* data, u32 index, Result res);
     bool (*ioError)(void* data, u32 index, int err);
-} copy_data_info;
+} data_op_info;
 
 bool task_is_quit_all();
 void task_quit_all();
@@ -109,4 +121,4 @@ Handle task_populate_pending_titles(list_item* items, u32* count, u32 max);
 Handle task_populate_system_save_data(list_item* items, u32* count, u32 max);
 Handle task_populate_tickets(list_item* items, u32* count, u32 max);
 Handle task_populate_titles(list_item* items, u32* count, u32 max);
-Handle task_copy_data(copy_data_info* info);
+Handle task_data_op(data_op_info* info);
