@@ -36,12 +36,16 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
                 char pathBuf[64];
                 snprintf(pathBuf, 64, "/fbi/securevalue/%016llX.dat", info->titleId);
 
+                FS_Path* fsPath = util_make_path_utf8(pathBuf);
+
                 Handle fileHandle = 0;
-                if(R_SUCCEEDED(res = FSUSER_OpenFile(&fileHandle, sdmcArchive, fsMakePath(PATH_ASCII, pathBuf), FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
+                if(R_SUCCEEDED(res = FSUSER_OpenFile(&fileHandle, sdmcArchive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
                     u32 bytesWritten = 0;
                     res = FSFILE_Write(fileHandle, &bytesWritten, 0, &value, sizeof(u64), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
                     FSFILE_Close(fileHandle);
                 }
+
+                util_free_path_utf8(fsPath);
             }
 
             FSUSER_CloseArchive(&sdmcArchive);

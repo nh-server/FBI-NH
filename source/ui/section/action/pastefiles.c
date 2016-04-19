@@ -47,13 +47,25 @@ Result action_paste_files_make_dst_directory(void* data, u32 index) {
     char dstPath[PATH_MAX];
     action_paste_files_get_dst_path(pasteData, index, dstPath);
 
-    return FSUSER_CreateDirectory(*pasteData->base->archive, fsMakePath(PATH_ASCII, dstPath), 0);
+    FS_Path* fsPath = util_make_path_utf8(dstPath);
+
+    Result res = FSUSER_CreateDirectory(*pasteData->base->archive, *fsPath, 0);
+
+    util_free_path_utf8(fsPath);
+
+    return res;
 }
 
 Result action_paste_files_open_src(void* data, u32 index, u32* handle) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
-    return FSUSER_OpenFile(handle, *pasteData->base->archive, fsMakePath(PATH_ASCII, pasteData->contents[index]), FS_OPEN_READ, 0);
+    FS_Path* fsPath = util_make_path_utf8(pasteData->contents[index]);
+
+    Result res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_READ, 0);
+
+    util_free_path_utf8(fsPath);
+
+    return res;
 }
 
 Result action_paste_files_close_src(void* data, u32 index, bool succeeded, u32 handle) {
@@ -74,7 +86,13 @@ Result action_paste_files_open_dst(void* data, u32 index, void* initialReadBlock
     char dstPath[PATH_MAX];
     action_paste_files_get_dst_path(pasteData, index, dstPath);
 
-    return FSUSER_OpenFile(handle, *pasteData->base->archive, fsMakePath(PATH_ASCII, dstPath), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+    FS_Path* fsPath = util_make_path_utf8(dstPath);
+
+    Result res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+
+    util_free_path_utf8(fsPath);
+
+    return res;
 }
 
 Result action_paste_files_close_dst(void* data, u32 index, bool succeeded, u32 handle) {

@@ -7,6 +7,7 @@
 #include "../../progressbar.h"
 #include "../../prompt.h"
 #include "../../../screen.h"
+#include "../../../util.h"
 
 static void action_import_secure_value_end_onresponse(ui_view* view, void* data, bool response) {
     prompt_destroy(view);
@@ -20,9 +21,11 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
 
     Result res = 0;
 
+    FS_Path* fsPath = util_make_path_utf8(pathBuf);
+
     FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
     Handle fileHandle = 0;
-    if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, fsMakePath(PATH_ASCII, pathBuf), FS_OPEN_READ, 0))) {
+    if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, *fsPath, FS_OPEN_READ, 0))) {
         u32 bytesRead = 0;
         u64 value = 0;
         if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, &value, sizeof(u64)))) {
@@ -31,6 +34,8 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
 
         FSFILE_Close(fileHandle);
     }
+
+    util_free_path_utf8(fsPath);
 
     if(R_FAILED(res)) {
         progressbar_destroy(view);

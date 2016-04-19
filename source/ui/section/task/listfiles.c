@@ -30,8 +30,10 @@ static void task_populate_files_thread(void* arg) {
     Result res = 0;
 
     if(data->max > *data->count) {
+        FS_Path* fsPath = util_make_path_utf8(data->dir->path);
+
         Handle dirHandle = 0;
-        if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *data->dir->archive, fsMakePath(PATH_ASCII, data->dir->path)))) {
+        if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *data->dir->archive, *fsPath))) {
             u32 entryCount = 0;
             FS_DirectoryEntry* entries = (FS_DirectoryEntry*) calloc(data->max, sizeof(FS_DirectoryEntry));
             if(entries != NULL) {
@@ -75,8 +77,10 @@ static void task_populate_files_thread(void* arg) {
                                 fileInfo->size = 0;
                                 fileInfo->isCia = false;
 
+                                FS_Path* fileFsPath = util_make_path_utf8(fileInfo->path);
+
                                 Handle fileHandle;
-                                if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *data->dir->archive, fsMakePath(PATH_ASCII, fileInfo->path), FS_OPEN_READ, 0))) {
+                                if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *data->dir->archive, *fileFsPath, FS_OPEN_READ, 0))) {
                                     FSFILE_GetSize(fileHandle, &fileInfo->size);
 
                                     size_t len = strlen(fileInfo->path);
@@ -128,6 +132,8 @@ static void task_populate_files_thread(void* arg) {
 
                                     FSFILE_Close(fileHandle);
                                 }
+
+                                util_free_path_utf8(fileFsPath);
                             }
 
                             strncpy(item->name, entryName, NAME_MAX);
@@ -145,6 +151,8 @@ static void task_populate_files_thread(void* arg) {
 
             FSDIR_Close(dirHandle);
         }
+
+        util_free_path_utf8(fsPath);
     }
 
     if(R_FAILED(res)) {
