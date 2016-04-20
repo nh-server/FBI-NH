@@ -25,9 +25,9 @@ void cleanup() {
         soc_buffer = NULL;
     }
 
+    amExit();
     ptmuExit();
     acExit();
-    amExit();
     cfguExit();
     romfsExit();
     gfxExit();
@@ -49,7 +49,7 @@ int main(int argc, const char* argv[]) {
     aptCloseSession();
 
     if(R_FAILED(setCpuTimeRes)) {
-        util_panic("Failed to set syscore CPU time: %08lX", setCpuTimeRes);
+        util_panic("Failed to set syscore CPU time limit: %08lX", setCpuTimeRes);
         return 1;
     }
 
@@ -71,12 +71,8 @@ int main(int argc, const char* argv[]) {
 
     mainmenu_open();
 
-    while(aptMainLoop()) {
+    while(aptMainLoop() && ui_top() != NULL) {
         ui_update();
-        if(ui_peek() == NULL) {
-            break;
-        }
-
         ui_draw();
     }
 

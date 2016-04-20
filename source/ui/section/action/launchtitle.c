@@ -9,26 +9,20 @@
 static void action_launch_title_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
 
-    u8 buf0[0x300];
-    u8 buf1[0x20];
-
     Result res = 0;
 
     aptOpenSession();
 
     if(R_SUCCEEDED(res = APT_PrepareToDoAppJump(0, info->titleId, info->mediaType))) {
+        u8 buf0[0x300];
+        u8 buf1[0x20];
+
         res = APT_DoAppJump(0x300, 0x20, buf0, buf1);
     }
 
     aptCloseSession();
 
-    info_destroy(view);
-
-    if(R_SUCCEEDED(res)) {
-        while(ui_peek() != NULL) {
-            ui_pop();
-        }
-    } else {
+    if(R_FAILED(res)) {
         ui_pop();
         info_destroy(view);
 
