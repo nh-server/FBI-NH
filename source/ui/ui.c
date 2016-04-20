@@ -13,34 +13,65 @@
 static ui_view* ui_stack[MAX_UI_VIEWS];
 static int ui_stack_top = -1;
 
+static Handle ui_stack_mutex = 0;
+
+void ui_init() {
+    if(ui_stack_mutex == 0) {
+        svcCreateMutex(&ui_stack_mutex, false);
+    }
+}
+
+void ui_exit() {
+    if(ui_stack_mutex != 0) {
+        svcCloseHandle(ui_stack_mutex);
+        ui_stack_mutex = 0;
+    }
+}
+
 bool ui_push(ui_view* view) {
     if(view == NULL) {
         return false;
     }
+
+    svcWaitSynchronization(ui_stack_mutex, U64_MAX);
 
     if(ui_stack_top >= MAX_UI_VIEWS - 1) {
         return false;
     }
 
     ui_stack[++ui_stack_top] = view;
+
+    svcReleaseMutex(ui_stack_mutex);
+
     return true;
 }
 
 ui_view* ui_peek() {
+    svcWaitSynchronization(ui_stack_mutex, U64_MAX);
+
     if(ui_stack_top == -1) {
         return NULL;
     }
 
-    return ui_stack[ui_stack_top];
+    ui_view* ui = ui_stack[ui_stack_top];
+
+    svcReleaseMutex(ui_stack_mutex);
+
+    return ui;
 }
 
 ui_view* ui_pop() {
+    svcWaitSynchronization(ui_stack_mutex, U64_MAX);
+
     if(ui_stack_top == -1) {
         return NULL;
     }
 
-    ui_view* view = ui_peek();
+    ui_view* view = ui_stack[ui_stack_top];
     ui_stack[ui_stack_top--] = NULL;
+
+    svcReleaseMutex(ui_stack_mutex);
+
     return view;
 }
 

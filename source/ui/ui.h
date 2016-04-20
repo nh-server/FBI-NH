@@ -11,6 +11,9 @@ typedef struct ui_view_s {
     void (*drawBottom)(struct ui_view_s* view, void* data, float x1, float y1, float x2, float y2);
 } ui_view;
 
+void ui_init();
+void ui_exit();
+
 bool ui_push(ui_view* view);
 ui_view* ui_peek();
 ui_view* ui_pop();
