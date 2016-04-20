@@ -15,6 +15,8 @@ void cleanup() {
     clipboard_clear();
 
     task_quit_all();
+
+    ui_exit();
     screen_exit();
 
     socExit();
@@ -65,6 +67,7 @@ int main(int argc, const char* argv[]) {
     }
 
     screen_init();
+    ui_init();
 
     mainmenu_open();
 
