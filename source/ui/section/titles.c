@@ -65,8 +65,8 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
     titles_action_data* actionData = (titles_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         free(data);
 
@@ -76,8 +76,8 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         void(*action)(title_info*, bool*) = (void(*)(title_info*, bool*)) selected->data;
 
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         action(actionData->info, actionData->populated);
 
@@ -109,12 +109,12 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
     }
 }
 
-static ui_view* titles_action_create(title_info* info, bool* populated) {
+static void titles_action_open(title_info* info, bool* populated) {
     titles_action_data* data = (titles_action_data*) calloc(1, sizeof(titles_action_data));
     data->info = info;
     data->populated = populated;
 
-    return list_create("Title Action", "A: Select, B: Return", data, titles_action_update, titles_action_draw_top);
+    list_display("Title Action", "A: Select, B: Return", data, titles_action_update, titles_action_draw_top);
 }
 
 static void titles_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -137,8 +137,9 @@ static void titles_update(ui_view* view, void* data, list_item** items, u32** it
         }
 
         ui_pop();
-        free(listData);
         list_destroy(view);
+
+        free(listData);
         return;
     }
 
@@ -157,7 +158,7 @@ static void titles_update(ui_view* view, void* data, list_item** items, u32** it
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        ui_push(titles_action_create((title_info*) selected->data, &listData->populated));
+        titles_action_open((title_info*) selected->data, &listData->populated);
         return;
     }
 
@@ -170,5 +171,5 @@ static void titles_update(ui_view* view, void* data, list_item** items, u32** it
 void titles_open() {
     titles_data* data = (titles_data*) calloc(1, sizeof(titles_data));
 
-    ui_push(list_create("Titles", "A: Select, B: Return, X: Refresh", data, titles_update, titles_draw_top));
+    list_display("Titles", "A: Select, B: Return, X: Refresh", data, titles_update, titles_draw_top);
 }

@@ -4,16 +4,12 @@
 
 #include "action.h"
 #include "../../error.h"
-#include "../../progressbar.h"
+#include "../../info.h"
 #include "../../prompt.h"
 #include "../../../screen.h"
 #include "../../../util.h"
 
-static void action_import_secure_value_end_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-}
-
-static void action_import_secure_value_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void action_import_secure_value_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
 
     char pathBuf[64];
@@ -37,29 +33,22 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
 
     util_free_path_utf8(fsPath);
 
-    if(R_FAILED(res)) {
-        progressbar_destroy(view);
-        ui_pop();
-
-        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to import secure value.");
-
-        return;
-    }
-
-    progressbar_destroy(view);
     ui_pop();
+    info_destroy(view);
 
-    ui_push(prompt_create("Success", "Secure value imported.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, action_import_secure_value_end_onresponse));
+    if(R_SUCCEEDED(res)) {
+        prompt_display("Success", "Secure value imported.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, NULL);
+    } else {
+        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to import secure value.");
+    }
 }
 
 static void action_import_secure_value_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     if(response) {
-        ui_push(progressbar_create("Importing Secure Value", "", data, action_import_secure_value_update, ui_draw_title_info));
+        info_display("Importing Secure Value", "", false, data, action_import_secure_value_update, ui_draw_title_info);
     }
 }
 
 void action_import_secure_value(title_info* info, bool* populated) {
-    ui_push(prompt_create("Confirmation", "Import the secure value of the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_import_secure_value_onresponse));
+    prompt_display("Confirmation", "Import the secure value of the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_import_secure_value_onresponse);
 }

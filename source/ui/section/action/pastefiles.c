@@ -7,11 +7,10 @@
 #include "action.h"
 #include "clipboard.h"
 #include "../../error.h"
-#include "../../progressbar.h"
+#include "../../info.h"
 #include "../../prompt.h"
 #include "../../../screen.h"
 #include "../../../util.h"
-#include "../task/task.h"
 
 typedef struct {
     file_info* base;
@@ -103,11 +102,11 @@ static Result action_paste_files_write_dst(void* data, u32 handle, u32* bytesWri
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static bool action_paste_files_result_error(void* data, u32 index, Result res) {
+static bool action_paste_files_error(void* data, u32 index, Result res) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
-    if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
-        ui_push(prompt_create("Failure", "Paste cancelled.", COLOR_TEXT, false, pasteData->base, NULL, ui_draw_file_info, NULL));
+    if(res == R_FBI_CANCELLED) {
+        prompt_display("Failure", "Paste cancelled.", COLOR_TEXT, false, pasteData->base, NULL, ui_draw_file_info, NULL);
         return false;
     } else {
         char* path = pasteData->contents[index];
@@ -127,31 +126,8 @@ static bool action_paste_files_result_error(void* data, u32 index, Result res) {
     return index < pasteData->pasteInfo.total - 1;
 }
 
-static bool action_paste_files_io_error(void* data, u32 index, int err) {
-    paste_files_data* pasteData = (paste_files_data*) data;
-
-    char* path = pasteData->contents[index];
-
-    volatile bool dismissed = false;
-    if(strlen(path) > 48) {
-        error_display_errno(&dismissed, pasteData->base, ui_draw_file_info, err, "Failed to paste content.\n%.45s...", path);
-    } else {
-        error_display_errno(&dismissed, pasteData->base, ui_draw_file_info, err, "Failed to paste content.\n%.48s", path);
-    }
-
-    while(!dismissed) {
-        svcSleepThread(1000000);
-    }
-
-    return index < pasteData->pasteInfo.total - 1;
-}
-
 static void action_paste_files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     ui_draw_file_info(view, ((paste_files_data*) data)->base, x1, y1, x2, y2);
-}
-
-static void action_paste_files_clipboard_empty_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
 }
 
 static void action_paste_files_free_data(paste_files_data* data) {
@@ -159,13 +135,7 @@ static void action_paste_files_free_data(paste_files_data* data) {
     free(data);
 }
 
-static void action_paste_files_done_onresponse(ui_view* view, void* data, bool response) {
-    action_paste_files_free_data((paste_files_data*) data);
-
-    prompt_destroy(view);
-}
-
-static void action_paste_files_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void action_paste_files_update(ui_view* view, void* data, float* progress, char* text) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     if(pasteData->pasteInfo.finished) {
@@ -176,13 +146,13 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
         }
 
         ui_pop();
-        progressbar_destroy(view);
+        info_destroy(view);
 
-        if(pasteData->pasteInfo.premature) {
-            action_paste_files_free_data(pasteData);
-        } else {
-            ui_push(prompt_create("Success", "Contents pasted.", COLOR_TEXT, false, data, NULL, action_paste_files_draw_top, action_paste_files_done_onresponse));
+        if(!pasteData->pasteInfo.premature) {
+            prompt_display("Success", "Contents pasted.", COLOR_TEXT, false, pasteData->base, NULL, ui_draw_file_info, NULL);
         }
+
+        action_paste_files_free_data(pasteData);
 
         return;
     }
@@ -192,19 +162,15 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
     }
 
     *progress = pasteData->pasteInfo.currTotal != 0 ? (float) ((double) pasteData->pasteInfo.currProcessed / (double) pasteData->pasteInfo.currTotal) : 0;
-    snprintf(progressText, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", pasteData->pasteInfo.processed, pasteData->pasteInfo.total, pasteData->pasteInfo.currProcessed / 1024.0 / 1024.0, pasteData->pasteInfo.currTotal / 1024.0 / 1024.0);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", pasteData->pasteInfo.processed, pasteData->pasteInfo.total, pasteData->pasteInfo.currProcessed / 1024.0 / 1024.0, pasteData->pasteInfo.currTotal / 1024.0 / 1024.0);
 }
 
 static void action_paste_files_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     paste_files_data* pasteData = (paste_files_data*) data;
     if(response) {
         pasteData->cancelEvent = task_data_op(&pasteData->pasteInfo);
         if(pasteData->cancelEvent != 0) {
-            ui_view* progressView = progressbar_create("Pasting Contents", "Press B to cancel.", data, action_paste_files_update, action_paste_files_draw_top);
-            snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", ((paste_files_data*) data)->pasteInfo.total);
-            ui_push(progressView);
+            info_display("Pasting Contents", "Press B to cancel.", true, data, action_paste_files_update, action_paste_files_draw_top);
         } else {
             error_display(NULL, pasteData->base, ui_draw_file_info, "Failed to initiate paste operation.");
         }
@@ -215,7 +181,7 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
 
 void action_paste_contents(file_info* info, bool* populated) {
     if(!clipboard_has_contents()) {
-        ui_push(prompt_create("Failure", "Clipboard empty.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, action_paste_files_clipboard_empty_onresponse));
+        prompt_display("Failure", "Clipboard empty.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, NULL);
         return;
     }
 
@@ -241,8 +207,7 @@ void action_paste_contents(file_info* info, bool* populated) {
     data->pasteInfo.closeDst = action_paste_files_close_dst;
     data->pasteInfo.writeDst = action_paste_files_write_dst;
 
-    data->pasteInfo.resultError = action_paste_files_result_error;
-    data->pasteInfo.ioError = action_paste_files_io_error;
+    data->pasteInfo.error = action_paste_files_error;
 
     data->cancelEvent = 0;
 
@@ -254,5 +219,5 @@ void action_paste_contents(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Paste clipboard contents to the current directory?", COLOR_TEXT, true, data, NULL, action_paste_files_draw_top, action_paste_files_onresponse));
+    prompt_display("Confirmation", "Paste clipboard contents to the current directory?", COLOR_TEXT, true, data, NULL, action_paste_files_draw_top, action_paste_files_onresponse);
 }

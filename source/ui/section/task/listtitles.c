@@ -198,13 +198,13 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
 
                         free(titleInfos);
                     } else {
-                        res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+                        res = R_FBI_OUT_OF_MEMORY;
                     }
                 }
 
                 free(titleIds);
             } else {
-                res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+                res = R_FBI_OUT_OF_MEMORY;
             }
         }
     } else {

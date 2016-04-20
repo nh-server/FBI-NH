@@ -61,13 +61,13 @@ static Result task_populate_pending_titles_from(populate_pending_titles_data* da
 
                     free(pendingTitleInfos);
                 } else {
-                    res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+                    res = R_FBI_OUT_OF_MEMORY;
                 }
             }
 
             free(pendingTitleIds);
         } else {
-            res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+            res = R_FBI_OUT_OF_MEMORY;
         }
     }
 

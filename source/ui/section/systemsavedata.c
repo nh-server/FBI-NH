@@ -38,8 +38,8 @@ static void systemsavedata_action_update(ui_view* view, void* data, list_item** 
     systemsavedata_action_data* actionData = (systemsavedata_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         free(data);
 
@@ -49,8 +49,8 @@ static void systemsavedata_action_update(ui_view* view, void* data, list_item** 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         void(*action)(system_save_data_info*, bool*) = (void(*)(system_save_data_info*, bool*)) selected->data;
 
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         action(actionData->info, actionData->populated);
 
@@ -65,12 +65,12 @@ static void systemsavedata_action_update(ui_view* view, void* data, list_item** 
     }
 }
 
-static ui_view* systemsavedata_action_create(system_save_data_info* info, bool* populated) {
+static void systemsavedata_action_open(system_save_data_info* info, bool* populated) {
     systemsavedata_action_data* data = (systemsavedata_action_data*) calloc(1, sizeof(systemsavedata_action_data));
     data->info = info;
     data->populated = populated;
 
-    return list_create("System Save Data Action", "A: Select, B: Return", data, systemsavedata_action_update, systemsavedata_action_draw_top);
+    list_display("System Save Data Action", "A: Select, B: Return", data, systemsavedata_action_update, systemsavedata_action_draw_top);
 }
 
 static void systemsavedata_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -93,8 +93,9 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
         }
 
         ui_pop();
-        free(listData);
         list_destroy(view);
+
+        free(listData);
         return;
     }
 
@@ -113,7 +114,7 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        ui_push(systemsavedata_action_create((system_save_data_info*) selected->data, &listData->populated));
+        systemsavedata_action_open((system_save_data_info*) selected->data, &listData->populated);
         return;
     }
 
@@ -126,5 +127,5 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
 void systemsavedata_open() {
     systemsavedata_data* data = (systemsavedata_data*) calloc(1, sizeof(systemsavedata_data));
 
-    ui_push(list_create("System Save Data", "A: Select, B: Return, X: Refresh", data, systemsavedata_update, systemsavedata_draw_top));
+    list_display("System Save Data", "A: Select, B: Return, X: Refresh", data, systemsavedata_update, systemsavedata_draw_top);
 }

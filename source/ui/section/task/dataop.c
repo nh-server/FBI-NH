@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include <3ds.h>
-#include <errno.h>
 
 #include "../../list.h"
 #include "../../error.h"
@@ -43,7 +42,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
                         bool firstRun = true;
                         while(data->info->currProcessed < data->info->currTotal) {
                             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
-                                res = MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED);
+                                res = R_FBI_CANCELLED;
                                 break;
                             }
 
@@ -82,7 +81,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
 
                         free(buffer);
                     } else {
-                        res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, RM_APPLICATION, RD_OUT_OF_MEMORY);
+                        res = R_FBI_OUT_OF_MEMORY;
                     }
                 }
             }
@@ -95,11 +94,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
     }
 
     if(R_FAILED(res)) {
-        if(res == -1) {
-            return data->info->ioError(data->info->data, index, errno);
-        } else {
-            return data->info->resultError(data->info->data, index, res);
-        }
+        return data->info->error(data->info->data, index, res);
     }
 
     return true;
@@ -108,11 +103,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
 static bool task_data_op_delete(data_op_data* data, u32 index) {
     Result res = 0;
     if(R_FAILED(res = data->info->delete(data->info->data, index))) {
-        if(res == -1) {
-            return data->info->ioError(data->info->data, index, errno);
-        } else {
-            return data->info->resultError(data->info->data, index, res);
-        }
+        return data->info->error(data->info->data, index, res);
     }
 
     return true;
@@ -174,14 +165,14 @@ Handle task_data_op(data_op_info* info) {
 
     Result eventRes = svcCreateEvent(&installData->cancelEvent, 1);
     if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create CIA installation cancel event.");
+        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create data operation cancel event.");
 
         free(installData);
         return 0;
     }
 
     if(threadCreate(task_data_op_thread, installData, 0x4000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create CIA installation thread.");
+        error_display(NULL, NULL, NULL, "Failed to create data operation thread.");
 
         svcCloseHandle(installData->cancelEvent);
         free(installData);

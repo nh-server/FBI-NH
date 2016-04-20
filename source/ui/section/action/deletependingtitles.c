@@ -5,10 +5,9 @@
 
 #include "action.h"
 #include "../../error.h"
-#include "../../progressbar.h"
+#include "../../info.h"
 #include "../../prompt.h"
 #include "../../../screen.h"
-#include "../task/task.h"
 
 typedef struct {
     pending_title_info* info;
@@ -34,11 +33,11 @@ static Result action_delete_pending_titles_delete(void* data, u32 index) {
     return res;
 }
 
-static bool action_delete_pending_titles_result_error(void* data, u32 index, Result res) {
+static bool action_delete_pending_titles_error(void* data, u32 index, Result res) {
     delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
 
-    if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
-        ui_push(prompt_create("Failure", "Delete cancelled.", COLOR_TEXT, false, deleteData->info, NULL, deleteData->info != NULL ? ui_draw_pending_title_info : NULL, NULL));
+    if(res == R_FBI_CANCELLED) {
+        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, deleteData->info, NULL, deleteData->info != NULL ? ui_draw_pending_title_info : NULL, NULL);
         return false;
     } else {
         u64 titleId = deleteData->titleIds[index];
@@ -49,21 +48,6 @@ static bool action_delete_pending_titles_result_error(void* data, u32 index, Res
         while(!dismissed) {
             svcSleepThread(1000000);
         }
-    }
-
-    return index < deleteData->deleteInfo.total - 1;
-}
-
-static bool action_delete_pending_titles_io_error(void* data, u32 index, int err) {
-    delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
-
-    u64 titleId = deleteData->titleIds[index];
-
-    volatile bool dismissed = false;
-    error_display_errno(&dismissed, deleteData->info, deleteData->info != NULL ? ui_draw_pending_title_info : NULL, err, "Failed to delete pending title.\n%llX", titleId);
-
-    while(!dismissed) {
-        svcSleepThread(1000000);
     }
 
     return index < deleteData->deleteInfo.total - 1;
@@ -82,24 +66,20 @@ static void action_delete_pending_titles_free_data(delete_pending_titles_data* d
     free(data);
 }
 
-static void action_delete_pending_titles_success_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
-    action_delete_pending_titles_free_data((delete_pending_titles_data*) data);
-}
-
-static void action_delete_pending_titles_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void action_delete_pending_titles_update(ui_view* view, void* data, float* progress, char* text) {
     delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
 
     if(deleteData->deleteInfo.finished) {
-        progressbar_destroy(view);
         ui_pop();
+        info_destroy(view);
 
         if(deleteData->deleteInfo.premature) {
             action_delete_pending_titles_free_data(deleteData);
         } else {
-            ui_push(prompt_create("Success", "Pending title(s) deleted.", COLOR_TEXT, false, data, NULL, action_delete_pending_titles_draw_top, action_delete_pending_titles_success_onresponse));
+            prompt_display("Success", "Pending title(s) deleted.", COLOR_TEXT, false, deleteData->info, NULL, deleteData->info != NULL ? ui_draw_pending_title_info : NULL, NULL);
         }
+
+        action_delete_pending_titles_free_data(deleteData);
 
         return;
     }
@@ -109,20 +89,16 @@ static void action_delete_pending_titles_update(ui_view* view, void* data, float
     }
 
     *progress = deleteData->deleteInfo.total > 0 ? (float) deleteData->deleteInfo.processed / (float) deleteData->deleteInfo.total : 0;
-    snprintf(progressText, PROGRESS_TEXT_MAX, "%lu / %lu", deleteData->deleteInfo.processed, deleteData->deleteInfo.total);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu", deleteData->deleteInfo.processed, deleteData->deleteInfo.total);
 }
 
 static void action_delete_pending_titles_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
 
     if(response) {
         deleteData->cancelEvent = task_data_op(&deleteData->deleteInfo);
         if(deleteData->cancelEvent != 0) {
-            ui_view* progressView = progressbar_create("Deleting Pending Title(s)", "Press B to cancel.", data, action_delete_pending_titles_update, action_delete_pending_titles_draw_top);
-            snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", deleteData->deleteInfo.total);
-            ui_push(progressView);
+            info_display("Deleting Pending Title(s)", "Press B to cancel.", true, data, action_delete_pending_titles_update, action_delete_pending_titles_draw_top);
         } else {
             error_display(NULL, NULL, NULL, "Failed to initiate delete operation.");
         }
@@ -147,12 +123,11 @@ void action_delete_pending_titles(pending_title_info* info, bool* populated, con
 
     data->deleteInfo.delete = action_delete_pending_titles_delete;
 
-    data->deleteInfo.resultError = action_delete_pending_titles_result_error;
-    data->deleteInfo.ioError = action_delete_pending_titles_io_error;
+    data->deleteInfo.error = action_delete_pending_titles_error;
 
     data->cancelEvent = 0;
 
-    ui_push(prompt_create("Confirmation", message, COLOR_TEXT, true, data, NULL, action_delete_pending_titles_draw_top, action_delete_pending_titles_onresponse));
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_delete_pending_titles_draw_top, action_delete_pending_titles_onresponse);
 }
 
 void action_delete_pending_title(pending_title_info* info, bool* populated) {

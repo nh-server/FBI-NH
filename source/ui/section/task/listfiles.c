@@ -146,7 +146,7 @@ static void task_populate_files_thread(void* arg) {
 
                 free(entries);
             } else {
-                res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+                res = R_FBI_OUT_OF_MEMORY;
             }
 
             FSDIR_Close(dirHandle);

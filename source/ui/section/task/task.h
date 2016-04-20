@@ -68,6 +68,12 @@ typedef struct {
     ticket_info ticketInfo;
 } file_info;
 
+#define R_FBI_CANCELLED MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, 1)
+#define R_FBI_ERRNO MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 2)
+#define R_FBI_WRONG_SYSTEM MAKERESULT(RL_PERMANENT, RS_NOTSUPPORTED, RM_APPLICATION, 3)
+
+#define R_FBI_OUT_OF_MEMORY MAKERESULT(RL_FATAL, RS_OUTOFRESOURCE, RM_APPLICATION, RD_OUT_OF_MEMORY)
+
 typedef enum {
     DATAOP_COPY,
     DATAOP_DELETE
@@ -108,8 +114,7 @@ typedef struct {
     Result (*delete)(void* data, u32 index);
 
     // Errors
-    bool (*resultError)(void* data, u32 index, Result res);
-    bool (*ioError)(void* data, u32 index, int err);
+    bool (*error)(void* data, u32 index, Result res);
 } data_op_info;
 
 bool task_is_quit_all();

@@ -1,13 +1,12 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
 #include "../../error.h"
-#include "../../progressbar.h"
+#include "../../info.h"
 #include "../../prompt.h"
 #include "../../../screen.h"
 
-static void action_launch_title_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void action_launch_title_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
 
     u8 buf0[0x300];
@@ -23,28 +22,26 @@ static void action_launch_title_update(ui_view* view, void* data, float* progres
 
     aptCloseSession();
 
-    progressbar_destroy(view);
+    info_destroy(view);
 
     if(R_SUCCEEDED(res)) {
         while(ui_peek() != NULL) {
             ui_pop();
         }
     } else {
-        progressbar_destroy(view);
         ui_pop();
+        info_destroy(view);
 
         error_display_res(NULL, info, ui_draw_title_info, res, "Failed to launch title.");
     }
 }
 
 static void action_launch_title_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     if(response) {
-        ui_push(progressbar_create("Launching Title", "", data, action_launch_title_update, ui_draw_title_info));
+        info_display("Launching Title", "", false, data, action_launch_title_update, ui_draw_title_info);
     }
 }
 
 void action_launch_title(title_info* info, bool* populated) {
-    ui_push(prompt_create("Confirmation", "Launch the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_launch_title_onresponse));
+    prompt_display("Confirmation", "Launch the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_launch_title_onresponse);
 }

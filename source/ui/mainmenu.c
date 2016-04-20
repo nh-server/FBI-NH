@@ -66,5 +66,5 @@ static void mainmenu_update(ui_view* view, void* data, list_item** items, u32** 
 }
 
 void mainmenu_open() {
-    ui_push(list_create("Main Menu", "A: Select, START: Exit", NULL, mainmenu_update, mainmenu_draw_top));
+    list_display("Main Menu", "A: Select, START: Exit", NULL, mainmenu_update, mainmenu_draw_top);
 }
