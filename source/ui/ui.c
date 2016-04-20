@@ -28,6 +28,19 @@ void ui_exit() {
     }
 }
 
+ui_view* ui_top() {
+    svcWaitSynchronization(ui_stack_mutex, U64_MAX);
+
+    ui_view* ui = NULL;
+    if(ui_stack_top >= 0) {
+        ui = ui_stack[ui_stack_top];
+    }
+
+    svcReleaseMutex(ui_stack_mutex);
+
+    return ui;
+}
+
 bool ui_push(ui_view* view) {
     if(view == NULL) {
         return false;
@@ -35,50 +48,30 @@ bool ui_push(ui_view* view) {
 
     svcWaitSynchronization(ui_stack_mutex, U64_MAX);
 
-    if(ui_stack_top >= MAX_UI_VIEWS - 1) {
-        return false;
+    bool space = ui_stack_top < MAX_UI_VIEWS - 1;
+    if(space) {
+        ui_stack[++ui_stack_top] = view;
     }
-
-    ui_stack[++ui_stack_top] = view;
 
     svcReleaseMutex(ui_stack_mutex);
 
-    return true;
+    return space;
 }
 
-ui_view* ui_peek() {
+void ui_pop() {
     svcWaitSynchronization(ui_stack_mutex, U64_MAX);
 
-    if(ui_stack_top == -1) {
-        return NULL;
+    if(ui_stack_top >= 0) {
+        ui_stack[ui_stack_top--] = NULL;
     }
-
-    ui_view* ui = ui_stack[ui_stack_top];
-
+    
     svcReleaseMutex(ui_stack_mutex);
-
-    return ui;
-}
-
-ui_view* ui_pop() {
-    svcWaitSynchronization(ui_stack_mutex, U64_MAX);
-
-    if(ui_stack_top == -1) {
-        return NULL;
-    }
-
-    ui_view* view = ui_stack[ui_stack_top];
-    ui_stack[ui_stack_top--] = NULL;
-
-    svcReleaseMutex(ui_stack_mutex);
-
-    return view;
 }
 
 void ui_update() {
     hidScanInput();
 
-    ui_view* ui = ui_peek();
+    ui_view* ui = ui_top();
     if(ui != NULL && ui->update != NULL) {
         u32 bottomScreenTopBarHeight = 0;
         screen_get_texture_size(NULL, &bottomScreenTopBarHeight, TEXTURE_BOTTOM_SCREEN_TOP_BAR);
@@ -240,7 +233,7 @@ static void ui_draw_bottom(ui_view* ui) {
 }
 
 void ui_draw() {
-    ui_view* ui = ui_peek();
+    ui_view* ui = ui_top();
     if(ui != NULL) {
         screen_begin_frame();
         ui_draw_top(ui);

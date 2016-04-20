@@ -14,9 +14,9 @@ typedef struct ui_view_s {
 void ui_init();
 void ui_exit();
 
+ui_view* ui_top();
 bool ui_push(ui_view* view);
-ui_view* ui_peek();
-ui_view* ui_pop();
+void ui_pop();
 void ui_update();
 void ui_draw();
 

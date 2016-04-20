@@ -51,6 +51,7 @@ static void mainmenu_update(ui_view* view, void* data, list_item** items, u32** 
     if(hidKeysDown() & KEY_START) {
         ui_pop();
         list_destroy(view);
+
         return;
     }
 
