@@ -4,17 +4,14 @@
 #include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
-#include <string.h>
 
 #include <3ds.h>
 
 #include "action/action.h"
-#include "task/task.h"
 #include "../error.h"
-#include "../progressbar.h"
+#include "../info.h"
 #include "../prompt.h"
 #include "../../screen.h"
-#include "../../util.h"
 #include "section.h"
 
 typedef struct {
@@ -65,7 +62,7 @@ static Result networkinstall_open_src(void* data, u32 index, u32* handle) {
 
     u8 ack = 1;
     if(sendwait(networkInstallData->clientSocket, &ack, sizeof(ack), 0) < 0) {
-        return -1;
+        return R_FBI_ERRNO;
     }
 
     return 0;
@@ -80,7 +77,7 @@ static Result networkinstall_get_src_size(void* data, u32 handle, u64* size) {
 
     u64 netSize = 0;
     if(recvwait(networkInstallData->clientSocket, &netSize, sizeof(netSize), 0) < 0) {
-        return -1;
+        return R_FBI_ERRNO;
     }
 
     *size = __builtin_bswap64(netSize);
@@ -92,7 +89,7 @@ static Result networkinstall_read_src(void* data, u32 handle, u32* bytesRead, vo
 
     int ret = 0;
     if((ret = recvwait(networkInstallData->clientSocket, buffer, size, 0)) < 0) {
-        return -1;
+        return R_FBI_ERRNO;
     }
 
     *bytesRead = (u32) ret;
@@ -112,7 +109,7 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
 
     u8 n3ds = false;
     if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-        return MAKERESULT(RL_PERMANENT, RS_NOTSUPPORTED, RM_APPLICATION, RD_INVALID_COMBINATION);
+        return R_FBI_WRONG_SYSTEM;
     }
 
     // Deleting FBI before it reinstalls itself causes issues.
@@ -154,65 +151,41 @@ static Result networkinstall_write_dst(void* data, u32 handle, u32* bytesWritten
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static bool networkinstall_result_error(void* data, u32 index, Result res) {
-    network_install_data* networkInstallData = (network_install_data*) data;
-
-    if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
-        ui_push(prompt_create("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL));
-        return false;
+static bool networkinstall_error(void* data, u32 index, Result res) {
+    if(res == R_FBI_CANCELLED) {
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+    } else if(res == R_FBI_ERRNO) {
+        error_display_errno(NULL, NULL, NULL, errno, "Failed to install CIA file.");
+    } else if(res == R_FBI_WRONG_SYSTEM) {
+        error_display(NULL, NULL, NULL, "Failed to install CIA file.\nAttempted to install N3DS title to O3DS.");
     } else {
-        volatile bool dismissed = false;
-        if(res == MAKERESULT(RL_PERMANENT, RS_NOTSUPPORTED, RM_APPLICATION, RD_INVALID_COMBINATION)) {
-            error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\nAttempted to install N3DS title to O3DS.");
-        } else {
-            error_display_res(&dismissed, NULL, NULL, res, "Failed to install CIA file.");
-        }
-
-        while(!dismissed) {
-            svcSleepThread(1000000);
-        }
+        error_display_res(NULL, NULL, NULL, res, "Failed to install CIA file.");
     }
 
-    return index < networkInstallData->installInfo.total - 1;
-}
-
-static bool networkinstall_io_error(void* data, u32 index, int err) {
-    network_install_data* networkInstallData = (network_install_data*) data;
-
-    volatile bool dismissed = false;
-    error_display_errno(&dismissed, NULL, NULL, err, "Failed to install CIA file.");
-
-    while(!dismissed) {
-        svcSleepThread(1000000);
-    }
-
-    return index < networkInstallData->installInfo.total - 1;
-}
-
-static void networkinstall_done_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
+    return false;
 }
 
 static void networkinstall_close_client(network_install_data* data) {
     u8 ack = 0;
     sendwait(data->clientSocket, &ack, sizeof(ack), 0);
+
     close(data->clientSocket);
 
     data->currTitleId = 0;
     data->cancelEvent = 0;
 }
 
-static void networkinstall_install_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void networkinstall_install_update(ui_view* view, void* data, float* progress, char* text) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     if(networkInstallData->installInfo.finished) {
         networkinstall_close_client(networkInstallData);
 
         ui_pop();
-        progressbar_destroy(view);
+        info_destroy(view);
 
         if(!networkInstallData->installInfo.premature) {
-            ui_push(prompt_create("Success", "Install finished.", COLOR_TEXT, false, data, NULL, NULL, networkinstall_done_onresponse));
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, data, NULL, NULL, NULL);
         }
 
         return;
@@ -223,20 +196,16 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
     }
 
     *progress = networkInstallData->installInfo.currTotal != 0 ? (float) ((double) networkInstallData->installInfo.currProcessed / (double) networkInstallData->installInfo.currTotal) : 0;
-    snprintf(progressText, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", networkInstallData->installInfo.processed, networkInstallData->installInfo.total, networkInstallData->installInfo.currProcessed / 1024.0 / 1024.0, networkInstallData->installInfo.currTotal / 1024.0 / 1024.0);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", networkInstallData->installInfo.processed, networkInstallData->installInfo.total, networkInstallData->installInfo.currProcessed / 1024.0 / 1024.0, networkInstallData->installInfo.currTotal / 1024.0 / 1024.0);
 }
 
 static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     network_install_data* networkInstallData = (network_install_data*) data;
 
     if(response) {
         networkInstallData->cancelEvent = task_data_op(&networkInstallData->installInfo);
         if(networkInstallData->cancelEvent != 0) {
-            ui_view* progressView = progressbar_create("Installing CIA(s)", "Press B to cancel.", data, networkinstall_install_update, NULL);
-            snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", networkInstallData->installInfo.total);
-            ui_push(progressView);
+            info_display("Installing CIA(s)", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
         } else {
             error_display(NULL, NULL, NULL, "Failed to initiate CIA installation.");
 
@@ -247,15 +216,15 @@ static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool re
     }
 }
 
-static void networkinstall_wait_update(ui_view* view, void* data, float bx1, float by1, float bx2, float by2) {
+static void networkinstall_wait_update(ui_view* view, void* data, float* progress, char* text) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        close(networkInstallData->serverSocket);
-
-        free(networkInstallData);
-        free(view);
         ui_pop();
+        info_destroy(view);
+
+        close(networkInstallData->serverSocket);
+        free(networkInstallData);
 
         return;
     }
@@ -265,9 +234,6 @@ static void networkinstall_wait_update(ui_view* view, void* data, float bx1, flo
 
     int sock = accept(networkInstallData->serverSocket, (struct sockaddr*) &client, &clientLen);
     if(sock >= 0) {
-        int bufSize = 1024 * 32;
-        setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
-
         if(recvwait(sock, &networkInstallData->installInfo.total, sizeof(networkInstallData->installInfo.total), 0) < 0) {
             close(sock);
 
@@ -278,25 +244,13 @@ static void networkinstall_wait_update(ui_view* view, void* data, float bx1, flo
         networkInstallData->installInfo.total = ntohl(networkInstallData->installInfo.total);
 
         networkInstallData->clientSocket = sock;
-        ui_push(prompt_create("Confirmation", "Install received CIA(s)?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_confirm_onresponse));
+        prompt_display("Confirmation", "Install received CIA(s)?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_confirm_onresponse);
     } else if(errno != EAGAIN) {
         error_display_errno(NULL, NULL, NULL, errno, "Failed to open socket.");
     }
-}
 
-static void networkinstall_wait_draw_bottom(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     struct in_addr addr = {(in_addr_t) gethostid()};
-
-    char text[128];
-    snprintf(text, 128, "Waiting for connection...\nIP: %s\nPort: 5000", inet_ntoa(addr));
-
-    float textWidth;
-    float textHeight;
-    screen_get_string_size(&textWidth, &textHeight, text, 0.5f, 0.5f);
-
-    float textX = x1 + (x2 - x1 - textWidth) / 2;
-    float textY = y1 + (y2 - y1 - textHeight) / 2;
-    screen_draw_string(text, textX, textY, 0.5f, 0.5f, COLOR_TEXT, false);
+    snprintf(text, PROGRESS_TEXT_MAX, "Waiting for connection...\nIP: %s\nPort: 5000", inet_ntoa(addr));
 }
 
 void networkinstall_open() {
@@ -305,6 +259,9 @@ void networkinstall_open() {
         error_display_errno(NULL, NULL, NULL, errno, "Failed to open server socket.");
         return;
     }
+
+    int bufSize = 1024 * 32;
+    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
 
     struct sockaddr_in server;
     server.sin_family = AF_INET;
@@ -351,17 +308,9 @@ void networkinstall_open() {
     data->installInfo.closeDst = networkinstall_close_dst;
     data->installInfo.writeDst = networkinstall_write_dst;
 
-    data->installInfo.resultError = networkinstall_result_error;
-    data->installInfo.ioError = networkinstall_io_error;
+    data->installInfo.error = networkinstall_error;
 
     data->cancelEvent = 0;
 
-    ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
-    view->name = "Network Install";
-    view->info = "B: Return";
-    view->data = data;
-    view->update = networkinstall_wait_update;
-    view->drawTop = NULL;
-    view->drawBottom = networkinstall_wait_draw_bottom;
-    ui_push(view);
+    info_display("Network Install", "B: Return", false, data, networkinstall_wait_update, NULL);
 }

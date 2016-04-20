@@ -5,7 +5,7 @@
 
 #include "task/task.h"
 #include "../error.h"
-#include "../progressbar.h"
+#include "../info.h"
 #include "../prompt.h"
 #include "../../screen.h"
 
@@ -53,9 +53,9 @@ static Result dumpnand_write_dst(void* data, u32 handle, u32* bytesWritten, void
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static bool dumpnand_result_error(void* data, u32 index, Result res) {
-    if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
-        ui_push(prompt_create("Failure", "Dump cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL));
+static bool dumpnand_error(void* data, u32 index, Result res) {
+    if(res == R_FBI_CANCELLED) {
+        prompt_display("Failure", "Dump cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
     } else {
         error_display_res(NULL, NULL, NULL, res, "Failed to dump NAND.");
     }
@@ -63,24 +63,15 @@ static bool dumpnand_result_error(void* data, u32 index, Result res) {
     return false;
 }
 
-static bool dumpnand_io_error(void* data, u32 index, int err) {
-    error_display_errno(NULL, NULL, NULL, err, "Failed to dump NAND.");
-    return false;
-}
-
-static void dumpnand_done_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-}
-
-static void dumpnand_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void dumpnand_update(ui_view* view, void* data, float* progress, char* text) {
     dump_nand_data* dumpData = (dump_nand_data*) data;
 
     if(dumpData->dumpInfo.finished) {
         ui_pop();
-        progressbar_destroy(view);
+        info_destroy(view);
 
         if(!dumpData->dumpInfo.premature) {
-            ui_push(prompt_create("Success", "NAND dumped.", COLOR_TEXT, false, NULL, NULL, NULL, dumpnand_done_onresponse));
+            prompt_display("Success", "NAND dumped.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
         }
 
         free(dumpData);
@@ -93,18 +84,16 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* pr
     }
 
     *progress = dumpData->dumpInfo.currTotal != 0 ? (float) ((double) dumpData->dumpInfo.currProcessed / (double) dumpData->dumpInfo.currTotal) : 0;
-    snprintf(progressText, PROGRESS_TEXT_MAX, "%.2f MB / %.2f MB", dumpData->dumpInfo.currProcessed / 1024.0f / 1024.0f, dumpData->dumpInfo.currTotal / 1024.0f / 1024.0f);
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f MB / %.2f MB", dumpData->dumpInfo.currProcessed / 1024.0f / 1024.0f, dumpData->dumpInfo.currTotal / 1024.0f / 1024.0f);
 }
 
 static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     if(response) {
         dump_nand_data* dumpData = (dump_nand_data*) data;
 
         dumpData->cancelEvent = task_data_op(&dumpData->dumpInfo);
         if(dumpData->cancelEvent != 0) {
-            ui_push(progressbar_create("Dumping NAND", "Press B to cancel.", data, dumpnand_update, NULL));
+            info_display("Dumping NAND", "Press B to cancel.", true, data, dumpnand_update, NULL);
         } else {
             error_display(NULL, NULL, NULL, "Failed to initiate NAND dump.");
         }
@@ -136,10 +125,9 @@ void dump_nand() {
     data->dumpInfo.closeDst = dumpnand_close_dst;
     data->dumpInfo.writeDst = dumpnand_write_dst;
 
-    data->dumpInfo.resultError = dumpnand_result_error;
-    data->dumpInfo.ioError = dumpnand_io_error;
+    data->dumpInfo.error = dumpnand_error;
 
     data->cancelEvent = 0;
 
-    ui_push(prompt_create("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, true, data, NULL, NULL, dumpnand_onresponse));
+    prompt_display("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, true, data, NULL, NULL, dumpnand_onresponse);
 }

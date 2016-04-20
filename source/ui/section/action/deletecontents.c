@@ -6,11 +6,10 @@
 
 #include "action.h"
 #include "../../error.h"
-#include "../../progressbar.h"
+#include "../../info.h"
 #include "../../prompt.h"
 #include "../../../screen.h"
 #include "../../../util.h"
-#include "../task/task.h"
 
 typedef struct {
     file_info* base;
@@ -38,11 +37,11 @@ static Result action_delete_contents_delete(void* data, u32 index) {
     return res;
 }
 
-static bool action_delete_contents_result_error(void* data, u32 index, Result res) {
+static bool action_delete_contents_error(void* data, u32 index, Result res) {
     delete_contents_data* deleteData = (delete_contents_data*) data;
 
-    if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
-        ui_push(prompt_create("Failure", "Delete cancelled.", COLOR_TEXT, false, deleteData->base, NULL, ui_draw_file_info, NULL));
+    if(res == R_FBI_CANCELLED) {
+        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, deleteData->base, NULL, ui_draw_file_info, NULL);
         return false;
     } else {
         char* path = deleteData->contents[index];
@@ -62,25 +61,6 @@ static bool action_delete_contents_result_error(void* data, u32 index, Result re
     return index < deleteData->deleteInfo.total - 1;
 }
 
-static bool action_delete_contents_io_error(void* data, u32 index, int err) {
-    delete_contents_data* deleteData = (delete_contents_data*) data;
-
-    char* path = deleteData->contents[index];
-
-    volatile bool dismissed = false;
-    if(strlen(path) > 48) {
-        error_display_errno(&dismissed, deleteData->base, ui_draw_file_info, err, "Failed to delete content.\n%.45s...", path);
-    } else {
-        error_display_errno(&dismissed, deleteData->base, ui_draw_file_info, err, "Failed to delete content.\n%.48s", path);
-    }
-
-    while(!dismissed) {
-        svcSleepThread(1000000);
-    }
-
-    return index < deleteData->deleteInfo.total - 1;
-}
-
 static void action_delete_contents_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     ui_draw_file_info(view, ((delete_contents_data*) data)->base, x1, y1, x2, y2);
 }
@@ -90,13 +70,7 @@ static void action_delete_contents_free_data(delete_contents_data* data) {
     free(data);
 }
 
-static void action_delete_contents_done_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
-    action_delete_contents_free_data((delete_contents_data*) data);
-}
-
-static void action_delete_contents_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void action_delete_contents_update(ui_view* view, void* data, float* progress, char* text) {
     delete_contents_data* deleteData = (delete_contents_data*) data;
 
     if(deleteData->deleteInfo.finished) {
@@ -106,14 +80,16 @@ static void action_delete_contents_update(ui_view* view, void* data, float* prog
             FSUSER_ControlArchive(*deleteData->base->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
         }
 
-        progressbar_destroy(view);
         ui_pop();
+        info_destroy(view);
 
         if(deleteData->deleteInfo.premature) {
             action_delete_contents_free_data(deleteData);
         } else {
-            ui_push(prompt_create("Success", "Contents deleted.", COLOR_TEXT, false, data, NULL, action_delete_contents_draw_top, action_delete_contents_done_onresponse));
+            prompt_display("Success", "Contents deleted.", COLOR_TEXT, false, deleteData->base, NULL, ui_draw_file_info, NULL);
         }
+
+        action_delete_contents_free_data(deleteData);
 
         return;
     }
@@ -123,20 +99,16 @@ static void action_delete_contents_update(ui_view* view, void* data, float* prog
     }
 
     *progress = deleteData->deleteInfo.total > 0 ? (float) deleteData->deleteInfo.processed / (float) deleteData->deleteInfo.total : 0;
-    snprintf(progressText, PROGRESS_TEXT_MAX, "%lu / %lu", deleteData->deleteInfo.processed, deleteData->deleteInfo.total);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu", deleteData->deleteInfo.processed, deleteData->deleteInfo.total);
 }
 
 static void action_delete_contents_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     delete_contents_data* deleteData = (delete_contents_data*) data;
 
     if(response) {
         deleteData->cancelEvent = task_data_op(&deleteData->deleteInfo);
         if(deleteData->cancelEvent != 0) {
-            ui_view* progressView = progressbar_create("Deleting Contents", "Press B to cancel.", data, action_delete_contents_update, action_delete_contents_draw_top);
-            snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", deleteData->deleteInfo.total);
-            ui_push(progressView);
+            info_display("Deleting Contents", "Press B to cancel.", true, data, action_delete_contents_update, action_delete_contents_draw_top);
         } else {
             error_display(NULL, NULL, NULL, "Failed to initiate delete operation.");
         }
@@ -156,8 +128,7 @@ static void action_delete_contents_internal(file_info* info, bool* populated, co
 
     data->deleteInfo.delete = action_delete_contents_delete;
 
-    data->deleteInfo.resultError = action_delete_contents_result_error;
-    data->deleteInfo.ioError = action_delete_contents_io_error;
+    data->deleteInfo.error = action_delete_contents_error;
 
     data->cancelEvent = 0;
 
@@ -169,7 +140,7 @@ static void action_delete_contents_internal(file_info* info, bool* populated, co
         return;
     }
 
-    ui_push(prompt_create("Confirmation", message, COLOR_TEXT, true, data, NULL, action_delete_contents_draw_top, action_delete_contents_onresponse));
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_delete_contents_draw_top, action_delete_contents_onresponse);
 }
 
 void action_delete_contents(file_info* info, bool* populated) {

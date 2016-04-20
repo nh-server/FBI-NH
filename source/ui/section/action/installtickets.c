@@ -5,9 +5,8 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
 #include "../../error.h"
-#include "../../progressbar.h"
+#include "../../info.h"
 #include "../../prompt.h"
 #include "../../../screen.h"
 #include "../../../util.h"
@@ -69,11 +68,11 @@ static Result action_install_tickets_write_dst(void* data, u32 handle, u32* byte
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static bool action_install_tickets_result_error(void* data, u32 index, Result res) {
+static bool action_install_tickets_error(void* data, u32 index, Result res) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
-    if(res == MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, RD_CANCEL_REQUESTED)) {
-        ui_push(prompt_create("Failure", "Install cancelled.", COLOR_TEXT, false, installData->base, NULL, ui_draw_file_info, NULL));
+    if(res == R_FBI_CANCELLED) {
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, installData->base, NULL, ui_draw_file_info, NULL);
         return false;
     } else {
         char* path = installData->contents[index];
@@ -93,25 +92,6 @@ static bool action_install_tickets_result_error(void* data, u32 index, Result re
     return index < installData->installInfo.total - 1;
 }
 
-static bool action_install_tickets_io_error(void* data, u32 index, int err) {
-    install_tickets_data* installData = (install_tickets_data*) data;
-
-    char* path = installData->contents[index];
-
-    volatile bool dismissed = false;
-    if(strlen(path) > 48) {
-        error_display_errno(&dismissed, installData->base, ui_draw_file_info, err, "Failed to install ticket.\n%.45s...", path);
-    } else {
-        error_display_errno(&dismissed, installData->base, ui_draw_file_info, err, "Failed to install ticket.\n%.48s", path);
-    }
-
-    while(!dismissed) {
-        svcSleepThread(1000000);
-    }
-
-    return index < installData->installInfo.total - 1;
-}
-
 static void action_install_tickets_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     ui_draw_file_info(view, ((install_tickets_data*) data)->base, x1, y1, x2, y2);
 }
@@ -121,24 +101,18 @@ static void action_install_tickets_free_data(install_tickets_data* data) {
     free(data);
 }
 
-static void action_install_tickets_done_onresponse(ui_view* view, void* data, bool response) {
-    action_install_tickets_free_data((install_tickets_data*) data);
-
-    prompt_destroy(view);
-}
-
-static void action_install_tickets_update(ui_view* view, void* data, float* progress, char* progressText) {
+static void action_install_tickets_update(ui_view* view, void* data, float* progress, char* text) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
     if(installData->installInfo.finished) {
         ui_pop();
-        progressbar_destroy(view);
+        info_destroy(view);
 
-        if(installData->installInfo.premature) {
-            action_install_tickets_free_data(installData);
-        } else {
-            ui_push(prompt_create("Success", "Install finished.", COLOR_TEXT, false, data, NULL, action_install_tickets_draw_top, action_install_tickets_done_onresponse));
+        if(!installData->installInfo.premature) {
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->base, NULL, ui_draw_file_info, NULL);
         }
+
+        action_install_tickets_free_data(installData);
 
         return;
     }
@@ -148,20 +122,16 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
     }
 
     *progress = installData->installInfo.currTotal != 0 ? (float) ((double) installData->installInfo.currProcessed / (double) installData->installInfo.currTotal) : 0;
-    snprintf(progressText, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", installData->installInfo.processed, installData->installInfo.total, installData->installInfo.currProcessed / 1024.0 / 1024.0, installData->installInfo.currTotal / 1024.0 / 1024.0);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", installData->installInfo.processed, installData->installInfo.total, installData->installInfo.currProcessed / 1024.0 / 1024.0, installData->installInfo.currTotal / 1024.0 / 1024.0);
 }
 
 static void action_install_tickets_onresponse(ui_view* view, void* data, bool response) {
-    prompt_destroy(view);
-
     install_tickets_data* installData = (install_tickets_data*) data;
 
     if(response) {
         installData->cancelEvent = task_data_op(&installData->installInfo);
         if(installData->cancelEvent != 0) {
-            ui_view* progressView = progressbar_create("Installing ticket(s)", "Press B to cancel.", data, action_install_tickets_update, action_install_tickets_draw_top);
-            snprintf(progressbar_get_progress_text(progressView), PROGRESS_TEXT_MAX, "0 / %lu", installData->installInfo.total);
-            ui_push(progressView);
+            info_display("Installing ticket(s)", "Press B to cancel.", true, data, action_install_tickets_update, action_install_tickets_draw_top);
         } else {
             error_display(NULL, installData->base, ui_draw_file_info, "Failed to initiate ticket installation.");
 
@@ -194,8 +164,7 @@ void action_install_tickets(file_info* info, bool* populated) {
     data->installInfo.closeDst = action_install_tickets_close_dst;
     data->installInfo.writeDst = action_install_tickets_write_dst;
 
-    data->installInfo.resultError = action_install_tickets_result_error;
-    data->installInfo.ioError = action_install_tickets_io_error;
+    data->installInfo.error = action_install_tickets_error;
 
     data->cancelEvent = 0;
 
@@ -207,5 +176,5 @@ void action_install_tickets(file_info* info, bool* populated) {
         return;
     }
 
-    ui_push(prompt_create("Confirmation", "Install the selected ticket(s)?", COLOR_TEXT, true, data, NULL, action_install_tickets_draw_top, action_install_tickets_onresponse));
+    prompt_display("Confirmation", "Install the selected ticket(s)?", COLOR_TEXT, true, data, NULL, action_install_tickets_draw_top, action_install_tickets_onresponse);
 }

@@ -562,7 +562,6 @@ static void error_onresponse(ui_view* view, void* data, bool response) {
         *errorData->dismissed = true;
     }
 
-    prompt_destroy(view);
     free(data);
 }
 
@@ -577,7 +576,7 @@ void error_display(volatile bool* dismissed, void* data, void (*drawTop)(ui_view
     vsnprintf(errorData->fullText, 4096, text, list);
     va_end(list);
 
-    ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
+    prompt_display("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse);
 }
 
 void error_display_res(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
@@ -598,7 +597,7 @@ void error_display_res(volatile bool* dismissed, void* data, void (*drawTop)(ui_
     int description = R_DESCRIPTION(result);
     snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDesc: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
 
-    ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
+    prompt_display("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse);
 }
 
 void error_display_errno(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), int err, const char* text, ...) {
@@ -613,7 +612,7 @@ void error_display_errno(volatile bool* dismissed, void* data, void (*drawTop)(u
     vsnprintf(textBuf, 1024, text, list);
     va_end(list);
 
-    snprintf(errorData->fullText, 4096, "%s\nError: %s (%d)", textBuf, strerror(err), err);
+    snprintf(errorData->fullText, 4096, "%s\nI/O Error: %s (%d)", textBuf, strerror(err), err);
 
-    ui_push(prompt_create("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse));
+    prompt_display("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse);
 }

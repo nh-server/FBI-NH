@@ -39,8 +39,8 @@ static void extsavedata_action_update(ui_view* view, void* data, list_item** ite
     extsavedata_action_data* actionData = (extsavedata_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         free(data);
 
@@ -50,8 +50,8 @@ static void extsavedata_action_update(ui_view* view, void* data, list_item** ite
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         void(*action)(ext_save_data_info*, bool*) = (void(*)(ext_save_data_info*, bool*)) selected->data;
 
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         action(actionData->info, actionData->populated);
 
@@ -66,12 +66,12 @@ static void extsavedata_action_update(ui_view* view, void* data, list_item** ite
     }
 }
 
-static ui_view* extsavedata_action_create(ext_save_data_info* info, bool* populated) {
+static void extsavedata_action_open(ext_save_data_info* info, bool* populated) {
     extsavedata_action_data* data = (extsavedata_action_data*) calloc(1, sizeof(extsavedata_action_data));
     data->info = info;
     data->populated = populated;
 
-    return list_create("Ext Save Data Action", "A: Select, B: Return", data, extsavedata_action_update, extsavedata_action_draw_top);
+    list_display("Ext Save Data Action", "A: Select, B: Return", data, extsavedata_action_update, extsavedata_action_draw_top);
 }
 
 static void extsavedata_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -94,8 +94,9 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
         }
 
         ui_pop();
-        free(listData);
         list_destroy(view);
+
+        free(listData);
         return;
     }
 
@@ -114,7 +115,7 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        ui_push(extsavedata_action_create((ext_save_data_info*) selected->data, &listData->populated));
+        extsavedata_action_open((ext_save_data_info*) selected->data, &listData->populated);
         return;
     }
 
@@ -127,5 +128,5 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
 void extsavedata_open() {
     extsavedata_data* data = (extsavedata_data*) calloc(1, sizeof(extsavedata_data));
 
-    ui_push(list_create("Ext Save Data", "A: Select, B: Return, X: Refresh", data, extsavedata_update, extsavedata_draw_top));
+    list_display("Ext Save Data", "A: Select, B: Return, X: Refresh", data, extsavedata_update, extsavedata_draw_top);
 }

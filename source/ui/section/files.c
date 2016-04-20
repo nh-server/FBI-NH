@@ -118,8 +118,8 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
     files_action_data* actionData = (files_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         free(data);
 
@@ -129,8 +129,8 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         void(*action)(file_info*, bool*) = (void(*)(file_info*, bool*)) selected->data;
 
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         action(actionData->info, actionData->populated);
 
@@ -181,12 +181,12 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
     }
 }
 
-static ui_view* files_action_create(file_info* info, bool* populated) {
+static void files_action_open(file_info* info, bool* populated) {
     files_action_data* data = (files_action_data*) calloc(1, sizeof(files_action_data));
     data->info = info;
     data->populated = populated;
 
-    return list_create(info->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
+    list_display(info->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
 
 static void files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -258,8 +258,9 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
             }
 
             ui_pop();
-            free(listData);
             list_destroy(view);
+
+            free(listData);
             return;
         } else {
             files_navigate(listData, listData->parentDir.path);
@@ -267,7 +268,7 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
     }
 
     if(hidKeysDown() & KEY_Y) {
-        ui_push(files_action_create(&listData->currDir, &listData->populated));
+        files_action_open(&listData->currDir, &listData->populated);
         return;
     }
 
@@ -277,7 +278,7 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
         if(util_is_dir(&listData->archive, fileInfo->path)) {
             files_navigate(listData, fileInfo->path);
         } else {
-            ui_push(files_action_create(fileInfo, &listData->populated));
+            files_action_open(fileInfo, &listData->populated);
             return;
         }
     }
@@ -326,7 +327,7 @@ void files_open(FS_Archive archive) {
 
     memcpy(&data->parentDir, &data->currDir, sizeof(data->parentDir));
 
-    ui_push(list_create("Files", "A: Select, B: Back, X: Refresh, Y: Directory Action", data, files_update, files_draw_top));
+    list_display("Files", "A: Select, B: Back, X: Refresh, Y: Directory Action", data, files_update, files_draw_top);
 }
 
 void files_open_sd() {

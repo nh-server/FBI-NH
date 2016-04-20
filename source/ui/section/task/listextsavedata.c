@@ -94,7 +94,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
 
         free(extSaveDataIds);
     } else {
-        res = MAKERESULT(RL_PERMANENT, RS_INVALIDSTATE, 254, RD_OUT_OF_MEMORY);
+        res = R_FBI_OUT_OF_MEMORY;
     }
 
     return res;

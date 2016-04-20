@@ -36,8 +36,8 @@ static void tickets_action_update(ui_view* view, void* data, list_item** items, 
     tickets_action_data* actionData = (tickets_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         free(data);
 
@@ -47,8 +47,8 @@ static void tickets_action_update(ui_view* view, void* data, list_item** items, 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         void(*action)(ticket_info*, bool*) = (void(*)(ticket_info*, bool*)) selected->data;
 
-        list_destroy(view);
         ui_pop();
+        list_destroy(view);
 
         action(actionData->info, actionData->populated);
 
@@ -63,12 +63,12 @@ static void tickets_action_update(ui_view* view, void* data, list_item** items, 
     }
 }
 
-static ui_view* tickets_action_create(ticket_info* info, bool* populated) {
+static void tickets_action_open(ticket_info* info, bool* populated) {
     tickets_action_data* data = (tickets_action_data*) calloc(1, sizeof(tickets_action_data));
     data->info = info;
     data->populated = populated;
 
-    return list_create("Ticket Action", "A: Select, B: Return", data, tickets_action_update, tickets_action_draw_top);
+    list_display("Ticket Action", "A: Select, B: Return", data, tickets_action_update, tickets_action_draw_top);
 }
 
 static void tickets_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -91,8 +91,9 @@ static void tickets_update(ui_view* view, void* data, list_item** items, u32** i
         }
 
         ui_pop();
-        free(listData);
         list_destroy(view);
+
+        free(listData);
         return;
     }
 
@@ -111,7 +112,7 @@ static void tickets_update(ui_view* view, void* data, list_item** items, u32** i
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        ui_push(tickets_action_create((ticket_info*) selected->data, &listData->populated));
+        tickets_action_open((ticket_info*) selected->data, &listData->populated);
         return;
     }
 
@@ -124,5 +125,5 @@ static void tickets_update(ui_view* view, void* data, list_item** items, u32** i
 void tickets_open() {
     tickets_data* data = (tickets_data*) calloc(1, sizeof(tickets_data));
 
-    ui_push(list_create("Tickets", "A: Select, B: Return, X: Refresh", data, tickets_update, tickets_draw_top));
+    list_display("Tickets", "A: Select, B: Return, X: Refresh", data, tickets_update, tickets_draw_top);
 }
