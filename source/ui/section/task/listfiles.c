@@ -40,7 +40,7 @@ static void task_populate_files_thread(void* arg) {
                     qsort(entries, entryCount, sizeof(FS_DirectoryEntry), util_compare_directory_entries);
 
                     SMDH smdh;
-                    for(u32 i = 0; i < entryCount && i < data->max && R_SUCCEEDED(res); i++) {
+                    for(u32 i = 0; i < entryCount && *data->count < data->max && R_SUCCEEDED(res); i++) {
                         if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                             break;
                         }
