@@ -32,7 +32,7 @@ static void task_populate_tickets_thread(void* arg) {
             if(R_SUCCEEDED(res = AM_GetTicketList(&ticketCount, ticketCount, 0, ticketIds))) {
                 qsort(ticketIds, ticketCount, sizeof(u64), util_compare_u64);
 
-                for(u32 i = 0; i < ticketCount && i < data->max; i++) {
+                for(u32 i = 0; i < ticketCount && i < data->max && R_SUCCEEDED(res); i++) {
                     if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                         break;
                     }
@@ -47,6 +47,8 @@ static void task_populate_tickets_thread(void* arg) {
                         item->data = ticketInfo;
 
                         (*data->count)++;
+                    } else {
+                        res = R_FBI_OUT_OF_MEMORY;
                     }
                 }
             }
@@ -65,7 +67,7 @@ static void task_populate_tickets_thread(void* arg) {
     free(data);
 }
 
-static void task_clear_tickets(list_item* items, u32* count) {
+void task_clear_tickets(list_item* items, u32* count) {
     if(items == NULL || count == NULL) {
         return;
     }

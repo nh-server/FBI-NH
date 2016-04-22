@@ -12,6 +12,7 @@ void files_open_twl_photo();
 void files_open_twl_sound();
 void networkinstall_open();
 void pendingtitles_open();
+void qrinstall_open();
 void systemsavedata_open();
 void tickets_open();
 void titles_open();

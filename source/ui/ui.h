@@ -17,8 +17,7 @@ void ui_exit();
 ui_view* ui_top();
 bool ui_push(ui_view* view);
 void ui_pop();
-void ui_update();
-void ui_draw();
+bool ui_update();
 
 void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);

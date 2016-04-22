@@ -64,23 +64,8 @@ void ui_pop() {
     if(ui_stack_top >= 0) {
         ui_stack[ui_stack_top--] = NULL;
     }
-    
+
     svcReleaseMutex(ui_stack_mutex);
-}
-
-void ui_update() {
-    hidScanInput();
-
-    ui_view* ui = ui_top();
-    if(ui != NULL && ui->update != NULL) {
-        u32 bottomScreenTopBarHeight = 0;
-        screen_get_texture_size(NULL, &bottomScreenTopBarHeight, TEXTURE_BOTTOM_SCREEN_TOP_BAR);
-
-        u32 bottomScreenBottomBarHeight = 0;
-        screen_get_texture_size(NULL, &bottomScreenBottomBarHeight, TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR);
-
-        ui->update(ui, ui->data, 0, bottomScreenTopBarHeight, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT - bottomScreenBottomBarHeight);
-    }
 }
 
 static void ui_draw_top(ui_view* ui) {
@@ -232,14 +217,31 @@ static void ui_draw_bottom(ui_view* ui) {
     }
 }
 
-void ui_draw() {
-    ui_view* ui = ui_top();
+bool ui_update() {
+    ui_view* ui = NULL;
+
+    hidScanInput();
+
+    ui = ui_top();
+    if(ui != NULL && ui->update != NULL) {
+        u32 bottomScreenTopBarHeight = 0;
+        screen_get_texture_size(NULL, &bottomScreenTopBarHeight, TEXTURE_BOTTOM_SCREEN_TOP_BAR);
+
+        u32 bottomScreenBottomBarHeight = 0;
+        screen_get_texture_size(NULL, &bottomScreenBottomBarHeight, TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR);
+
+        ui->update(ui, ui->data, 0, bottomScreenTopBarHeight, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT - bottomScreenBottomBarHeight);
+    }
+
+    ui = ui_top();
     if(ui != NULL) {
         screen_begin_frame();
         ui_draw_top(ui);
         ui_draw_bottom(ui);
         screen_end_frame();
     }
+
+    return ui != NULL;
 }
 
 void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -247,50 +249,50 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
 
     char buf[64];
 
-    if(info->hasSmdh) {
-        u32 smdhInfoBoxShadowWidth;
-        u32 smdhInfoBoxShadowHeight;
-        screen_get_texture_size(&smdhInfoBoxShadowWidth, &smdhInfoBoxShadowHeight, TEXTURE_SMDH_INFO_BOX_SHADOW);
+    if(info->hasMeta) {
+        u32 metaInfoBoxShadowWidth;
+        u32 metaInfoBoxShadowHeight;
+        screen_get_texture_size(&metaInfoBoxShadowWidth, &metaInfoBoxShadowHeight, TEXTURE_META_INFO_BOX_SHADOW);
 
-        float smdhInfoBoxShadowX = x1 + (x2 - x1 - smdhInfoBoxShadowWidth) / 2;
-        float smdhInfoBoxShadowY = y1 + (y2 - y1) / 4 - smdhInfoBoxShadowHeight / 2;
-        screen_draw_texture(TEXTURE_SMDH_INFO_BOX_SHADOW, smdhInfoBoxShadowX, smdhInfoBoxShadowY, smdhInfoBoxShadowWidth, smdhInfoBoxShadowHeight);
+        float metaInfoBoxShadowX = x1 + (x2 - x1 - metaInfoBoxShadowWidth) / 2;
+        float metaInfoBoxShadowY = y1 + (y2 - y1) / 4 - metaInfoBoxShadowHeight / 2;
+        screen_draw_texture(TEXTURE_META_INFO_BOX_SHADOW, metaInfoBoxShadowX, metaInfoBoxShadowY, metaInfoBoxShadowWidth, metaInfoBoxShadowHeight);
 
-        u32 smdhInfoBoxWidth;
-        u32 smdhInfoBoxHeight;
-        screen_get_texture_size(&smdhInfoBoxWidth, &smdhInfoBoxHeight, TEXTURE_SMDH_INFO_BOX);
+        u32 metaInfoBoxWidth;
+        u32 metaInfoBoxHeight;
+        screen_get_texture_size(&metaInfoBoxWidth, &metaInfoBoxHeight, TEXTURE_META_INFO_BOX);
 
-        float smdhInfoBoxX = x1 + (x2 - x1 - smdhInfoBoxWidth) / 2;
-        float smdhInfoBoxY = y1 + (y2 - y1) / 4 - smdhInfoBoxHeight / 2;
-        screen_draw_texture(TEXTURE_SMDH_INFO_BOX, smdhInfoBoxX, smdhInfoBoxY, smdhInfoBoxWidth, smdhInfoBoxHeight);
+        float metaInfoBoxX = x1 + (x2 - x1 - metaInfoBoxWidth) / 2;
+        float metaInfoBoxY = y1 + (y2 - y1) / 4 - metaInfoBoxHeight / 2;
+        screen_draw_texture(TEXTURE_META_INFO_BOX, metaInfoBoxX, metaInfoBoxY, metaInfoBoxWidth, metaInfoBoxHeight);
 
-        u32 smdhIconWidth;
-        u32 smdhIconHeight;
-        screen_get_texture_size(&smdhIconWidth, &smdhIconHeight, info->smdhInfo.texture);
+        u32 iconWidth;
+        u32 iconHeight;
+        screen_get_texture_size(&iconWidth, &iconHeight, info->meta.texture);
 
-        float smdhIconX = smdhInfoBoxX + (64 - smdhIconWidth) / 2;
-        float smdhIconY = smdhInfoBoxY + (smdhInfoBoxHeight - smdhIconHeight) / 2;
-        screen_draw_texture(info->smdhInfo.texture, smdhIconX, smdhIconY, smdhIconWidth, smdhIconHeight);
+        float iconX = metaInfoBoxX + (64 - iconWidth) / 2;
+        float iconY = metaInfoBoxY + (metaInfoBoxHeight - iconHeight) / 2;
+        screen_draw_texture(info->meta.texture, iconX, iconY, iconWidth, iconHeight);
 
         float shortDescriptionHeight;
-        screen_get_string_size(NULL, &shortDescriptionHeight, info->smdhInfo.shortDescription, 0.5f, 0.5f);
+        screen_get_string_size(NULL, &shortDescriptionHeight, info->meta.shortDescription, 0.5f, 0.5f);
 
         float longDescriptionHeight;
-        screen_get_string_size(NULL, &longDescriptionHeight, info->smdhInfo.longDescription, 0.5f, 0.5f);
+        screen_get_string_size(NULL, &longDescriptionHeight, info->meta.longDescription, 0.5f, 0.5f);
 
         float publisherHeight;
-        screen_get_string_size(NULL, &publisherHeight, info->smdhInfo.publisher, 0.5f, 0.5f);
+        screen_get_string_size(NULL, &publisherHeight, info->meta.publisher, 0.5f, 0.5f);
 
-        float smdhTextX = smdhInfoBoxX + 64;
+        float metaTextX = metaInfoBoxX + 64;
 
-        float smdhShortDescriptionY = smdhInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
+        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-        float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
+        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-        float smdhPublisherY = smdhLongDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+        float publisherY = longDescriptionY + longDescriptionHeight + 2;
+        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 
     snprintf(buf, 64, "Ext Save Data ID: %016llX", info->extSaveDataId);
@@ -345,50 +347,50 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
         screen_draw_string(buf, sizeX, sizeY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         if(info->isCia) {
-            if(info->ciaInfo.hasSmdh) {
-                u32 smdhInfoBoxShadowWidth;
-                u32 smdhInfoBoxShadowHeight;
-                screen_get_texture_size(&smdhInfoBoxShadowWidth, &smdhInfoBoxShadowHeight, TEXTURE_SMDH_INFO_BOX_SHADOW);
+            if(info->ciaInfo.hasMeta) {
+                u32 metaInfoBoxShadowWidth;
+                u32 metaInfoBoxShadowHeight;
+                screen_get_texture_size(&metaInfoBoxShadowWidth, &metaInfoBoxShadowHeight, TEXTURE_META_INFO_BOX_SHADOW);
 
-                float smdhInfoBoxShadowX = x1 + (x2 - x1 - smdhInfoBoxShadowWidth) / 2;
-                float smdhInfoBoxShadowY = y1 + (y2 - y1) / 4 - smdhInfoBoxShadowHeight / 2;
-                screen_draw_texture(TEXTURE_SMDH_INFO_BOX_SHADOW, smdhInfoBoxShadowX, smdhInfoBoxShadowY, smdhInfoBoxShadowWidth, smdhInfoBoxShadowHeight);
+                float metaInfoBoxShadowX = x1 + (x2 - x1 - metaInfoBoxShadowWidth) / 2;
+                float metaInfoBoxShadowY = y1 + (y2 - y1) / 4 - metaInfoBoxShadowHeight / 2;
+                screen_draw_texture(TEXTURE_META_INFO_BOX_SHADOW, metaInfoBoxShadowX, metaInfoBoxShadowY, metaInfoBoxShadowWidth, metaInfoBoxShadowHeight);
 
-                u32 smdhInfoBoxWidth;
-                u32 smdhInfoBoxHeight;
-                screen_get_texture_size(&smdhInfoBoxWidth, &smdhInfoBoxHeight, TEXTURE_SMDH_INFO_BOX);
+                u32 metaInfoBoxWidth;
+                u32 metaInfoBoxHeight;
+                screen_get_texture_size(&metaInfoBoxWidth, &metaInfoBoxHeight, TEXTURE_META_INFO_BOX);
 
-                float smdhInfoBoxX = x1 + (x2 - x1 - smdhInfoBoxWidth) / 2;
-                float smdhInfoBoxY = y1 + (y2 - y1) / 4 - smdhInfoBoxHeight / 2;
-                screen_draw_texture(TEXTURE_SMDH_INFO_BOX, smdhInfoBoxX, smdhInfoBoxY, smdhInfoBoxWidth, smdhInfoBoxHeight);
+                float metaInfoBoxX = x1 + (x2 - x1 - metaInfoBoxWidth) / 2;
+                float metaInfoBoxY = y1 + (y2 - y1) / 4 - metaInfoBoxHeight / 2;
+                screen_draw_texture(TEXTURE_META_INFO_BOX, metaInfoBoxX, metaInfoBoxY, metaInfoBoxWidth, metaInfoBoxHeight);
 
-                u32 smdhIconWidth;
-                u32 smdhIconHeight;
-                screen_get_texture_size(&smdhIconWidth, &smdhIconHeight, info->ciaInfo.smdhInfo.texture);
+                u32 iconWidth;
+                u32 iconHeight;
+                screen_get_texture_size(&iconWidth, &iconHeight, info->ciaInfo.meta.texture);
 
-                float smdhIconX = smdhInfoBoxX + (64 - smdhIconWidth) / 2;
-                float smdhIconY = smdhInfoBoxY + (smdhInfoBoxHeight - smdhIconHeight) / 2;
-                screen_draw_texture(info->ciaInfo.smdhInfo.texture, smdhIconX, smdhIconY, smdhIconWidth, smdhIconHeight);
+                float iconX = metaInfoBoxX + (64 - iconWidth) / 2;
+                float iconY = metaInfoBoxY + (metaInfoBoxHeight - iconHeight) / 2;
+                screen_draw_texture(info->ciaInfo.meta.texture, iconX, iconY, iconWidth, iconHeight);
 
                 float shortDescriptionHeight;
-                screen_get_string_size(NULL, &shortDescriptionHeight, info->ciaInfo.smdhInfo.shortDescription, 0.5f, 0.5f);
+                screen_get_string_size(NULL, &shortDescriptionHeight, info->ciaInfo.meta.shortDescription, 0.5f, 0.5f);
 
                 float longDescriptionHeight;
-                screen_get_string_size(NULL, &longDescriptionHeight, info->ciaInfo.smdhInfo.longDescription, 0.5f, 0.5f);
+                screen_get_string_size(NULL, &longDescriptionHeight, info->ciaInfo.meta.longDescription, 0.5f, 0.5f);
 
                 float publisherHeight;
-                screen_get_string_size(NULL, &publisherHeight, info->ciaInfo.smdhInfo.publisher, 0.5f, 0.5f);
+                screen_get_string_size(NULL, &publisherHeight, info->ciaInfo.meta.publisher, 0.5f, 0.5f);
 
-                float smdhTextX = smdhInfoBoxX + 64;
+                float metaTextX = metaInfoBoxX + 64;
 
-                float smdhShortDescriptionY = smdhInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-                screen_draw_string(info->ciaInfo.smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+                float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
+                screen_draw_string(info->ciaInfo.meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-                float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+                float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
+                screen_draw_string(info->ciaInfo.meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-                float smdhPublisherY = smdhLongDescriptionY + longDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+                float publisherY = longDescriptionY + longDescriptionHeight + 2;
+                screen_draw_string(info->ciaInfo.meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
             }
 
             snprintf(buf, 64, "Title ID: %016llX", info->ciaInfo.titleId);
@@ -517,50 +519,50 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
 
     char buf[64];
 
-    if(info->hasSmdh) {
-        u32 smdhInfoBoxShadowWidth;
-        u32 smdhInfoBoxShadowHeight;
-        screen_get_texture_size(&smdhInfoBoxShadowWidth, &smdhInfoBoxShadowHeight, TEXTURE_SMDH_INFO_BOX_SHADOW);
+    if(info->hasMeta) {
+        u32 metaInfoBoxShadowWidth;
+        u32 metaInfoBoxShadowHeight;
+        screen_get_texture_size(&metaInfoBoxShadowWidth, &metaInfoBoxShadowHeight, TEXTURE_META_INFO_BOX_SHADOW);
 
-        float smdhInfoBoxShadowX = x1 + (x2 - x1 - smdhInfoBoxShadowWidth) / 2;
-        float smdhInfoBoxShadowY = y1 + (y2 - y1) / 4 - smdhInfoBoxShadowHeight / 2;
-        screen_draw_texture(TEXTURE_SMDH_INFO_BOX_SHADOW, smdhInfoBoxShadowX, smdhInfoBoxShadowY, smdhInfoBoxShadowWidth, smdhInfoBoxShadowHeight);
+        float metaInfoBoxShadowX = x1 + (x2 - x1 - metaInfoBoxShadowWidth) / 2;
+        float metaInfoBoxShadowY = y1 + (y2 - y1) / 4 - metaInfoBoxShadowHeight / 2;
+        screen_draw_texture(TEXTURE_META_INFO_BOX_SHADOW, metaInfoBoxShadowX, metaInfoBoxShadowY, metaInfoBoxShadowWidth, metaInfoBoxShadowHeight);
 
-        u32 smdhInfoBoxWidth;
-        u32 smdhInfoBoxHeight;
-        screen_get_texture_size(&smdhInfoBoxWidth, &smdhInfoBoxHeight, TEXTURE_SMDH_INFO_BOX);
+        u32 metaInfoBoxWidth;
+        u32 metaInfoBoxHeight;
+        screen_get_texture_size(&metaInfoBoxWidth, &metaInfoBoxHeight, TEXTURE_META_INFO_BOX);
 
-        float smdhInfoBoxX = x1 + (x2 - x1 - smdhInfoBoxWidth) / 2;
-        float smdhInfoBoxY = y1 + (y2 - y1) / 4 - smdhInfoBoxHeight / 2;
-        screen_draw_texture(TEXTURE_SMDH_INFO_BOX, smdhInfoBoxX, smdhInfoBoxY, smdhInfoBoxWidth, smdhInfoBoxHeight);
+        float metaInfoBoxX = x1 + (x2 - x1 - metaInfoBoxWidth) / 2;
+        float metaInfoBoxY = y1 + (y2 - y1) / 4 - metaInfoBoxHeight / 2;
+        screen_draw_texture(TEXTURE_META_INFO_BOX, metaInfoBoxX, metaInfoBoxY, metaInfoBoxWidth, metaInfoBoxHeight);
 
-        u32 smdhIconWidth;
-        u32 smdhIconHeight;
-        screen_get_texture_size(&smdhIconWidth, &smdhIconHeight, info->smdhInfo.texture);
+        u32 iconWidth;
+        u32 iconHeight;
+        screen_get_texture_size(&iconWidth, &iconHeight, info->meta.texture);
 
-        float smdhIconX = smdhInfoBoxX + (64 - smdhIconWidth) / 2;
-        float smdhIconY = smdhInfoBoxY + (smdhInfoBoxHeight - smdhIconHeight) / 2;
-        screen_draw_texture(info->smdhInfo.texture, smdhIconX, smdhIconY, smdhIconWidth, smdhIconHeight);
+        float iconX = metaInfoBoxX + (64 - iconWidth) / 2;
+        float iconY = metaInfoBoxY + (metaInfoBoxHeight - iconHeight) / 2;
+        screen_draw_texture(info->meta.texture, iconX, iconY, iconWidth, iconHeight);
 
         float shortDescriptionHeight;
-        screen_get_string_size(NULL, &shortDescriptionHeight, info->smdhInfo.shortDescription, 0.5f, 0.5f);
+        screen_get_string_size(NULL, &shortDescriptionHeight, info->meta.shortDescription, 0.5f, 0.5f);
 
         float longDescriptionHeight;
-        screen_get_string_size(NULL, &longDescriptionHeight, info->smdhInfo.longDescription, 0.5f, 0.5f);
+        screen_get_string_size(NULL, &longDescriptionHeight, info->meta.longDescription, 0.5f, 0.5f);
 
         float publisherHeight;
-        screen_get_string_size(NULL, &publisherHeight, info->smdhInfo.publisher, 0.5f, 0.5f);
+        screen_get_string_size(NULL, &publisherHeight, info->meta.publisher, 0.5f, 0.5f);
 
-        float smdhTextX = smdhInfoBoxX + 64;
+        float metaTextX = metaInfoBoxX + 64;
 
-        float smdhShortDescriptionY = smdhInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->smdhInfo.shortDescription, smdhTextX, smdhShortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
+        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-        float smdhLongDescriptionY = smdhShortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.longDescription, smdhTextX, smdhLongDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
+        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-        float smdhPublisherY = smdhLongDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->smdhInfo.publisher, smdhTextX, smdhPublisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+        float publisherY = longDescriptionY + longDescriptionHeight + 2;
+        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 
     snprintf(buf, 64, "Title ID: %016llX", info->titleId);

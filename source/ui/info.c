@@ -1,5 +1,7 @@
-#include <3ds.h>
 #include <malloc.h>
+#include <stdio.h>
+
+#include <3ds.h>
 
 #include "info.h"
 #include "../screen.h"
@@ -69,6 +71,7 @@ void info_display(const char* name, const char* info, bool bar, void* data, void
     infoData->bar = bar;
     infoData->data = data;
     infoData->progress = 0;
+    snprintf(infoData->text, PROGRESS_TEXT_MAX, "Please wait...");
     infoData->update = update;
     infoData->drawTop = drawTop;
 

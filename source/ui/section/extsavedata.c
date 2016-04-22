@@ -96,6 +96,7 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
         ui_pop();
         list_destroy(view);
 
+        task_clear_ext_save_data(listData->items, &listData->count);
         free(listData);
         return;
     }

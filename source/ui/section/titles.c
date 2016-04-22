@@ -139,6 +139,7 @@ static void titles_update(ui_view* view, void* data, list_item** items, u32** it
         ui_pop();
         list_destroy(view);
 
+        task_clear_titles(listData->items, &listData->count);
         free(listData);
         return;
     }

@@ -29,9 +29,8 @@ static void task_populate_files_thread(void* arg) {
 
     Result res = 0;
 
-    if(data->max > *data->count) {
-        FS_Path* fsPath = util_make_path_utf8(data->dir->path);
-
+    FS_Path* fsPath = util_make_path_utf8(data->dir->path);
+    if(fsPath != NULL) {
         Handle dirHandle = 0;
         if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *data->dir->archive, *fsPath))) {
             u32 entryCount = 0;
@@ -41,7 +40,7 @@ static void task_populate_files_thread(void* arg) {
                     qsort(entries, entryCount, sizeof(FS_DirectoryEntry), util_compare_directory_entries);
 
                     SMDH smdh;
-                    for(u32 i = 0; i < entryCount && i < data->max; i++) {
+                    for(u32 i = 0; i < entryCount && i < data->max && R_SUCCEEDED(res); i++) {
                         if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                             break;
                         }
@@ -78,68 +77,71 @@ static void task_populate_files_thread(void* arg) {
                                 fileInfo->isCia = false;
 
                                 FS_Path* fileFsPath = util_make_path_utf8(fileInfo->path);
+                                if(fileFsPath != NULL) {
+                                    Handle fileHandle;
+                                    if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *data->dir->archive, *fileFsPath, FS_OPEN_READ, 0))) {
+                                        FSFILE_GetSize(fileHandle, &fileInfo->size);
 
-                                Handle fileHandle;
-                                if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *data->dir->archive, *fileFsPath, FS_OPEN_READ, 0))) {
-                                    FSFILE_GetSize(fileHandle, &fileInfo->size);
+                                        size_t len = strlen(fileInfo->path);
+                                        if(len > 4) {
+                                            if(strcasecmp(&fileInfo->path[len - 4], ".cia") == 0) {
+                                                AM_TitleEntry titleEntry;
+                                                if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
+                                                    data->dir->containsCias = true;
 
-                                    size_t len = strlen(fileInfo->path);
-                                    if(len > 4) {
-                                        if(strcasecmp(&fileInfo->path[len - 4], ".cia") == 0) {
-                                            AM_TitleEntry titleEntry;
-                                            if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
-                                                data->dir->containsCias = true;
-
-                                                fileInfo->isCia = true;
-                                                fileInfo->ciaInfo.titleId = titleEntry.titleID;
-                                                fileInfo->ciaInfo.version = titleEntry.version;
-                                                fileInfo->ciaInfo.installedSize = titleEntry.size;
-                                                fileInfo->ciaInfo.hasSmdh = false;
-
-                                                if(((titleEntry.titleID >> 32) & 0x8010) != 0 && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
+                                                    fileInfo->isCia = true;
+                                                    fileInfo->ciaInfo.titleId = titleEntry.titleID;
+                                                    fileInfo->ciaInfo.version = titleEntry.version;
                                                     fileInfo->ciaInfo.installedSize = titleEntry.size;
+                                                    fileInfo->ciaInfo.hasMeta = false;
+
+                                                    if(((titleEntry.titleID >> 32) & 0x8010) != 0 && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
+                                                        fileInfo->ciaInfo.installedSize = titleEntry.size;
+                                                    }
+
+                                                    if(R_SUCCEEDED(AM_GetCiaIcon(&smdh, fileHandle))) {
+                                                        u8 systemLanguage = CFG_LANGUAGE_EN;
+                                                        CFGU_GetSystemLanguage(&systemLanguage);
+
+                                                        fileInfo->ciaInfo.hasMeta = true;
+                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription));
+                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription));
+                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.meta.publisher));
+                                                        fileInfo->ciaInfo.meta.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
+                                                    }
                                                 }
+                                            } else if(strcasecmp(&fileInfo->path[len - 4], ".tik") == 0) {
+                                                u32 bytesRead = 0;
 
-                                                if(R_SUCCEEDED(AM_GetCiaIcon(&smdh, fileHandle))) {
-                                                    u8 systemLanguage = CFG_LANGUAGE_EN;
-                                                    CFGU_GetSystemLanguage(&systemLanguage);
+                                                u8 sigType = 0;
+                                                if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 3, &sigType, sizeof(sigType))) && bytesRead == sizeof(sigType) && sigType <= 5) {
+                                                    static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
+                                                    static u32 titleIdOffset = 0x9C;
 
-                                                    fileInfo->ciaInfo.hasSmdh = true;
-                                                    utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.smdhInfo.shortDescription));
-                                                    utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.smdhInfo.longDescription));
-                                                    utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.smdhInfo.publisher));
-                                                    fileInfo->ciaInfo.smdhInfo.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
-                                                }
-                                            }
-                                        } else if(strcasecmp(&fileInfo->path[len - 4], ".tik") == 0) {
-                                            u32 bytesRead = 0;
+                                                    u64 titleId = 0;
+                                                    if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, dataOffsets[sigType] + titleIdOffset, &titleId, sizeof(titleId))) && bytesRead == sizeof(titleId)) {
+                                                        data->dir->containsTickets = true;
 
-                                            u8 sigType = 0;
-                                            if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 3, &sigType, sizeof(sigType))) && bytesRead == sizeof(sigType) && sigType <= 5) {
-                                                static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
-                                                static u32 titleIdOffset = 0x9C;
-
-                                                u64 titleId = 0;
-                                                if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, dataOffsets[sigType] + titleIdOffset, &titleId, sizeof(titleId))) && bytesRead == sizeof(titleId)) {
-                                                    data->dir->containsTickets = true;
-
-                                                    fileInfo->isTicket = true;
-                                                    fileInfo->ticketInfo.ticketId = __builtin_bswap64(titleId);
+                                                        fileInfo->isTicket = true;
+                                                        fileInfo->ticketInfo.ticketId = __builtin_bswap64(titleId);
+                                                    }
                                                 }
                                             }
                                         }
+
+                                        FSFILE_Close(fileHandle);
                                     }
 
-                                    FSFILE_Close(fileHandle);
+                                    util_free_path_utf8(fileFsPath);
                                 }
-
-                                util_free_path_utf8(fileFsPath);
                             }
 
                             strncpy(item->name, entryName, NAME_MAX);
                             item->data = fileInfo;
 
                             (*data->count)++;
+                        } else {
+                            res = R_FBI_OUT_OF_MEMORY;
                         }
                     }
                 }
@@ -153,6 +155,8 @@ static void task_populate_files_thread(void* arg) {
         }
 
         util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
     }
 
     if(R_FAILED(res)) {
@@ -163,7 +167,7 @@ static void task_populate_files_thread(void* arg) {
     free(data);
 }
 
-static void task_clear_files(list_item* items, u32* count) {
+void task_clear_files(list_item* items, u32* count) {
     if(items == NULL || count == NULL) {
         return;
     }
@@ -174,8 +178,8 @@ static void task_clear_files(list_item* items, u32* count) {
     for(u32 i = 0; i < prevCount; i++) {
         if(items[i].data != NULL) {
             file_info* fileInfo = (file_info*) items[i].data;
-            if(fileInfo->isCia && fileInfo->ciaInfo.hasSmdh) {
-                screen_unload_texture(fileInfo->ciaInfo.smdhInfo.texture);
+            if(fileInfo->isCia && fileInfo->ciaInfo.hasMeta) {
+                screen_unload_texture(fileInfo->ciaInfo.meta.texture);
             }
 
             free(items[i].data);

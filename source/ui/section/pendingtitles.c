@@ -95,6 +95,7 @@ static void pendingtitles_update(ui_view* view, void* data, list_item** items, u
         ui_pop();
         list_destroy(view);
 
+        task_clear_pending_titles(listData->items, &listData->count);
         free(listData);
         return;
     }
