@@ -261,7 +261,7 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                 if(R_SUCCEEDED(res = AM_GetTitleList(&titleCount, mediaType, titleCount, titleIds))) {
                     qsort(titleIds, titleCount, sizeof(u64), util_compare_u64);
 
-                    for(u32 i = 0; i < titleCount && i < data->max && R_SUCCEEDED(res); i++) {
+                    for(u32 i = 0; i < titleCount && *data->count < data->max && R_SUCCEEDED(res); i++) {
                         if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                             break;
                         }

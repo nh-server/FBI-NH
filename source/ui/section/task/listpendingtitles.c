@@ -33,7 +33,7 @@ static Result task_populate_pending_titles_from(populate_pending_titles_data* da
                 AM_PendingTitleEntry* pendingTitleInfos = (AM_PendingTitleEntry*) calloc(pendingTitleCount, sizeof(AM_PendingTitleEntry));
                 if(pendingTitleInfos != NULL) {
                     if(R_SUCCEEDED(res = AM_GetPendingTitleInfo(pendingTitleCount, mediaType, pendingTitleIds, pendingTitleInfos))) {
-                        for(u32 i = 0; i < pendingTitleCount && i < data->max && R_SUCCEEDED(res); i++) {
+                        for(u32 i = 0; i < pendingTitleCount && *data->count < data->max && R_SUCCEEDED(res); i++) {
                             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                                 break;
                             }

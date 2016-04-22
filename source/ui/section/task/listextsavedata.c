@@ -30,7 +30,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
             qsort(extSaveDataIds, extSaveDataCount, sizeof(u64), util_compare_u64);
 
             SMDH smdh;
-            for(u32 i = 0; i < extSaveDataCount && i < data->max && R_SUCCEEDED(res); i++) {
+            for(u32 i = 0; i < extSaveDataCount && *data->count < data->max && R_SUCCEEDED(res); i++) {
                 if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                     break;
                 }
