@@ -55,11 +55,11 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                             u8 systemLanguage = CFG_LANGUAGE_EN;
                             CFGU_GetSystemLanguage(&systemLanguage);
 
-                            utf16_to_utf8((uint8_t*) item->name, smdh->titles[systemLanguage].shortDescription, NAME_MAX);
+                            utf16_to_utf8((uint8_t*) item->name, smdh->titles[systemLanguage].shortDescription, NAME_MAX - 1);
 
-                            utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(titleInfo->meta.shortDescription));
-                            utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->meta.longDescription));
-                            utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->meta.publisher));
+                            utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(titleInfo->meta.shortDescription) - 1);
+                            utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->meta.longDescription) - 1);
+                            utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->meta.publisher) - 1);
                             titleInfo->meta.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
                         }
                     }
@@ -160,7 +160,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                     CFGU_GetSystemLanguage(&systemLanguage);
 
                     char title[0x100] = {'\0'};
-                    utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], 0x100);
+                    utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], sizeof(title) - 1);
 
                     if(strchr(title, '\n') == NULL) {
                         size_t len = strlen(title);
