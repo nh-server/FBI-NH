@@ -51,18 +51,15 @@ static void task_populate_files_thread(void* arg) {
 
                         file_info* fileInfo = (file_info*) calloc(1, sizeof(file_info));
                         if(fileInfo != NULL) {
-                            char entryName[0x213] = {'\0'};
-                            utf16_to_utf8((uint8_t*) entryName, entries[i].name, sizeof(entryName) - 1);
-
                             fileInfo->archive = data->dir->archive;
-                            strncpy(fileInfo->name, entryName, NAME_MAX);
+                            utf16_to_utf8((uint8_t*) fileInfo->name, entries[i].name, NAME_MAX - 1);
 
                             list_item* item = &data->items[*data->count];
 
                             if(entries[i].attributes & FS_ATTRIBUTE_DIRECTORY) {
                                 item->rgba = COLOR_DIRECTORY;
 
-                                snprintf(fileInfo->path, PATH_MAX, "%s%s/", data->dir->path, entryName);
+                                snprintf(fileInfo->path, PATH_MAX, "%s%s/", data->dir->path, fileInfo->name);
                                 fileInfo->isDirectory = true;
                                 fileInfo->containsCias = false;
                                 fileInfo->size = 0;
@@ -70,7 +67,7 @@ static void task_populate_files_thread(void* arg) {
                             } else {
                                 item->rgba = COLOR_TEXT;
 
-                                snprintf(fileInfo->path, PATH_MAX, "%s%s", data->dir->path, entryName);
+                                snprintf(fileInfo->path, PATH_MAX, "%s%s", data->dir->path, fileInfo->name);
                                 fileInfo->isDirectory = false;
                                 fileInfo->containsCias = false;
                                 fileInfo->size = 0;
@@ -104,9 +101,9 @@ static void task_populate_files_thread(void* arg) {
                                                         CFGU_GetSystemLanguage(&systemLanguage);
 
                                                         fileInfo->ciaInfo.hasMeta = true;
-                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription));
-                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription));
-                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.meta.publisher));
+                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription) - 1);
+                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription) - 1);
+                                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.meta.publisher) - 1);
                                                         fileInfo->ciaInfo.meta.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
                                                     }
                                                 }
@@ -136,7 +133,7 @@ static void task_populate_files_thread(void* arg) {
                                 }
                             }
 
-                            strncpy(item->name, entryName, NAME_MAX);
+                            strncpy(item->name, fileInfo->name, NAME_MAX);
                             item->data = fileInfo;
 
                             (*data->count)++;
