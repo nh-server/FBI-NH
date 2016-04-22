@@ -47,6 +47,12 @@ static void action_delete_system_save_data_onresponse(ui_view* view, void* data,
 
 void action_delete_system_save_data(system_save_data_info* info, bool* populated) {
     delete_system_save_data_data* data = (delete_system_save_data_data*) calloc(1, sizeof(delete_system_save_data_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate delete system save data data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 

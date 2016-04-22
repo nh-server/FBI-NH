@@ -47,6 +47,12 @@ static void action_delete_ext_save_data_onresponse(ui_view* view, void* data, bo
 
 void action_delete_ext_save_data(ext_save_data_info* info, bool* populated) {
     delete_ext_save_data_data* data = (delete_ext_save_data_data*) calloc(1, sizeof(delete_ext_save_data_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate delete ext save data data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 

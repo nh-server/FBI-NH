@@ -4,9 +4,9 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "task/task.h"
-#include "../../screen.h"
 #include "section.h"
+#include "../error.h"
+#include "../../screen.h"
 
 #define PENDINGTITLES_MAX 1024
 
@@ -67,6 +67,12 @@ static void pendingtitles_action_update(ui_view* view, void* data, list_item** i
 
 static void pendingtitles_action_open(pending_title_info* info, bool* populated) {
     pendingtitles_action_data* data = (pendingtitles_action_data*) calloc(1, sizeof(pendingtitles_action_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate pending titles action data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 
@@ -127,6 +133,11 @@ static void pendingtitles_update(ui_view* view, void* data, list_item** items, u
 
 void pendingtitles_open() {
     pendingtitles_data* data = (pendingtitles_data*) calloc(1, sizeof(pendingtitles_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate pending titles data.");
+
+        return;
+    }
 
     list_display("Pending Titles", "A: Select, B: Return, X: Refresh", data, pendingtitles_update, pendingtitles_draw_top);
 }

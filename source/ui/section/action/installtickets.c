@@ -31,11 +31,16 @@ static Result action_install_tickets_make_dst_directory(void* data, u32 index) {
 static Result action_install_tickets_open_src(void* data, u32 index, u32* handle) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
+    Result res = 0;
+
     FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
+    if(fsPath != NULL) {
+        res = FSUSER_OpenFile(handle, *installData->base->archive, *fsPath, FS_OPEN_READ, 0);
 
-    Result res = FSUSER_OpenFile(handle, *installData->base->archive, *fsPath, FS_OPEN_READ, 0);
-
-    util_free_path_utf8(fsPath);
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
 
     return res;
 }
@@ -144,6 +149,12 @@ static void action_install_tickets_onresponse(ui_view* view, void* data, bool re
 
 void action_install_tickets(file_info* info, bool* populated) {
     install_tickets_data* data = (install_tickets_data*) calloc(1, sizeof(install_tickets_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate install tickets data.");
+
+        return;
+    }
+
     data->base = info;
 
     data->installInfo.data = data;

@@ -4,6 +4,7 @@
 #include <3ds.h>
 
 #include "task/task.h"
+#include "section.h"
 #include "../error.h"
 #include "../info.h"
 #include "../prompt.h"
@@ -104,6 +105,11 @@ static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
 
 void dump_nand() {
     dump_nand_data* data = (dump_nand_data*) calloc(1, sizeof(dump_nand_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate dump NAND data.");
+
+        return;
+    }
 
     data->dumpInfo.data = data;
 

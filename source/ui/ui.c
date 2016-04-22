@@ -1,12 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
 
 #include <3ds.h>
-#include <string.h>
 
 #include "section/task/task.h"
-#include "../screen.h"
 #include "ui.h"
+#include "../screen.h"
 
 #define MAX_UI_VIEWS 16
 

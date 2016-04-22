@@ -6,11 +6,10 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "task/task.h"
+#include "section.h"
 #include "../error.h"
 #include "../../screen.h"
 #include "../../util.h"
-#include "section.h"
 
 #define FILES_MAX 1024
 
@@ -183,6 +182,12 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
 
 static void files_action_open(file_info* info, bool* populated) {
     files_action_data* data = (files_action_data*) calloc(1, sizeof(files_action_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate files action data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 
@@ -296,10 +301,23 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
 
 void files_open(FS_Archive archive) {
     files_data* data = (files_data*) calloc(1, sizeof(files_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate files data.");
+
+        return;
+    }
+
     data->archive = archive;
 
     if(data->archive.lowPath.size > 0) {
         data->archivePath = calloc(1,  data->archive.lowPath.size);
+        if(data->archivePath == NULL) {
+            error_display(NULL, NULL, NULL, "Failed to allocate files archive.");
+
+            free(data);
+            return;
+        }
+
         memcpy(data->archivePath,  data->archive.lowPath.data,  data->archive.lowPath.size);
         data->archive.lowPath.data = data->archivePath;
     }

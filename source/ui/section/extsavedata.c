@@ -4,9 +4,9 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "task/task.h"
-#include "../../screen.h"
 #include "section.h"
+#include "../error.h"
+#include "../../screen.h"
 
 #define EXTSAVEDATA_MAX 512
 
@@ -68,6 +68,12 @@ static void extsavedata_action_update(ui_view* view, void* data, list_item** ite
 
 static void extsavedata_action_open(ext_save_data_info* info, bool* populated) {
     extsavedata_action_data* data = (extsavedata_action_data*) calloc(1, sizeof(extsavedata_action_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate ext save data action data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 
@@ -128,6 +134,11 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
 
 void extsavedata_open() {
     extsavedata_data* data = (extsavedata_data*) calloc(1, sizeof(extsavedata_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate ext save data data.");
+
+        return;
+    }
 
     list_display("Ext Save Data", "A: Select, B: Return, X: Refresh", data, extsavedata_update, extsavedata_draw_top);
 }

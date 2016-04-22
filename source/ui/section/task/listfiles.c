@@ -199,6 +199,12 @@ Handle task_populate_files(list_item* items, u32* count, u32 max, file_info* dir
     task_clear_files(items, count);
 
     populate_files_data* data = (populate_files_data*) calloc(1, sizeof(populate_files_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate file list data.");
+
+        return 0;
+    }
+
     data->items = items;
     data->count = count;
     data->max = max;

@@ -46,6 +46,12 @@ static void action_delete_title_onresponse(ui_view* view, void* data, bool respo
 
 void action_delete_title(title_info* info, bool* populated) {
     delete_title_data* data = (delete_title_data*) calloc(1, sizeof(delete_title_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate delete title data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 

@@ -4,9 +4,9 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "task/task.h"
-#include "../../screen.h"
 #include "section.h"
+#include "../error.h"
+#include "../../screen.h"
 
 #define SYSTEMSAVEDATA_MAX 512
 
@@ -67,6 +67,12 @@ static void systemsavedata_action_update(ui_view* view, void* data, list_item** 
 
 static void systemsavedata_action_open(system_save_data_info* info, bool* populated) {
     systemsavedata_action_data* data = (systemsavedata_action_data*) calloc(1, sizeof(systemsavedata_action_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate system save data action data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 
@@ -127,6 +133,11 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
 
 void systemsavedata_open() {
     systemsavedata_data* data = (systemsavedata_data*) calloc(1, sizeof(systemsavedata_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate system save data data.");
+
+        return;
+    }
 
     list_display("System Save Data", "A: Select, B: Return, X: Refresh", data, systemsavedata_update, systemsavedata_draw_top);
 }

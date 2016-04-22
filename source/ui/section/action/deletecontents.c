@@ -23,16 +23,20 @@ typedef struct {
 static Result action_delete_contents_delete(void* data, u32 index) {
     delete_contents_data* deleteData = (delete_contents_data*) data;
 
-    FS_Path* fsPath = util_make_path_utf8(deleteData->contents[index]);
-
     Result res = 0;
-    if(util_is_dir(deleteData->base->archive, deleteData->contents[index])) {
-        res = FSUSER_DeleteDirectory(*deleteData->base->archive, *fsPath);
-    } else {
-        res = FSUSER_DeleteFile(*deleteData->base->archive, *fsPath);
-    }
 
-    util_free_path_utf8(fsPath);
+    FS_Path* fsPath = util_make_path_utf8(deleteData->contents[index]);
+    if(fsPath != NULL) {
+        if(util_is_dir(deleteData->base->archive, deleteData->contents[index])) {
+            res = FSUSER_DeleteDirectory(*deleteData->base->archive, *fsPath);
+        } else {
+            res = FSUSER_DeleteFile(*deleteData->base->archive, *fsPath);
+        }
+
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
 
     return res;
 }
@@ -119,6 +123,12 @@ static void action_delete_contents_onresponse(ui_view* view, void* data, bool re
 
 static void action_delete_contents_internal(file_info* info, bool* populated, const char* message, bool recursive, void* filterData, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes)) {
     delete_contents_data* data = (delete_contents_data*) calloc(1, sizeof(delete_contents_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate delete contents data.");
+
+        return;
+    }
+
     data->base = info;
     data->populated = populated;
 

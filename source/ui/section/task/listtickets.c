@@ -94,6 +94,12 @@ Handle task_populate_tickets(list_item* items, u32* count, u32 max) {
     task_clear_tickets(items, count);
 
     populate_tickets_data* data = (populate_tickets_data*) calloc(1, sizeof(populate_tickets_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate ticket list data.");
+
+        return 0;
+    }
+
     data->items = items;
     data->count = count;
     data->max = max;
