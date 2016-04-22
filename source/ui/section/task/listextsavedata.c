@@ -30,7 +30,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
             qsort(extSaveDataIds, extSaveDataCount, sizeof(u64), util_compare_u64);
 
             SMDH smdh;
-            for(u32 i = 0; i < extSaveDataCount && i < data->max; i++) {
+            for(u32 i = 0; i < extSaveDataCount && i < data->max && R_SUCCEEDED(res); i++) {
                 if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                     break;
                 }
@@ -40,6 +40,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                     extSaveDataInfo->mediaType = mediaType;
                     extSaveDataInfo->extSaveDataId = extSaveDataIds[i];
                     extSaveDataInfo->shared = mediaType == MEDIATYPE_NAND;
+                    extSaveDataInfo->hasMeta = false;
 
                     list_item* item = &data->items[*data->count];
 
@@ -51,13 +52,11 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
 
                         utf16_to_utf8((uint8_t*) item->name, smdh.titles[systemLanguage].shortDescription, NAME_MAX);
 
-                        extSaveDataInfo->hasSmdh = true;
-                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(extSaveDataInfo->smdhInfo.shortDescription));
-                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(extSaveDataInfo->smdhInfo.longDescription));
-                        utf16_to_utf8((uint8_t*) extSaveDataInfo->smdhInfo.publisher, smdh.titles[systemLanguage].publisher, sizeof(extSaveDataInfo->smdhInfo.publisher));
-                        extSaveDataInfo->smdhInfo.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
-                    } else {
-                        extSaveDataInfo->hasSmdh = false;
+                        extSaveDataInfo->hasMeta = true;
+                        utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(extSaveDataInfo->meta.shortDescription));
+                        utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(extSaveDataInfo->meta.longDescription));
+                        utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.publisher, smdh.titles[systemLanguage].publisher, sizeof(extSaveDataInfo->meta.publisher));
+                        extSaveDataInfo->meta.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
                     }
 
                     bool empty = strlen(item->name) == 0;
@@ -88,6 +87,8 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                     item->data = extSaveDataInfo;
 
                     (*data->count)++;
+                } else {
+                    res = R_FBI_OUT_OF_MEMORY;
                 }
             }
         }
@@ -112,7 +113,7 @@ static void task_populate_ext_save_data_thread(void* arg) {
     free(data);
 }
 
-static void task_clear_ext_save_data(list_item* items, u32* count) {
+void task_clear_ext_save_data(list_item* items, u32* count) {
     if(items == NULL || count == NULL || *count == 0) {
         return;
     }
@@ -123,8 +124,8 @@ static void task_clear_ext_save_data(list_item* items, u32* count) {
     for(u32 i = 0; i < prevCount; i++) {
         if(items[i].data != NULL) {
             ext_save_data_info* extSaveDataInfo = (ext_save_data_info*) items[i].data;
-            if(extSaveDataInfo->hasSmdh) {
-                screen_unload_texture(extSaveDataInfo->smdhInfo.texture);
+            if(extSaveDataInfo->hasMeta) {
+                screen_unload_texture(extSaveDataInfo->meta.texture);
             }
 
             free(items[i].data);

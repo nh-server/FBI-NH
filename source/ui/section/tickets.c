@@ -93,6 +93,7 @@ static void tickets_update(ui_view* view, void* data, list_item** items, u32** i
         ui_pop();
         list_destroy(view);
 
+        task_clear_tickets(listData->items, &listData->count);
         free(listData);
         return;
     }

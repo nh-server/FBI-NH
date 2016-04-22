@@ -31,7 +31,7 @@ static void task_populate_system_save_data_thread(void* arg) {
         if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, data->max * sizeof(u32), systemSaveDataIds))) {
             qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), util_compare_u32);
 
-            for(u32 i = 0; i < systemSaveDataCount && i < data->max; i++) {
+            for(u32 i = 0; i < systemSaveDataCount && i < data->max && R_SUCCEEDED(res); i++) {
                 if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                     break;
                 }
@@ -46,6 +46,8 @@ static void task_populate_system_save_data_thread(void* arg) {
                     item->data = systemSaveDataInfo;
 
                     (*data->count)++;
+                } else {
+                    res = R_FBI_OUT_OF_MEMORY;
                 }
             }
         }
@@ -63,7 +65,7 @@ static void task_populate_system_save_data_thread(void* arg) {
     free(data);
 }
 
-static void task_clear_system_save_data(list_item* items, u32* count) {
+void task_clear_system_save_data(list_item* items, u32* count) {
     if(items == NULL || count == NULL) {
         return;
     }

@@ -260,6 +260,7 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
             ui_pop();
             list_destroy(view);
 
+            task_clear_files(listData->items, &listData->count);
             free(listData);
             return;
         } else {

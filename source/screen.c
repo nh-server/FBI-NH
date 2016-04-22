@@ -202,8 +202,8 @@ void screen_init() {
     screen_load_texture_file(TEXTURE_BUTTON_LARGE, "button_large.png", true);
     screen_load_texture_file(TEXTURE_PROGRESS_BAR_BG, "progress_bar_bg.png", true);
     screen_load_texture_file(TEXTURE_PROGRESS_BAR_CONTENT, "progress_bar_content.png", true);
-    screen_load_texture_file(TEXTURE_SMDH_INFO_BOX, "smdh_info_box.png", true);
-    screen_load_texture_file(TEXTURE_SMDH_INFO_BOX_SHADOW, "smdh_info_box_shadow.png", true);
+    screen_load_texture_file(TEXTURE_META_INFO_BOX, "meta_info_box.png", true);
+    screen_load_texture_file(TEXTURE_META_INFO_BOX_SHADOW, "meta_info_box_shadow.png", true);
     screen_load_texture_file(TEXTURE_BATTERY_CHARGING, "battery_charging.png", true);
     screen_load_texture_file(TEXTURE_BATTERY_0, "battery0.png", true);
     screen_load_texture_file(TEXTURE_BATTERY_1, "battery1.png", true);
@@ -274,7 +274,7 @@ void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GP
 
     u8* pow2Tex = linearAlloc(pow2Width * pow2Height * pixelSize);
     if(pow2Tex == NULL) {
-        util_panic("Failed to allocate temporary texture buffer for tiled data.");
+        util_panic("Failed to allocate temporary texture buffer.");
         return;
     }
 
@@ -298,7 +298,7 @@ void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GP
     textures[id].pow2Height = pow2Height;
 
     if(!C3D_TexInit(&textures[id].tex, (int) pow2Width, (int) pow2Height, format)) {
-        util_panic("Failed to initialize texture for tiled data.");
+        util_panic("Failed to initialize texture.");
         return;
     }
 
@@ -306,16 +306,11 @@ void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GP
 
     Result flushRes = GSPGPU_FlushDataCache(pow2Tex, pow2Width * pow2Height * 4);
     if(R_FAILED(flushRes)) {
-        util_panic("Failed to flush texture buffer for tiled data: 0x%08lX", flushRes);
+        util_panic("Failed to flush texture buffer: 0x%08lX", flushRes);
         return;
     }
 
-    Result transferRes = GX_DisplayTransfer((u32*) pow2Tex, GX_BUFFER_DIM(pow2Width, pow2Height), (u32*) textures[id].tex.data, GX_BUFFER_DIM(pow2Width, pow2Height), GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT((u32) gpuToGxFormat[format]) | GX_TRANSFER_OUT_FORMAT((u32) gpuToGxFormat[format]) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-    if(R_FAILED(transferRes)) {
-        util_panic("Failed to tile texture data for tiled data: 0x%08lX", transferRes);
-        return;
-    }
-
+    C3D_SafeDisplayTransfer((u32*) pow2Tex, GX_BUFFER_DIM(pow2Width, pow2Height), (u32*) textures[id].tex.data, GX_BUFFER_DIM(pow2Width, pow2Height), GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT((u32) gpuToGxFormat[format]) | GX_TRANSFER_OUT_FORMAT((u32) gpuToGxFormat[format]) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     gspWaitForPPF();
 
     linearFree(pow2Tex);
@@ -347,7 +342,7 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
 
     FILE* fd = util_open_resource(path);
     if(fd == NULL) {
-        util_panic("Failed to load PNG file \"%s\": %s", strerror(errno));
+        util_panic("Failed to load PNG file \"%s\": %s", path, strerror(errno));
         return;
     }
 

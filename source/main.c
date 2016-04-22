@@ -26,6 +26,7 @@ void cleanup() {
     }
 
     amExit();
+    httpcExit();
     ptmuExit();
     acExit();
     cfguExit();
@@ -57,6 +58,7 @@ int main(int argc, const char* argv[]) {
     cfguInit();
     acInit();
     ptmuInit();
+    httpcInit(0);
 
     amInit();
     AM_InitializeExternalTitleDatabase(false);
@@ -71,10 +73,7 @@ int main(int argc, const char* argv[]) {
 
     mainmenu_open();
 
-    while(aptMainLoop() && ui_top() != NULL) {
-        ui_update();
-        ui_draw();
-    }
+    while(aptMainLoop() && ui_update());
 
     cleanup();
     return 0;

@@ -7,12 +7,12 @@
 
 #include <3ds.h>
 
-#include "action/action.h"
+#include "task/task.h"
+#include "section.h"
 #include "../error.h"
 #include "../info.h"
 #include "../prompt.h"
 #include "../../screen.h"
-#include "section.h"
 
 typedef struct {
     int serverSocket;

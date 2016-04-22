@@ -95,6 +95,7 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
         ui_pop();
         list_destroy(view);
 
+        task_clear_system_save_data(listData->items, &listData->count);
         free(listData);
         return;
     }
