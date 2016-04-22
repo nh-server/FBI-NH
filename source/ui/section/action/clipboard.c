@@ -5,6 +5,7 @@
 #include <3ds.h>
 
 #include "clipboard.h"
+#include "../task/task.h"
 
 static bool clipboard_has = false;
 static FS_Archive clipboard_archive;
@@ -32,6 +33,11 @@ Result clipboard_set_contents(FS_Archive archive, const char* path) {
 
     if(clipboard_archive.lowPath.size > 0) {
         clipboard_archive_path = calloc(1, clipboard_archive.lowPath.size);
+        if(clipboard_archive_path == NULL) {
+            clipboard_clear();
+            return R_FBI_OUT_OF_MEMORY;
+        }
+
         memcpy(clipboard_archive_path, clipboard_archive.lowPath.data, clipboard_archive.lowPath.size);
         clipboard_archive.lowPath.data = clipboard_archive_path;
     }

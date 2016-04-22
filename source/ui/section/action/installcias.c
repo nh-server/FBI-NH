@@ -35,11 +35,16 @@ static Result action_install_cias_make_dst_directory(void* data, u32 index) {
 static Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
+    Result res = 0;
+
     FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
+    if(fsPath != NULL) {
+        res = FSUSER_OpenFile(handle, *installData->base->archive, *fsPath, FS_OPEN_READ, 0);
 
-    Result res = FSUSER_OpenFile(handle, *installData->base->archive, *fsPath, FS_OPEN_READ, 0);
-
-    util_free_path_utf8(fsPath);
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
 
     return res;
 }
@@ -50,10 +55,13 @@ static Result action_install_cias_close_src(void* data, u32 index, bool succeede
     Result res = 0;
     if(R_SUCCEEDED(res = FSFILE_Close(handle)) && installData->delete && succeeded) {
         FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
+        if(fsPath != NULL) {
+            FSUSER_DeleteFile(*installData->base->archive, *fsPath);
 
-        FSUSER_DeleteFile(*installData->base->archive, *fsPath);
-
-        util_free_path_utf8(fsPath);
+            util_free_path_utf8(fsPath);
+        } else {
+            res = R_FBI_OUT_OF_MEMORY;
+        }
     }
 
     return res;
@@ -210,6 +218,12 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
 
 static void action_install_cias_internal(file_info* info, bool* populated, bool delete) {
     install_cias_data* data = (install_cias_data*) calloc(1, sizeof(install_cias_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate install CIAs data.");
+
+        return;
+    }
+
     data->base = info;
     data->delete = delete;
     data->populated = populated;

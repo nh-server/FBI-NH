@@ -145,6 +145,12 @@ Handle task_populate_ext_save_data(list_item* items, u32* count, u32 max) {
     task_clear_ext_save_data(items, count);
 
     populate_ext_save_data_data* data = (populate_ext_save_data_data*) calloc(1, sizeof(populate_ext_save_data_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate ext save data list data.");
+
+        return 0;
+    }
+
     data->items = items;
     data->count = count;
     data->max = max;

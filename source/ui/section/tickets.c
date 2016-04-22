@@ -4,8 +4,9 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "../../screen.h"
 #include "section.h"
+#include "../error.h"
+#include "../../screen.h"
 
 #define TICKETS_MAX 1024
 
@@ -65,6 +66,12 @@ static void tickets_action_update(ui_view* view, void* data, list_item** items, 
 
 static void tickets_action_open(ticket_info* info, bool* populated) {
     tickets_action_data* data = (tickets_action_data*) calloc(1, sizeof(tickets_action_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate tickets action data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 
@@ -125,6 +132,11 @@ static void tickets_update(ui_view* view, void* data, list_item** items, u32** i
 
 void tickets_open() {
     tickets_data* data = (tickets_data*) calloc(1, sizeof(tickets_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate tickets data.");
+
+        return;
+    }
 
     list_display("Tickets", "A: Select, B: Return, X: Refresh", data, tickets_update, tickets_draw_top);
 }

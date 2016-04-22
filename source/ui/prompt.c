@@ -1,6 +1,8 @@
-#include <3ds.h>
 #include <malloc.h>
 
+#include <3ds.h>
+
+#include "error.h"
 #include "prompt.h"
 #include "../screen.h"
 
@@ -140,6 +142,12 @@ void prompt_display(const char* name, const char* text, u32 rgba, bool option, v
                                                                                            void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
                                                                                            void (*onResponse)(ui_view* view, void* data, bool response)) {
     prompt_data* promptData = (prompt_data*) calloc(1, sizeof(prompt_data));
+    if(promptData == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate prompt data.");
+
+        return;
+    }
+
     promptData->text = text;
     promptData->rgba = rgba;
     promptData->option = option;
@@ -149,6 +157,13 @@ void prompt_display(const char* name, const char* text, u32 rgba, bool option, v
     promptData->onResponse = onResponse;
 
     ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
+    if(view == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate UI view.");
+
+        free(promptData);
+        return;
+    }
+
     view->name = name;
     view->info = "";
     view->data = promptData;

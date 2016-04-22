@@ -128,6 +128,12 @@ Handle task_capture_cam(Handle* mutex, u16* buffer, s16 width, s16 height) {
     }
 
     capture_cam_data* data = (capture_cam_data*) calloc(1, sizeof(capture_cam_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate camera capture data.");
+
+        return 0;
+    }
+
     data->buffer = buffer;
     data->width = width;
     data->height = height;

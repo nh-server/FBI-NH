@@ -1,6 +1,8 @@
-#include <3ds.h>
 #include <malloc.h>
 
+#include <3ds.h>
+
+#include "error.h"
 #include "list.h"
 #include "../screen.h"
 
@@ -212,6 +214,12 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
 void list_display(const char* name, const char* info, void* data, void (*update)(ui_view* view, void* data, list_item** contents, u32** itemCount, list_item* selected, bool selectedTouched),
                                                                   void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected)) {
     list_data* listData = (list_data*) calloc(1, sizeof(list_data));
+    if(listData == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate list data.");
+
+        return;
+    }
+
     listData->data = data;
     listData->items = NULL;
     listData->itemCount = NULL;
@@ -224,6 +232,13 @@ void list_display(const char* name, const char* info, void* data, void (*update)
     listData->drawTop = drawTop;
 
     ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
+    if(view == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate UI view.");
+
+        free(listData);
+        return;
+    }
+
     view->name = name;
     view->info = info;
     view->data = listData;

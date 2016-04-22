@@ -115,6 +115,12 @@ Handle task_populate_pending_titles(list_item* items, u32* count, u32 max) {
     task_clear_pending_titles(items, count);
 
     populate_pending_titles_data* data = (populate_pending_titles_data*) calloc(1, sizeof(populate_pending_titles_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate pending title list data.");
+
+        return 0;
+    }
+
     data->items = items;
     data->count = count;
     data->max = max;

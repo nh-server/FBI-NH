@@ -4,9 +4,9 @@
 #include <3ds.h>
 
 #include "action/action.h"
-#include "task/task.h"
-#include "../../screen.h"
 #include "section.h"
+#include "../error.h"
+#include "../../screen.h"
 
 #define TITLES_MAX 1024
 
@@ -111,6 +111,12 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
 
 static void titles_action_open(title_info* info, bool* populated) {
     titles_action_data* data = (titles_action_data*) calloc(1, sizeof(titles_action_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate titles action data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 
@@ -171,6 +177,11 @@ static void titles_update(ui_view* view, void* data, list_item** items, u32** it
 
 void titles_open() {
     titles_data* data = (titles_data*) calloc(1, sizeof(titles_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate titles data.");
+
+        return;
+    }
 
     list_display("Titles", "A: Select, B: Return, X: Refresh", data, titles_update, titles_draw_top);
 }

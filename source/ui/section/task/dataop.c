@@ -160,24 +160,30 @@ Handle task_data_op(data_op_info* info) {
 
     task_data_op_reset_info(info);
 
-    data_op_data* installData = (data_op_data*) calloc(1, sizeof(data_op_data));
-    installData->info = info;
+    data_op_data* data = (data_op_data*) calloc(1, sizeof(data_op_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate data operation data.");
 
-    Result eventRes = svcCreateEvent(&installData->cancelEvent, 1);
+        return 0;
+    }
+
+    data->info = info;
+
+    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
     if(R_FAILED(eventRes)) {
         error_display_res(NULL, NULL, NULL, eventRes, "Failed to create data operation cancel event.");
 
-        free(installData);
+        free(data);
         return 0;
     }
 
-    if(threadCreate(task_data_op_thread, installData, 0x4000, 0x18, 1, true) == NULL) {
+    if(threadCreate(task_data_op_thread, data, 0x4000, 0x18, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create data operation thread.");
 
-        svcCloseHandle(installData->cancelEvent);
-        free(installData);
+        svcCloseHandle(data->cancelEvent);
+        free(data);
         return 0;
     }
 
-    return installData->cancelEvent;
+    return data->cancelEvent;
 }

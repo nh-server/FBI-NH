@@ -109,6 +109,13 @@ static void action_delete_pending_titles_onresponse(ui_view* view, void* data, b
 
 void action_delete_pending_titles(pending_title_info* info, bool* populated, const char* message, u64* titleIds, u32 sdTotal, u32 nandTotal) {
     delete_pending_titles_data* data = (delete_pending_titles_data*) calloc(1, sizeof(delete_pending_titles_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate delete pending titles data.");
+
+        free(titleIds);
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
     data->titleIds = titleIds;
@@ -132,6 +139,12 @@ void action_delete_pending_titles(pending_title_info* info, bool* populated, con
 
 void action_delete_pending_title(pending_title_info* info, bool* populated) {
     u64* titleIds = (u64*) calloc(1, sizeof(u64));
+    if(titleIds == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate title ID buffer.");
+
+        return;
+    }
+
     titleIds[0] = info->titleId;
     u32 sdTotal = info->mediaType == MEDIATYPE_SD ? 1 : 0;
     u32 nandTotal = info->mediaType == MEDIATYPE_NAND ? 1 : 0;
@@ -151,6 +164,12 @@ void action_delete_all_pending_titles(pending_title_info* info, bool* populated)
     }
 
     u64* titleIds = (u64*) calloc(sdTotal + nandTotal, sizeof(u64));
+    if(titleIds == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate title ID buffer.");
+
+        return;
+    }
+
     if(R_FAILED(res = AM_GetPendingTitleList(&sdTotal, sdTotal, MEDIATYPE_SD, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION, titleIds)) || R_FAILED(res = AM_GetPendingTitleList(&nandTotal, nandTotal, MEDIATYPE_NAND, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION, &titleIds[sdTotal]))) {
         error_display_res(NULL, NULL, NULL, res, "Failed to retrieve pending title list.");
 

@@ -567,6 +567,11 @@ static void error_onresponse(ui_view* view, void* data, bool response) {
 
 void error_display(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), const char* text, ...) {
     error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
+    if(errorData == NULL) {
+        // No use trying to spawn another if we're out of memory.
+        return;
+    }
+
     errorData->data = data;
     errorData->dismissed = dismissed;
     errorData->drawTop = drawTop;
@@ -581,6 +586,11 @@ void error_display(volatile bool* dismissed, void* data, void (*drawTop)(ui_view
 
 void error_display_res(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
     error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
+    if(errorData == NULL) {
+        // No use trying to spawn another if we're out of memory.
+        return;
+    }
+
     errorData->data = data;
     errorData->dismissed = dismissed;
     errorData->drawTop = drawTop;
@@ -602,6 +612,11 @@ void error_display_res(volatile bool* dismissed, void* data, void (*drawTop)(ui_
 
 void error_display_errno(volatile bool* dismissed, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), int err, const char* text, ...) {
     error_data* errorData = (error_data*) calloc(1, sizeof(error_data));
+    if(errorData == NULL) {
+        // No use trying to spawn another if we're out of memory.
+        return;
+    }
+
     errorData->data = data;
     errorData->dismissed = dismissed;
     errorData->drawTop = drawTop;

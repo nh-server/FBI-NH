@@ -5,6 +5,7 @@
 #include <3ds.h>
 
 #include "task/task.h"
+#include "section.h"
 #include "../error.h"
 #include "../info.h"
 #include "../prompt.h"
@@ -45,27 +46,30 @@ static Result qrinstall_make_dst_directory(void* data, u32 index) {
 static Result qrinstall_open_src(void* data, u32 index, u32* handle) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
-    httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
-
     Result res = 0;
 
-    if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, qrInstallData->urls[index], 1))) {
-        httpcSetSSLOpt(context, SSLCOPT_DisableVerify);
-        if(R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &qrInstallData->responseCode, 0))) {
-            if(qrInstallData->responseCode == 200) {
-                *handle = (u32) context;
-            } else {
-                res = R_FBI_HTTP_RESPONSE_CODE;
+    httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
+    if(context != NULL) {
+        if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, qrInstallData->urls[index], 1))) {
+            httpcSetSSLOpt(context, SSLCOPT_DisableVerify);
+            if(R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &qrInstallData->responseCode, 0))) {
+                if(qrInstallData->responseCode == 200) {
+                    *handle = (u32) context;
+                } else {
+                    res = R_FBI_HTTP_RESPONSE_CODE;
+                }
+            }
+
+            if(R_FAILED(res)) {
+                httpcCloseContext(context);
             }
         }
 
         if(R_FAILED(res)) {
-            httpcCloseContext(context);
+            free(context);
         }
-    }
-
-    if(R_FAILED(res)) {
-        free(context);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
     }
 
     return res;
@@ -321,6 +325,11 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
 
 void qrinstall_open() {
     qr_install_data* data = (qr_install_data*) calloc(1, sizeof(qr_install_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate QR install data.");
+
+        return;
+    }
 
     data->qrContext = quirc_new();
     if(data->qrContext == NULL) {

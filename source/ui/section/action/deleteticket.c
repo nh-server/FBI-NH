@@ -46,6 +46,12 @@ static void action_delete_ticket_onresponse(ui_view* view, void* data, bool resp
 
 void action_delete_ticket(ticket_info* info, bool* populated) {
     delete_ticket_data* data = (delete_ticket_data*) calloc(1, sizeof(delete_ticket_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate delete ticket data.");
+
+        return;
+    }
+
     data->info = info;
     data->populated = populated;
 

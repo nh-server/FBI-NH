@@ -254,9 +254,18 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
 }
 
 void networkinstall_open() {
+    network_install_data* data = (network_install_data*) calloc(1, sizeof(network_install_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate network install data.");
+
+        return;
+    }
+
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if(sock < 0) {
         error_display_errno(NULL, NULL, NULL, errno, "Failed to open server socket.");
+
+        free(data);
         return;
     }
 
@@ -269,22 +278,23 @@ void networkinstall_open() {
     server.sin_addr.s_addr = (in_addr_t) gethostid();
 
     if(bind(sock, (struct sockaddr*) &server, sizeof(server)) < 0) {
-        close(sock);
-
         error_display_errno(NULL, NULL, NULL, errno, "Failed to bind server socket.");
+
+        close(sock);
+        free(data);
         return;
     }
 
     fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
 
     if(listen(sock, 5) < 0) {
-        close(sock);
-
         error_display_errno(NULL, NULL, NULL, errno, "Failed to listen on server socket.");
+
+        close(sock);
+        free(data);
         return;
     }
 
-    network_install_data* data = (network_install_data*) calloc(1, sizeof(network_install_data));
     data->serverSocket = sock;
     data->clientSocket = 0;
 

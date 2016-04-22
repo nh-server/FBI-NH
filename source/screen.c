@@ -135,6 +135,11 @@ void screen_init() {
 
     TGLP_s* glyphInfo = fontGetGlyphInfo();
     glyphSheets = calloc(glyphInfo->nSheets, sizeof(C3D_Tex));
+    if(glyphSheets == NULL) {
+        util_panic("Failed to allocate font glyph texture data.");
+        return;
+    }
+
     for(int i = 0; i < glyphInfo->nSheets; i++) {
         C3D_Tex* tex = &glyphSheets[i];
         tex->data = fontGetGlyphSheetTex(i);
@@ -405,6 +410,11 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
     u32 pixelSize = size / width / height;
 
     u8* untiledData = (u8*) calloc(1, size);
+    if(untiledData == NULL) {
+        util_panic("Failed to allocate buffer for texture untiling.");
+        return;
+    }
+
     for(u32 x = 0; x < width; x++) {
         for(u32 y = 0; y < height; y++) {
             u32 tiledDataPos = util_tiled_texture_index(x, y, width, height) * pixelSize;

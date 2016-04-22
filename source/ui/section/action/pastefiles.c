@@ -46,11 +46,16 @@ static Result action_paste_files_make_dst_directory(void* data, u32 index) {
     char dstPath[PATH_MAX];
     action_paste_files_get_dst_path(pasteData, index, dstPath);
 
+    Result res = 0;
+
     FS_Path* fsPath = util_make_path_utf8(dstPath);
+    if(fsPath != NULL) {
+        res = FSUSER_CreateDirectory(*pasteData->base->archive, *fsPath, 0);
 
-    Result res = FSUSER_CreateDirectory(*pasteData->base->archive, *fsPath, 0);
-
-    util_free_path_utf8(fsPath);
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
 
     return res;
 }
@@ -58,11 +63,16 @@ static Result action_paste_files_make_dst_directory(void* data, u32 index) {
 static Result action_paste_files_open_src(void* data, u32 index, u32* handle) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
+    Result res = 0;
+
     FS_Path* fsPath = util_make_path_utf8(pasteData->contents[index]);
+    if(fsPath != NULL) {
+        res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_READ, 0);
 
-    Result res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_READ, 0);
-
-    util_free_path_utf8(fsPath);
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
 
     return res;
 }
@@ -85,11 +95,16 @@ static Result action_paste_files_open_dst(void* data, u32 index, void* initialRe
     char dstPath[PATH_MAX];
     action_paste_files_get_dst_path(pasteData, index, dstPath);
 
+    Result res = 0;
+
     FS_Path* fsPath = util_make_path_utf8(dstPath);
+    if(fsPath != NULL) {
+        res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 
-    Result res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
-
-    util_free_path_utf8(fsPath);
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
 
     return res;
 }
@@ -186,6 +201,12 @@ void action_paste_contents(file_info* info, bool* populated) {
     }
 
     paste_files_data* data = (paste_files_data*) calloc(1, sizeof(paste_files_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate paste files data.");
+
+        return;
+    }
+
     data->base = info;
     data->populated = populated;
 

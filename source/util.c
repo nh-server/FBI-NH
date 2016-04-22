@@ -126,15 +126,19 @@ void util_panic(const char* s, ...) {
 }
 
 bool util_is_dir(FS_Archive* archive, const char* path) {
-    FS_Path* fsPath = util_make_path_utf8(path);
-
     Result res = 0;
-    Handle dirHandle = 0;
-    if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *archive, *fsPath))) {
-        FSDIR_Close(dirHandle);
-    }
 
-    util_free_path_utf8(fsPath);
+    FS_Path* fsPath = util_make_path_utf8(path);
+    if(fsPath != NULL) {
+        Handle dirHandle = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *archive, *fsPath))) {
+            FSDIR_Close(dirHandle);
+        }
+
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
 
     return R_SUCCEEDED(res);
 }
@@ -144,55 +148,62 @@ static Result util_traverse_dir_internal(FS_Archive* archive, const char* path, 
     Result res = 0;
 
     FS_Path* fsPath = util_make_path_utf8(path);
+    if(fsPath != NULL) {
+        Handle handle = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&handle, *archive, *fsPath))) {
+            size_t pathLen = strlen(path);
+            char* pathBuf = (char*) calloc(1, PATH_MAX);
+            if(pathBuf != NULL) {
+                strncpy(pathBuf, path, PATH_MAX);
 
-    Handle handle = 0;
-    if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&handle, *archive, *fsPath))) {
-        size_t pathLen = strlen(path);
-        char* pathBuf = (char*) calloc(1, PATH_MAX);
-        strncpy(pathBuf, path, PATH_MAX);
+                u32 entryCount = 0;
+                FS_DirectoryEntry entry;
+                u32 done = 0;
+                while(R_SUCCEEDED(FSDIR_Read(handle, &entryCount, 1, &entry)) && entryCount > 0) {
+                    ssize_t units = utf16_to_utf8((uint8_t*) pathBuf + pathLen, entry.name, PATH_MAX - pathLen - 1);
+                    if(units > 0) {
+                        pathBuf[pathLen + units] = '\0';
+                        if(entry.attributes & FS_ATTRIBUTE_DIRECTORY) {
+                            if(pathLen + units < PATH_MAX - 2) {
+                                pathBuf[pathLen + units] = '/';
+                                pathBuf[pathLen + units + 1] = '\0';
+                            }
+                        }
 
-        u32 entryCount = 0;
-        FS_DirectoryEntry entry;
-        u32 done = 0;
-        while(R_SUCCEEDED(FSDIR_Read(handle, &entryCount, 1, &entry)) && entryCount > 0) {
-            ssize_t units = utf16_to_utf8((uint8_t*) pathBuf + pathLen, entry.name, PATH_MAX - pathLen - 1);
-            if(units > 0) {
-                pathBuf[pathLen + units] = '\0';
-                if(entry.attributes & FS_ATTRIBUTE_DIRECTORY) {
-                    if(pathLen + units < PATH_MAX - 2) {
-                        pathBuf[pathLen + units] = '/';
-                        pathBuf[pathLen + units + 1] = '\0';
+                        if(dirsFirst) {
+                            if(process != NULL && (filter == NULL || filter(data, archive, pathBuf, entry.attributes))) {
+                                process(data, archive, pathBuf, entry.attributes);
+                            }
+                        }
+
+                        if((entry.attributes & FS_ATTRIBUTE_DIRECTORY) && recursive) {
+                            if(R_FAILED(res = util_traverse_dir_internal(archive, pathBuf, recursive, dirsFirst, data, filter, process))) {
+                                break;
+                            }
+                        }
+
+                        if(!dirsFirst) {
+                            if(process != NULL && (filter == NULL || filter(data, archive, pathBuf, entry.attributes))) {
+                                process(data, archive, pathBuf, entry.attributes);
+                            }
+                        }
                     }
+
+                    done++;
                 }
 
-                if(dirsFirst) {
-                    if(process != NULL && (filter == NULL || filter(data, archive, pathBuf, entry.attributes))) {
-                        process(data, archive, pathBuf, entry.attributes);
-                    }
-                }
-
-                if((entry.attributes & FS_ATTRIBUTE_DIRECTORY) && recursive) {
-                    if(R_FAILED(res = util_traverse_dir_internal(archive, pathBuf, recursive, dirsFirst, data, filter, process))) {
-                        break;
-                    }
-                }
-
-                if(!dirsFirst) {
-                    if(process != NULL && (filter == NULL || filter(data, archive, pathBuf, entry.attributes))) {
-                        process(data, archive, pathBuf, entry.attributes);
-                    }
-                }
+                free(pathBuf);
+            } else {
+                res = R_FBI_OUT_OF_MEMORY;
             }
 
-            done++;
+            FSDIR_Close(handle);
         }
 
-        free(pathBuf);
-
-        FSDIR_Close(handle);
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
     }
-
-    util_free_path_utf8(fsPath);
 
     return res;
 }
@@ -221,17 +232,20 @@ static Result util_traverse_file(FS_Archive* archive, const char* path, bool rec
     Result res = 0;
 
     FS_Path* fsPath = util_make_path_utf8(path);
+    if(fsPath != NULL) {
+        Handle handle = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenFile(&handle, *archive, *fsPath, FS_OPEN_READ, 0))) {
+            if(process != NULL && (filter == NULL || filter(data, archive, path, 0))) {
+                process(data, archive, path, 0);
+            }
 
-    Handle handle = 0;
-    if(R_SUCCEEDED(res = FSUSER_OpenFile(&handle, *archive, *fsPath, FS_OPEN_READ, 0))) {
-        if(process != NULL && (filter == NULL || filter(data, archive, path, 0))) {
-            process(data, archive, path, 0);
+            FSFILE_Close(handle);
         }
 
-        FSFILE_Close(handle);
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
     }
-
-    util_free_path_utf8(fsPath);
 
     return res;
 }
@@ -331,6 +345,10 @@ static bool util_populate_contents_filter(void* data, FS_Archive* archive, const
 static void util_populate_contents_process(void* data, FS_Archive* archive, const char* path, u32 attributes) {
     u32 currPathSize = strlen(path) + 1;
     char* currPath = (char*) calloc(1, currPathSize);
+    if(currPath == NULL) {
+        return;
+    }
+
     strncpy(currPath, path, currPathSize);
 
     populate_data* populateData = (populate_data*) data;
@@ -344,6 +362,10 @@ Result util_populate_contents(char*** contentsOut, u32* countOut, FS_Archive* ar
 
     util_count_contents(countOut, archive, path, recursive, dirsFirst, data, filter);
     *contentsOut = (char**) calloc(*countOut, sizeof(char*));
+
+    if(*contentsOut == NULL) {
+        return R_FBI_OUT_OF_MEMORY;
+    }
 
     populate_data populateData;
     populateData.contents = contentsOut;
@@ -408,11 +430,14 @@ Result util_ensure_dir(FS_Archive* archive, const char* path) {
 
     if(!util_is_dir(archive, path)) {
         FS_Path* fsPath = util_make_path_utf8(path);
+        if(fsPath != NULL) {
+            FSUSER_DeleteFile(*archive, *fsPath);
+            res = FSUSER_CreateDirectory(*archive, *fsPath, 0);
 
-        FSUSER_DeleteFile(*archive, *fsPath);
-        res = FSUSER_CreateDirectory(*archive, *fsPath, 0);
-
-        util_free_path_utf8(fsPath);
+            util_free_path_utf8(fsPath);
+        } else {
+            res = R_FBI_OUT_OF_MEMORY;
+        }
     }
 
     return res;
@@ -422,9 +447,18 @@ FS_Path* util_make_path_utf8(const char* path) {
     size_t len = strlen(path);
 
     u16* utf16 = (u16*) calloc(len + 1, sizeof(u16));
+    if(utf16 == NULL) {
+        return NULL;
+    }
+
     ssize_t utf16Len = utf8_to_utf16(utf16, (const uint8_t*) path, len);
 
     FS_Path* fsPath = (FS_Path*) calloc(1, sizeof(FS_Path));
+    if(fsPath == NULL) {
+        free(utf16);
+        return NULL;
+    }
+
     fsPath->type = PATH_UTF16;
     fsPath->size = (utf16Len + 1) * sizeof(u16);
     fsPath->data = utf16;

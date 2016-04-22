@@ -92,6 +92,12 @@ Handle task_populate_system_save_data(list_item* items, u32* count, u32 max) {
     task_clear_system_save_data(items, count);
 
     populate_system_save_data_data* data = (populate_system_save_data_data*) calloc(1, sizeof(populate_system_save_data_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate system save data list data.");
+
+        return 0;
+    }
+
     data->items = items;
     data->count = count;
     data->max = max;
