@@ -96,7 +96,7 @@ static Result action_install_cias_open_dst(void* data, u32 index, void* initialR
         AM_DeleteTitle(dest, titleId);
         AM_DeleteTicket(titleId);
 
-        if(dest == 1) {
+        if(dest == MEDIATYPE_SD) {
             AM_QueryAvailableExternalTitleDatabase(NULL);
         }
     }

@@ -113,7 +113,7 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
         AM_DeleteTitle(dest, titleId);
         AM_DeleteTicket(titleId);
 
-        if(dest == 1) {
+        if(dest == MEDIATYPE_SD) {
             AM_QueryAvailableExternalTitleDatabase(NULL);
         }
     }
@@ -164,7 +164,11 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
                 error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\n%.48s\nAttempted to install N3DS title to O3DS.", url);
             }
         } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
-            error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\nHTTP server returned response code %d", ((qr_install_data*) data)->responseCode);
+            if(strlen(url) > 48) {
+                error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\n%.45s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+            } else {
+                error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\n%.48s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+            }
         } else {
             if(strlen(url) > 48) {
                 error_display_res(&dismissed, NULL, NULL, res, "Failed to install CIA file.\n%.45s...", url);
@@ -364,6 +368,7 @@ void qrinstall_open() {
 
     data->tex = 0;
 
+    data->responseCode = 0;
     data->currTitleId = 0;
 
     data->installInfo.data = data;

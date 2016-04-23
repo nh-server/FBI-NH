@@ -63,7 +63,7 @@ static Result action_install_tickets_open_dst(void* data, u32 index, void* initi
 
 static Result action_install_tickets_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     if(succeeded) {
-        return AM_InstallTicketFinalize(handle);
+        return AM_InstallTicketFinish(handle);
     } else {
         return AM_InstallTicketAbort(handle);
     }
