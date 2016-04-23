@@ -19,6 +19,7 @@ typedef struct {
     int clientSocket;
 
     u64 currTitleId;
+    bool ticket;
 
     data_op_info installInfo;
     Handle cancelEvent;
@@ -99,51 +100,67 @@ static Result networkinstall_read_src(void* data, u32 handle, u32* bytesRead, vo
 static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
-    u8* buffer = (u8*) initialReadBlock;
+    networkInstallData->ticket = *(u16*) initialReadBlock == 0x0100;
 
-    u32 headerSize = *(u32*) &buffer[0x00];
-    u32 certSize = *(u32*) &buffer[0x08];
-    u64 titleId = __builtin_bswap64(*(u64*) &buffer[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + 0x1DC]);
+    Result res = 0;
 
-    FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+    if(networkInstallData->ticket) {
+        res = AM_InstallTicketBegin(handle);
+    } else {
+        u8* cia = (u8*) initialReadBlock;
 
-    u8 n3ds = false;
-    if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-        return R_FBI_WRONG_SYSTEM;
-    }
+        u32 headerSize = *(u32*) &cia[0x00];
+        u32 certSize = *(u32*) &cia[0x08];
+        u64 titleId = __builtin_bswap64(*(u64*) &cia[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + 0x1DC]);
 
-    // Deleting FBI before it reinstalls itself causes issues.
-    if(((titleId >> 8) & 0xFFFFF) != 0xF8001) {
-        AM_DeleteTitle(dest, titleId);
-        AM_DeleteTicket(titleId);
+        FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
-        if(dest == MEDIATYPE_SD) {
-            AM_QueryAvailableExternalTitleDatabase(NULL);
+        u8 n3ds = false;
+        if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
+            return R_FBI_WRONG_SYSTEM;
         }
-    }
 
-    Result res = AM_StartCiaInstall(dest, handle);
-    if(R_SUCCEEDED(res)) {
-        networkInstallData->currTitleId = titleId;
+        // Deleting FBI before it reinstalls itself causes issues.
+        if(((titleId >> 8) & 0xFFFFF) != 0xF8001) {
+            AM_DeleteTitle(dest, titleId);
+            AM_DeleteTicket(titleId);
+
+            if(dest == MEDIATYPE_SD) {
+                AM_QueryAvailableExternalTitleDatabase(NULL);
+            }
+        }
+
+        if(R_SUCCEEDED(res = AM_StartCiaInstall(dest, handle))) {
+            networkInstallData->currTitleId = titleId;
+        }
     }
 
     return res;
 }
 
 static Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
-    if(succeeded) {
-        network_install_data* networkInstallData = (network_install_data*) data;
+    network_install_data* networkInstallData = (network_install_data*) data;
 
+    if(succeeded) {
         Result res = 0;
-        if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-            if(networkInstallData->currTitleId == 0x0004013800000002 || networkInstallData->currTitleId == 0x0004013820000002) {
-                res = AM_InstallFirm(networkInstallData->currTitleId);
+
+        if(networkInstallData->ticket) {
+            res = AM_InstallTicketFinish(handle);
+        } else {
+            if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
+                if(networkInstallData->currTitleId == 0x0004013800000002 || networkInstallData->currTitleId == 0x0004013820000002) {
+                    res = AM_InstallFirm(networkInstallData->currTitleId);
+                }
             }
         }
 
         return res;
     } else {
-        return AM_CancelCIAInstall(handle);
+        if(networkInstallData->ticket) {
+            return AM_InstallTicketAbort(handle);
+        } else {
+            return AM_CancelCIAInstall(handle);
+        }
     }
 }
 
@@ -155,11 +172,11 @@ static bool networkinstall_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
     } else if(res == R_FBI_ERRNO) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to install CIA file.");
+        error_display_errno(NULL, NULL, NULL, errno, "Failed to install over the network.");
     } else if(res == R_FBI_WRONG_SYSTEM) {
-        error_display(NULL, NULL, NULL, "Failed to install CIA file.\nAttempted to install N3DS title to O3DS.");
+        error_display(NULL, NULL, NULL, "Failed to install over the network.\nAttempted to install N3DS title to O3DS.");
     } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to install CIA file.");
+        error_display_res(NULL, NULL, NULL, res, "Failed to install over the network.");
     }
 
     return false;
@@ -205,9 +222,9 @@ static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool re
     if(response) {
         networkInstallData->cancelEvent = task_data_op(&networkInstallData->installInfo);
         if(networkInstallData->cancelEvent != 0) {
-            info_display("Installing CIA(s)", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
+            info_display("Installing Over Network", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
         } else {
-            error_display(NULL, NULL, NULL, "Failed to initiate CIA installation.");
+            error_display(NULL, NULL, NULL, "Failed to initiate installation.");
 
             networkinstall_close_client(networkInstallData);
         }
@@ -244,7 +261,7 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
         networkInstallData->installInfo.total = ntohl(networkInstallData->installInfo.total);
 
         networkInstallData->clientSocket = sock;
-        prompt_display("Confirmation", "Install received CIA(s)?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_confirm_onresponse);
+        prompt_display("Confirmation", "Install the received file(s)?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_confirm_onresponse);
     } else if(errno != EAGAIN) {
         error_display_errno(NULL, NULL, NULL, errno, "Failed to open socket.");
     }
@@ -299,6 +316,7 @@ void networkinstall_open() {
     data->clientSocket = 0;
 
     data->currTitleId = 0;
+    data->ticket = false;
 
     data->installInfo.data = data;
 

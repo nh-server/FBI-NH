@@ -29,6 +29,7 @@ typedef struct {
 
     u32 responseCode;
     u64 currTitleId;
+    bool ticket;
 
     data_op_info installInfo;
     Handle installCancelEvent;
@@ -95,51 +96,67 @@ static Result qrinstall_read_src(void* data, u32 handle, u32* bytesRead, void* b
 static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
-    u8* buffer = (u8*) initialReadBlock;
+    qrInstallData->ticket = *(u16*) initialReadBlock == 0x0100;
 
-    u32 headerSize = *(u32*) &buffer[0x00];
-    u32 certSize = *(u32*) &buffer[0x08];
-    u64 titleId = __builtin_bswap64(*(u64*) &buffer[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + 0x1DC]);
+    Result res = 0;
 
-    FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+    if(qrInstallData->ticket) {
+        res = AM_InstallTicketBegin(handle);
+    } else {
+        u8* cia = (u8*) initialReadBlock;
 
-    u8 n3ds = false;
-    if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-        return R_FBI_WRONG_SYSTEM;
-    }
+        u32 headerSize = *(u32*) &cia[0x00];
+        u32 certSize = *(u32*) &cia[0x08];
+        u64 titleId = __builtin_bswap64(*(u64*) &cia[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + 0x1DC]);
 
-    // Deleting FBI before it reinstalls itself causes issues.
-    if(((titleId >> 8) & 0xFFFFF) != 0xF8001) {
-        AM_DeleteTitle(dest, titleId);
-        AM_DeleteTicket(titleId);
+        FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
-        if(dest == MEDIATYPE_SD) {
-            AM_QueryAvailableExternalTitleDatabase(NULL);
+        u8 n3ds = false;
+        if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
+            return R_FBI_WRONG_SYSTEM;
         }
-    }
 
-    Result res = AM_StartCiaInstall(dest, handle);
-    if(R_SUCCEEDED(res)) {
-        qrInstallData->currTitleId = titleId;
+        // Deleting FBI before it reinstalls itself causes issues.
+        if(((titleId >> 8) & 0xFFFFF) != 0xF8001) {
+            AM_DeleteTitle(dest, titleId);
+            AM_DeleteTicket(titleId);
+
+            if(dest == MEDIATYPE_SD) {
+                AM_QueryAvailableExternalTitleDatabase(NULL);
+            }
+        }
+
+        if(R_SUCCEEDED(res = AM_StartCiaInstall(dest, handle))) {
+            qrInstallData->currTitleId = titleId;
+        }
     }
 
     return res;
 }
 
 static Result qrinstall_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
-    if(succeeded) {
-        qr_install_data* qrInstallData = (qr_install_data*) data;
+    qr_install_data* qrInstallData = (qr_install_data*) data;
 
+    if(succeeded) {
         Result res = 0;
-        if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-            if(qrInstallData->currTitleId == 0x0004013800000002 || qrInstallData->currTitleId == 0x0004013820000002) {
-                res = AM_InstallFirm(qrInstallData->currTitleId);
+
+        if(qrInstallData->ticket) {
+            res = AM_InstallTicketFinish(handle);
+        } else {
+            if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
+                if(qrInstallData->currTitleId == 0x0004013800000002 || qrInstallData->currTitleId == 0x0004013820000002) {
+                    res = AM_InstallFirm(qrInstallData->currTitleId);
+                }
             }
         }
 
         return res;
     } else {
-        return AM_CancelCIAInstall(handle);
+        if(qrInstallData->ticket) {
+            return AM_InstallTicketAbort(handle);
+        } else {
+            return AM_CancelCIAInstall(handle);
+        }
     }
 }
 
@@ -159,21 +176,21 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
         volatile bool dismissed = false;
         if(res == R_FBI_WRONG_SYSTEM) {
             if(strlen(url) > 48) {
-                error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\n%.45s...\nAttempted to install N3DS title to O3DS.", url);
+                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.45s...\nAttempted to install N3DS title to O3DS.", url);
             } else {
-                error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\n%.48s\nAttempted to install N3DS title to O3DS.", url);
+                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.48s\nAttempted to install N3DS title to O3DS.", url);
             }
         } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
             if(strlen(url) > 48) {
-                error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\n%.45s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.45s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             } else {
-                error_display(&dismissed, NULL, NULL, "Failed to install CIA file.\n%.48s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.48s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             }
         } else {
             if(strlen(url) > 48) {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install CIA file.\n%.45s...", url);
+                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.45s...", url);
             } else {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install CIA file.\n%.48s", url);
+                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.48s", url);
             }
         }
 
@@ -213,9 +230,9 @@ static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool respons
     if(response) {
         qrInstallData->installCancelEvent = task_data_op(&qrInstallData->installInfo);
         if(qrInstallData->installCancelEvent != 0) {
-            info_display("Installing CIA(s)", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
+            info_display("Installing From QR Code", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
         } else {
-            error_display(NULL, NULL, NULL, "Failed to initiate CIA installation.");
+            error_display(NULL, NULL, NULL, "Failed to initiate installation.");
         }
     }
 }
@@ -370,6 +387,7 @@ void qrinstall_open() {
 
     data->responseCode = 0;
     data->currTitleId = 0;
+    data->ticket = false;
 
     data->installInfo.data = data;
 
