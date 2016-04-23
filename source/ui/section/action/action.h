@@ -23,6 +23,7 @@ void action_delete_pending_title(pending_title_info* info, bool* populated);
 void action_delete_all_pending_titles(pending_title_info* info, bool* populated);
 
 void action_delete_ticket(ticket_info* info, bool* populated);
+void action_install_cdn(ticket_info* info, bool* populated);
 
 void action_delete_title(title_info* info, bool* populated);
 void action_launch_title(title_info* info, bool* populated);

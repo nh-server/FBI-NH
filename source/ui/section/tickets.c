@@ -17,10 +17,11 @@ typedef struct {
     bool populated;
 } tickets_data;
 
-#define TICKETS_ACTION_COUNT 1
+#define TICKETS_ACTION_COUNT 2
 
 static u32 tickets_action_count = TICKETS_ACTION_COUNT;
 static list_item tickets_action_items[TICKETS_ACTION_COUNT] = {
+        {"Install from CDN", COLOR_TEXT, action_install_cdn},
         {"Delete Ticket", COLOR_TEXT, action_delete_ticket},
 };
 
