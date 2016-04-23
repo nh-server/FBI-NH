@@ -29,7 +29,7 @@ typedef struct {
 } pending_title_info;
 
 typedef struct {
-    u64 ticketId;
+    u64 titleId;
 } ticket_info;
 
 typedef struct {

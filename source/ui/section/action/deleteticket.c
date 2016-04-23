@@ -20,7 +20,7 @@ static void action_delete_ticket_draw_top(ui_view* view, void* data, float x1, f
 static void action_delete_ticket_update(ui_view* view, void* data, float* progress, char* text) {
     delete_ticket_data* deleteData = (delete_ticket_data*) data;
 
-    Result res = AM_DeleteTicket(deleteData->info->ticketId);
+    Result res = AM_DeleteTicket(deleteData->info->titleId);
 
     ui_pop();
     info_destroy(view);

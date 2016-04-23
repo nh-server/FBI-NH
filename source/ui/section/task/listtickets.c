@@ -39,7 +39,7 @@ static void task_populate_tickets_thread(void* arg) {
 
                     ticket_info* ticketInfo = (ticket_info*) calloc(1, sizeof(ticket_info));
                     if(ticketInfo != NULL) {
-                        ticketInfo->ticketId = ticketIds[i];
+                        ticketInfo->titleId = ticketIds[i];
 
                         list_item* item = &data->items[*data->count];
                         snprintf(item->name, NAME_MAX, "%016llX", ticketIds[i]);

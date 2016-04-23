@@ -42,9 +42,9 @@ static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
     if(context != NULL) {
         char url[256];
         if(index == 0) {
-            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd", installData->ticket->ticketId);
+            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd", installData->ticket->titleId);
         } else {
-            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->ticketId, installData->contentIds[index - 1]);
+            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->titleId, installData->contentIds[index - 1]);
         }
 
         if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, url, 1))) {
@@ -171,9 +171,9 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 
         if(!installData->installInfo.premature) {
             if(R_SUCCEEDED(res = AM_InstallTitleFinish())
-               && R_SUCCEEDED(res = AM_CommitImportTitles(((installData->ticket->ticketId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, false, &installData->ticket->ticketId))) {
-                if(installData->ticket->ticketId == 0x0004013800000002 || installData->ticket->ticketId == 0x0004013820000002) {
-                    res = AM_InstallFirm(installData->ticket->ticketId);
+               && R_SUCCEEDED(res = AM_CommitImportTitles(((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, false, &installData->ticket->titleId))) {
+                if(installData->ticket->titleId == 0x0004013800000002 || installData->ticket->titleId == 0x0004013820000002) {
+                    res = AM_InstallFirm(installData->ticket->titleId);
                 }
             }
         }
@@ -206,7 +206,7 @@ static void action_install_cdn_onresponse(ui_view* view, void* data, bool respon
 
     if(response) {
         u8 n3ds = false;
-        if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((installData->ticket->ticketId >> 28) & 0xF) == 2) {
+        if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((installData->ticket->titleId >> 28) & 0xF) == 2) {
             error_display(NULL, installData->ticket, ui_draw_ticket_info, "Failed to install CDN title.\nAttempted to install N3DS title to O3DS.");
 
             action_install_cdn_free_data(installData);
@@ -214,16 +214,16 @@ static void action_install_cdn_onresponse(ui_view* view, void* data, bool respon
             return;
         }
 
-        FS_MediaType dest = ((installData->ticket->ticketId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+        FS_MediaType dest = ((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
-        AM_DeleteTitle(dest, installData->ticket->ticketId);
+        AM_DeleteTitle(dest, installData->ticket->titleId);
         if(dest == MEDIATYPE_SD) {
             AM_QueryAvailableExternalTitleDatabase(NULL);
         }
 
         Result res = 0;
 
-        if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, installData->ticket->ticketId, false))) {
+        if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, installData->ticket->titleId, false))) {
             installData->cancelEvent = task_data_op(&installData->installInfo);
             if(installData->cancelEvent != 0) {
                 info_display("Installing CDN Title", "Press B to cancel.", true, data, action_install_cdn_update, action_install_cdn_draw_top);
