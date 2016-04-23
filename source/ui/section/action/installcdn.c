@@ -167,18 +167,25 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
         ui_pop();
         info_destroy(view);
 
-        if(!installData->installInfo.premature) {
-            Result res = 0;
-            if(R_SUCCEEDED(res = AM_InstallTitleFinish())
-               && R_SUCCEEDED(res = AM_CommitImportTitlesAndUpdateFirmwareAuto(((installData->ticket->ticketId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, false, &installData->ticket->ticketId))) {
-                prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->ticket, NULL, ui_draw_ticket_info, NULL);
-            } else {
-                AM_InstallTitleAbort();
+        Result res = 0;
 
-                error_display_res(NULL, installData->ticket, ui_draw_ticket_info, res, "Failed to install CDN title.");
+        if(!installData->installInfo.premature) {
+            if(R_SUCCEEDED(res = AM_InstallTitleFinish())
+               && R_SUCCEEDED(res = AM_CommitImportTitles(((installData->ticket->ticketId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, false, &installData->ticket->ticketId))) {
+                if(installData->ticket->ticketId == 0x0004013800000002 || installData->ticket->ticketId == 0x0004013820000002) {
+                    res = AM_InstallFirm(installData->ticket->ticketId);
+                }
             }
+        }
+
+        if(!installData->installInfo.premature && R_SUCCEEDED(res)) {
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->ticket, NULL, ui_draw_ticket_info, NULL);
         } else {
             AM_InstallTitleAbort();
+
+            if(R_FAILED(res)) {
+                error_display_res(NULL, installData->ticket, ui_draw_ticket_info, res, "Failed to install CDN title.");
+            }
         }
 
         action_install_cdn_free_data(installData);
