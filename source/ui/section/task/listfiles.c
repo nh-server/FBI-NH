@@ -120,7 +120,7 @@ static void task_populate_files_thread(void* arg) {
                                                         data->dir->containsTickets = true;
 
                                                         fileInfo->isTicket = true;
-                                                        fileInfo->ticketInfo.ticketId = __builtin_bswap64(titleId);
+                                                        fileInfo->ticketInfo.titleId = __builtin_bswap64(titleId);
                                                     }
                                                 }
                                             }

@@ -423,7 +423,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
             float installedSizeY = versionY + versionHeight + 2;
             screen_draw_string(buf, installedSizeX, installedSizeY, 0.5f, 0.5f, COLOR_TEXT, false);
         } else if(info->isTicket) {
-            snprintf(buf, 64, "Ticket ID: %016llX", info->ticketInfo.ticketId);
+            snprintf(buf, 64, "Ticket ID: %016llX", info->ticketInfo.titleId);
 
             float ticketIdWidth;
             float ticketIdHeight;
@@ -503,7 +503,7 @@ void ui_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2
 
     char buf[64];
 
-    snprintf(buf, 64, "Ticket ID: %016llX", info->ticketId);
+    snprintf(buf, 64, "Title ID: %016llX", info->titleId);
 
     float titleIdWidth;
     float titleIdHeight;
