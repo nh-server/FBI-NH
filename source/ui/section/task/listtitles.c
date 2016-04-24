@@ -174,12 +174,9 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                         char* curr = NULL;
 
                         while(currDest < 3 && (curr = strchr(last, '\n')) != NULL) {
-                            if(currDest == 0) {
-                                strncpy(item->name, last, curr - last);
-                            }
-
                             strncpy(destinations[currDest++], last, curr - last);
                             last = curr + 1;
+                            *curr = ' ';
                         }
 
                         strncpy(item->name, title, last - title);
