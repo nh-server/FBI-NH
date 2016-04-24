@@ -53,6 +53,9 @@ static void task_populate_files_thread(void* arg) {
                         if(fileInfo != NULL) {
                             fileInfo->archive = data->dir->archive;
                             utf16_to_utf8((uint8_t*) fileInfo->name, entries[i].name, NAME_MAX - 1);
+                            fileInfo->containsCias = false;
+                            fileInfo->size = 0;
+                            fileInfo->isCia = false;
 
                             list_item* item = &data->items[*data->count];
 
@@ -61,17 +64,11 @@ static void task_populate_files_thread(void* arg) {
 
                                 snprintf(fileInfo->path, PATH_MAX, "%s%s/", data->dir->path, fileInfo->name);
                                 fileInfo->isDirectory = true;
-                                fileInfo->containsCias = false;
-                                fileInfo->size = 0;
-                                fileInfo->isCia = false;
                             } else {
                                 item->rgba = COLOR_TEXT;
 
                                 snprintf(fileInfo->path, PATH_MAX, "%s%s", data->dir->path, fileInfo->name);
                                 fileInfo->isDirectory = false;
-                                fileInfo->containsCias = false;
-                                fileInfo->size = 0;
-                                fileInfo->isCia = false;
 
                                 FS_Path* fileFsPath = util_make_path_utf8(fileInfo->path);
                                 if(fileFsPath != NULL) {
