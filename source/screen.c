@@ -53,7 +53,7 @@ static struct {
 static C3D_Tex* glyphSheets;
 
 void screen_init() {
-    if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 2)) {
+    if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4)) {
         util_panic("Failed to initialize the GPU.");
         return;
     }
@@ -501,7 +501,7 @@ void screen_select(gfxScreen_t screen) {
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, shaderInstanceGetUniformLocation(program.vertexShader, "projection"), screen == GFX_TOP ? &projection_top : &projection_bottom);
 }
 
-void draw_quad(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2) {
+void screen_draw_quad(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2) {
     C3D_ImmDrawBegin(GPU_TRIANGLES);
 
     C3D_ImmSendAttrib(x1, y1, 0.5f, 0.0f);
@@ -532,7 +532,7 @@ void screen_draw_texture(u32 id, float x, float y, float width, float height) {
     }
 
     C3D_TexBind(0, &textures[id].tex);
-    draw_quad(x, y, x + width, y + height, 0, 0, (float) textures[id].width / (float) textures[id].pow2Width, (float) textures[id].height / (float) textures[id].pow2Height);
+    screen_draw_quad(x, y, x + width, y + height, 0, 0, (float) textures[id].width / (float) textures[id].pow2Width, (float) textures[id].height / (float) textures[id].pow2Height);
 }
 
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height) {
@@ -542,7 +542,7 @@ void screen_draw_texture_crop(u32 id, float x, float y, float width, float heigh
     }
 
     C3D_TexBind(0, &textures[id].tex);
-    draw_quad(x, y, x + width, y + height, 0, 0, width / (float) textures[id].pow2Width, height / (float) textures[id].pow2Height);
+    screen_draw_quad(x, y, x + width, y + height, 0, 0, width / (float) textures[id].pow2Width, height / (float) textures[id].pow2Height);
 }
 
 static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine) {
@@ -634,7 +634,7 @@ void screen_draw_string(const char* text, float x, float y, float scaleX, float 
                 C3D_TexBind(0, &glyphSheets[lastSheet]);
             }
 
-            draw_quad(currX + data.vtxcoord.left, y + data.vtxcoord.top, currX + data.vtxcoord.right, y + data.vtxcoord.bottom, data.texcoord.left, data.texcoord.top, data.texcoord.right, data.texcoord.bottom);
+            screen_draw_quad(currX + data.vtxcoord.left, y + data.vtxcoord.top, currX + data.vtxcoord.right, y + data.vtxcoord.bottom, data.texcoord.left, data.texcoord.top, data.texcoord.right, data.texcoord.bottom);
 
             currX += data.xAdvance;
         }
