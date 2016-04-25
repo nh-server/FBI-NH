@@ -27,6 +27,7 @@ void action_install_cdn(ticket_info* info, bool* populated);
 
 void action_delete_title(title_info* info, bool* populated);
 void action_launch_title(title_info* info, bool* populated);
+void action_extract_smdh(title_info* info, bool* populated);
 void action_browse_title_save_data(title_info* info, bool* populated);
 void action_import_secure_value(title_info* info, bool* populated);
 void action_export_secure_value(title_info* info, bool* populated);
