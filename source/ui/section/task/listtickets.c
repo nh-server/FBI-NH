@@ -13,9 +13,7 @@
 #include "task.h"
 
 typedef struct {
-    list_item* items;
-    u32* count;
-    u32 max;
+    linked_list* items;
 
     Handle cancelEvent;
 } populate_tickets_data;
@@ -32,21 +30,27 @@ static void task_populate_tickets_thread(void* arg) {
             if(R_SUCCEEDED(res = AM_GetTicketList(&ticketCount, ticketCount, 0, ticketIds))) {
                 qsort(ticketIds, ticketCount, sizeof(u64), util_compare_u64);
 
-                for(u32 i = 0; i < ticketCount && *data->count < data->max && R_SUCCEEDED(res); i++) {
+                for(u32 i = 0; i < ticketCount && R_SUCCEEDED(res); i++) {
                     if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                         break;
                     }
 
-                    ticket_info* ticketInfo = (ticket_info*) calloc(1, sizeof(ticket_info));
-                    if(ticketInfo != NULL) {
-                        ticketInfo->titleId = ticketIds[i];
+                    list_item* item = (list_item*) calloc(1, sizeof(list_item));
+                    if(item != NULL) {
+                        ticket_info* ticketInfo = (ticket_info*) calloc(1, sizeof(ticket_info));
+                        if(ticketInfo != NULL) {
+                            ticketInfo->titleId = ticketIds[i];
 
-                        list_item* item = &data->items[*data->count];
-                        snprintf(item->name, NAME_MAX, "%016llX", ticketIds[i]);
-                        item->rgba = COLOR_TEXT;
-                        item->data = ticketInfo;
+                            snprintf(item->name, NAME_MAX, "%016llX", ticketIds[i]);
+                            item->color = COLOR_TEXT;
+                            item->data = ticketInfo;
 
-                        (*data->count)++;
+                            linked_list_add(data->items, item);
+                        } else {
+                            free(item);
+
+                            res = R_FBI_OUT_OF_MEMORY;
+                        }
                     } else {
                         res = R_FBI_OUT_OF_MEMORY;
                     }
@@ -67,31 +71,33 @@ static void task_populate_tickets_thread(void* arg) {
     free(data);
 }
 
-void task_clear_tickets(list_item* items, u32* count) {
-    if(items == NULL || count == NULL) {
+void task_clear_tickets(linked_list* items) {
+    if(items == NULL) {
         return;
     }
 
-    u32 prevCount = *count;
-    *count = 0;
+    linked_list_iter iter;
+    linked_list_iterate(items, &iter);
 
-    for(u32 i = 0; i < prevCount; i++) {
-        if(items[i].data != NULL) {
-            free(items[i].data);
-            items[i].data = NULL;
+    while(linked_list_iter_has_next(&iter)) {
+        list_item* item = (list_item*) linked_list_iter_next(&iter);
+
+        if(item->data != NULL) {
+            free(item->data);
         }
 
-        memset(items[i].name, '\0', NAME_MAX);
-        items[i].rgba = 0;
+        free(item);
+
+        linked_list_iter_remove(&iter);
     }
 }
 
-Handle task_populate_tickets(list_item* items, u32* count, u32 max) {
-    if(items == NULL || count == NULL || max == 0) {
+Handle task_populate_tickets(linked_list* items) {
+    if(items == NULL) {
         return 0;
     }
 
-    task_clear_tickets(items, count);
+    task_clear_tickets(items);
 
     populate_tickets_data* data = (populate_tickets_data*) calloc(1, sizeof(populate_tickets_data));
     if(data == NULL) {
@@ -101,8 +107,6 @@ Handle task_populate_tickets(list_item* items, u32* count, u32 max) {
     }
 
     data->items = items;
-    data->count = count;
-    data->max = max;
 
     Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
     if(R_FAILED(eventRes)) {

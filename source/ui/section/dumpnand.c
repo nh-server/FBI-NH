@@ -103,7 +103,7 @@ static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
     }
 }
 
-void dump_nand() {
+void dumpnand_open() {
     dump_nand_data* data = (dump_nand_data*) calloc(1, sizeof(dump_nand_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate dump NAND data.");

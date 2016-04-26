@@ -8,24 +8,19 @@
 #include "section/section.h"
 #include "../screen.h"
 
-#define MAINMENU_ITEM_COUNT 13
-
-static u32 mainmenu_item_count = MAINMENU_ITEM_COUNT;
-static list_item mainmenu_items[MAINMENU_ITEM_COUNT] = {
-        {"SD", COLOR_TEXT, files_open_sd},
-        {"CTR NAND", COLOR_TEXT, files_open_ctr_nand},
-        {"TWL NAND", COLOR_TEXT, files_open_twl_nand},
-        {"TWL Photo", COLOR_TEXT, files_open_twl_photo},
-        {"TWL Sound", COLOR_TEXT, files_open_twl_sound},
-        {"Dump NAND", COLOR_TEXT, dump_nand},
-        {"Titles", COLOR_TEXT, titles_open},
-        {"Pending Titles", COLOR_TEXT, pendingtitles_open},
-        {"Tickets", COLOR_TEXT, tickets_open},
-        {"Ext Save Data", COLOR_TEXT, extsavedata_open},
-        {"System Save Data", COLOR_TEXT, systemsavedata_open},
-        {"Network Install", COLOR_TEXT, networkinstall_open},
-        {"QR Code Install", COLOR_TEXT, qrinstall_open},
-};
+static list_item sd = {"SD", COLOR_TEXT, files_open_sd};
+static list_item ctr_nand = {"CTR NAND", COLOR_TEXT, files_open_ctr_nand};
+static list_item twl_nand = {"TWL NAND", COLOR_TEXT, files_open_twl_nand};
+static list_item twl_photo = {"TWL Photo", COLOR_TEXT, files_open_twl_photo};
+static list_item twl_sound = {"TWL Sound", COLOR_TEXT, files_open_twl_sound};
+static list_item dump_nand = {"Dump NAND", COLOR_TEXT, dumpnand_open};
+static list_item titles = {"Titles", COLOR_TEXT, titles_open};
+static list_item pending_titles = {"Pending Titles", COLOR_TEXT, pendingtitles_open};
+static list_item tickets = {"Tickets", COLOR_TEXT, tickets_open};
+static list_item ext_save_data = {"Ext Save Data", COLOR_TEXT, extsavedata_open};
+static list_item system_save_data = {"System Save Data", COLOR_TEXT, systemsavedata_open};
+static list_item network_install = {"Network Install", COLOR_TEXT, networkinstall_open};
+static list_item qr_code_install = {"QR Code Install", COLOR_TEXT, qrinstall_open};
 
 static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
     u32 logoWidth;
@@ -48,7 +43,7 @@ static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, flo
     screen_draw_string(verString, verX, verY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
-static void mainmenu_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void mainmenu_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     if(hidKeysDown() & KEY_START) {
         ui_pop();
         list_destroy(view);
@@ -61,9 +56,20 @@ static void mainmenu_update(ui_view* view, void* data, list_item** items, u32** 
         return;
     }
 
-    if(*itemCount != &mainmenu_item_count || *items != mainmenu_items) {
-        *itemCount = &mainmenu_item_count;
-        *items = mainmenu_items;
+    if(linked_list_size(items) == 0) {
+        linked_list_add(items, &sd);
+        linked_list_add(items, &ctr_nand);
+        linked_list_add(items, &twl_nand);
+        linked_list_add(items, &twl_photo);
+        linked_list_add(items, &twl_sound);
+        linked_list_add(items, &dump_nand);
+        linked_list_add(items, &titles);
+        linked_list_add(items, &pending_titles);
+        linked_list_add(items, &tickets);
+        linked_list_add(items, &ext_save_data);
+        linked_list_add(items, &system_save_data);
+        linked_list_add(items, &network_install);
+        linked_list_add(items, &qr_code_install);
     }
 }
 

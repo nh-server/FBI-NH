@@ -2,7 +2,7 @@
 
 #include "../ui.h"
 
-void dump_nand();
+void dumpnand_open();
 void extsavedata_open();
 void files_open(FS_Archive archive);
 void files_open_sd();

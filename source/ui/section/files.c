@@ -8,14 +8,29 @@
 #include "action/action.h"
 #include "section.h"
 #include "../error.h"
+#include "../list.h"
 #include "../../screen.h"
 #include "../../util.h"
+#include "task/task.h"
 
-#define FILES_MAX 1024
+static list_item delete = {"Delete", COLOR_TEXT, action_delete_contents};
+static list_item copy = {"Copy", COLOR_TEXT, action_copy_contents};
+static list_item paste = {"Paste", COLOR_TEXT, action_paste_contents};
+
+static list_item install_cia = {"Install CIA", COLOR_TEXT, action_install_cias};
+static list_item install_and_delete_cia = {"Install and delete CIA", COLOR_TEXT, action_install_cias_delete};
+
+static list_item install_ticket = {"Install ticket", COLOR_TEXT, action_install_tickets};
+
+static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
+
+static list_item install_all_cias = {"Install all CIAs", COLOR_TEXT, action_install_cias};
+static list_item install_and_delete_all_cias = {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete};
+static list_item delete_all_cias = {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias};
+
+static list_item install_all_tickets = {"Install all tickets", COLOR_TEXT, action_install_tickets};
 
 typedef struct {
-    list_item items[FILES_MAX];
-    u32 count;
     Handle cancelEvent;
     bool populated;
 
@@ -26,84 +41,6 @@ typedef struct {
     file_info parentDir;
 } files_data;
 
-#define FILES_ACTION_COUNT 3
-
-static u32 files_action_count = FILES_ACTION_COUNT;
-static list_item files_action_items[FILES_ACTION_COUNT] = {
-        {"Delete", COLOR_TEXT, action_delete_contents},
-        {"Copy", COLOR_TEXT, action_copy_contents},
-        {"Paste", COLOR_TEXT, action_paste_contents},
-};
-
-#define CIA_FILES_ACTION_COUNT 5
-
-static u32 cia_files_action_count = CIA_FILES_ACTION_COUNT;
-static list_item cia_files_action_items[CIA_FILES_ACTION_COUNT] = {
-        {"Install CIA", COLOR_TEXT, action_install_cias},
-        {"Install and delete CIA", COLOR_TEXT, action_install_cias_delete},
-        {"Delete", COLOR_TEXT, action_delete_contents},
-        {"Copy", COLOR_TEXT, action_copy_contents},
-        {"Paste", COLOR_TEXT, action_paste_contents},
-};
-
-#define TICKET_FILES_ACTION_COUNT 4
-
-static u32 ticket_files_action_count = TICKET_FILES_ACTION_COUNT;
-static list_item ticket_files_action_items[TICKET_FILES_ACTION_COUNT] = {
-        {"Install ticket", COLOR_TEXT, action_install_tickets},
-        {"Delete", COLOR_TEXT, action_delete_contents},
-        {"Copy", COLOR_TEXT, action_copy_contents},
-        {"Paste", COLOR_TEXT, action_paste_contents},
-};
-
-#define DIRECTORIES_ACTION_COUNT 4
-
-static u32 directories_action_count = DIRECTORIES_ACTION_COUNT;
-static list_item directories_action_items[DIRECTORIES_ACTION_COUNT] = {
-        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
-        {"Delete", COLOR_TEXT, action_delete_dir},
-        {"Copy", COLOR_TEXT, action_copy_contents},
-        {"Paste", COLOR_TEXT, action_paste_contents},
-};
-
-#define CIA_DIRECTORIES_ACTION_COUNT 7
-
-static u32 cia_directories_action_count = CIA_DIRECTORIES_ACTION_COUNT;
-static list_item cia_directories_action_items[CIA_DIRECTORIES_ACTION_COUNT] = {
-        {"Install all CIAs", COLOR_TEXT, action_install_cias},
-        {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete},
-        {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias},
-        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
-        {"Delete", COLOR_TEXT, action_delete_dir},
-        {"Copy", COLOR_TEXT, action_copy_contents},
-        {"Paste", COLOR_TEXT, action_paste_contents},
-};
-
-#define TICKET_DIRECTORIES_ACTION_COUNT 5
-
-static u32 ticket_directories_action_count = TICKET_DIRECTORIES_ACTION_COUNT;
-static list_item ticket_directories_action_items[TICKET_DIRECTORIES_ACTION_COUNT] = {
-        {"Install all tickets", COLOR_TEXT, action_install_tickets},
-        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
-        {"Delete", COLOR_TEXT, action_delete_dir},
-        {"Copy", COLOR_TEXT, action_copy_contents},
-        {"Paste", COLOR_TEXT, action_paste_contents},
-};
-
-#define CIA_TICKET_DIRECTORIES_ACTION_COUNT 8
-
-static u32 cia_ticket_directories_action_count = CIA_TICKET_DIRECTORIES_ACTION_COUNT;
-static list_item cia_ticket_directories_action_items[CIA_TICKET_DIRECTORIES_ACTION_COUNT] = {
-        {"Install all CIAs", COLOR_TEXT, action_install_cias},
-        {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete},
-        {"Install all tickets", COLOR_TEXT, action_install_tickets},
-        {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias},
-        {"Delete all contents", COLOR_TEXT, action_delete_dir_contents},
-        {"Delete", COLOR_TEXT, action_delete_dir},
-        {"Copy", COLOR_TEXT, action_copy_contents},
-        {"Paste", COLOR_TEXT, action_paste_contents},
-};
-
 typedef struct {
     file_info* info;
     bool* populated;
@@ -113,7 +50,7 @@ static void files_action_draw_top(ui_view* view, void* data, float x1, float y1,
     ui_draw_file_info(view, ((files_action_data*) data)->info, x1, y1, x2, y2);
 }
 
-static void files_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void files_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     files_action_data* actionData = (files_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -138,45 +75,33 @@ static void files_action_update(ui_view* view, void* data, list_item** items, u3
         return;
     }
 
-    if(actionData->info->isDirectory) {
-        if(actionData->info->containsCias && actionData->info->containsTickets) {
-            if(*itemCount != &cia_ticket_directories_action_count || *items != cia_ticket_directories_action_items) {
-                *itemCount = &cia_ticket_directories_action_count;
-                *items = cia_ticket_directories_action_items;
+    if(linked_list_size(items) == 0) {
+        if(actionData->info->isDirectory) {
+            if(actionData->info->containsCias) {
+                linked_list_add(items, &install_all_cias);
+                linked_list_add(items, &install_and_delete_all_cias);
+                linked_list_add(items, &delete_all_cias);
             }
-        } else if(actionData->info->containsCias) {
-            if(*itemCount != &cia_directories_action_count || *items != cia_directories_action_items) {
-                *itemCount = &cia_directories_action_count;
-                *items = cia_directories_action_items;
+
+            if(actionData->info->containsTickets) {
+                linked_list_add(items, &install_all_tickets);
             }
-        } else if(actionData->info->containsTickets) {
-            if(*itemCount != &ticket_directories_action_count || *items != ticket_directories_action_items) {
-                *itemCount = &ticket_directories_action_count;
-                *items = ticket_directories_action_items;
-            }
+
+            linked_list_add(items, &delete_all_contents);
         } else {
-            if(*itemCount != &directories_action_count || *items != directories_action_items) {
-                *itemCount = &directories_action_count;
-                *items = directories_action_items;
+            if(actionData->info->isCia) {
+                linked_list_add(items, &install_cia);
+                linked_list_add(items, &install_and_delete_cia);
+            }
+
+            if(actionData->info->isTicket) {
+                linked_list_add(items, &install_ticket);
             }
         }
-    } else {
-        if(actionData->info->isCia) {
-            if(*itemCount != &cia_files_action_count || *items != cia_files_action_items) {
-                *itemCount = &cia_files_action_count;
-                *items = cia_files_action_items;
-            }
-        } else if(actionData->info->isTicket) {
-            if(*itemCount != &ticket_files_action_count || *items != ticket_files_action_items) {
-                *itemCount = &ticket_files_action_count;
-                *items = ticket_files_action_items;
-            }
-        } else {
-            if(*itemCount != &files_action_count || *items != files_action_items) {
-                *itemCount = &files_action_count;
-                *items = files_action_items;
-            }
-        }
+
+        linked_list_add(items, &delete);
+        linked_list_add(items, &copy);
+        linked_list_add(items, &paste);
     }
 }
 
@@ -200,7 +125,7 @@ static void files_draw_top(ui_view* view, void* data, float x1, float y1, float 
     }
 }
 
-static void files_repopulate(files_data* listData) {
+static void files_repopulate(files_data* listData, linked_list* items) {
     if(listData->cancelEvent != 0) {
         svcSignalEvent(listData->cancelEvent);
         while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
@@ -222,11 +147,11 @@ static void files_repopulate(files_data* listData) {
         util_get_path_file(listData->parentDir.name, listData->parentDir.path, NAME_MAX);
     }
 
-    listData->cancelEvent = task_populate_files(listData->items, &listData->count, FILES_MAX, &listData->currDir);
+    listData->cancelEvent = task_populate_files(items, &listData->currDir);
     listData->populated = true;
 }
 
-static void files_navigate(files_data* listData, const char* path) {
+static void files_navigate(files_data* listData, linked_list* items, const char* path) {
     strncpy(listData->currDir.path, path, PATH_MAX);
     util_get_path_file(listData->currDir.name, listData->currDir.path, NAME_MAX);
 
@@ -235,10 +160,10 @@ static void files_navigate(files_data* listData, const char* path) {
     strncpy(listData->parentDir.path, parentPath, PATH_MAX);
     util_get_path_file(listData->parentDir.name, listData->parentDir.path, NAME_MAX);
 
-    files_repopulate(listData);
+    files_repopulate(listData, items);
 }
 
-static void files_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void files_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     files_data* listData = (files_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -263,13 +188,14 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
             }
 
             ui_pop();
+
+            task_clear_files(items);
             list_destroy(view);
 
-            task_clear_files(listData->items, &listData->count);
             free(listData);
             return;
         } else {
-            files_navigate(listData, listData->parentDir.path);
+            files_navigate(listData, items, listData->parentDir.path);
         }
     }
 
@@ -282,7 +208,7 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
         file_info* fileInfo = (file_info*) selected->data;
 
         if(util_is_dir(&listData->archive, fileInfo->path)) {
-            files_navigate(listData, fileInfo->path);
+            files_navigate(listData, items, fileInfo->path);
         } else {
             files_action_open(fileInfo, &listData->populated);
             return;
@@ -290,12 +216,7 @@ static void files_update(ui_view* view, void* data, list_item** items, u32** ite
     }
 
     if(!listData->populated || (hidKeysDown() & KEY_X)) {
-        files_repopulate(listData);
-    }
-
-    if(*itemCount != &listData->count || *items != listData->items) {
-        *itemCount = &listData->count;
-        *items = listData->items;
+        files_repopulate(listData, items);
     }
 }
 

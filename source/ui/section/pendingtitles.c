@@ -6,24 +6,16 @@
 #include "action/action.h"
 #include "section.h"
 #include "../error.h"
+#include "../list.h"
 #include "../../screen.h"
 
-#define PENDINGTITLES_MAX 1024
+static list_item delete_pending_title = {"Delete Pending Title", COLOR_TEXT, action_delete_pending_title};
+static list_item delete_all_pending_titles = {"Delete All Pending Titles", COLOR_TEXT, action_delete_all_pending_titles};
 
 typedef struct {
-    list_item items[PENDINGTITLES_MAX];
-    u32 count;
     Handle cancelEvent;
     bool populated;
 } pendingtitles_data;
-
-#define PENDINGTITLES_ACTION_COUNT 2
-
-static u32 pending_titles_action_count = PENDINGTITLES_ACTION_COUNT;
-static list_item pending_titles_action_items[PENDINGTITLES_ACTION_COUNT] = {
-        {"Delete Pending Title", COLOR_TEXT, action_delete_pending_title},
-        {"Delete All Pending Titles", COLOR_TEXT, action_delete_all_pending_titles},
-};
 
 typedef struct {
     pending_title_info* info;
@@ -34,7 +26,7 @@ static void pendingtitles_action_draw_top(ui_view* view, void* data, float x1, f
     ui_draw_pending_title_info(view, ((pendingtitles_action_data*) data)->info, x1, y1, x2, y2);
 }
 
-static void pendingtitles_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void pendingtitles_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     pendingtitles_action_data* actionData = (pendingtitles_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -59,9 +51,9 @@ static void pendingtitles_action_update(ui_view* view, void* data, list_item** i
         return;
     }
 
-    if(*itemCount != &pending_titles_action_count || *items != pending_titles_action_items) {
-        *itemCount = &pending_titles_action_count;
-        *items = pending_titles_action_items;
+    if(linked_list_size(items) == 0) {
+        linked_list_add(items, &delete_pending_title);
+        linked_list_add(items, &delete_all_pending_titles);
     }
 }
 
@@ -85,7 +77,7 @@ static void pendingtitles_draw_top(ui_view* view, void* data, float x1, float y1
     }
 }
 
-static void pendingtitles_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void pendingtitles_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     pendingtitles_data* listData = (pendingtitles_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -99,9 +91,10 @@ static void pendingtitles_update(ui_view* view, void* data, list_item** items, u
         }
 
         ui_pop();
+
+        task_clear_pending_titles(items);
         list_destroy(view);
 
-        task_clear_pending_titles(listData->items, &listData->count);
         free(listData);
         return;
     }
@@ -116,18 +109,13 @@ static void pendingtitles_update(ui_view* view, void* data, list_item** items, u
             listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_pending_titles(listData->items, &listData->count, PENDINGTITLES_MAX);
+        listData->cancelEvent = task_populate_pending_titles(items);
         listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         pendingtitles_action_open((pending_title_info*) selected->data, &listData->populated);
         return;
-    }
-
-    if(*itemCount != &listData->count || *items != listData->items) {
-        *itemCount = &listData->count;
-        *items = listData->items;
     }
 }
 
