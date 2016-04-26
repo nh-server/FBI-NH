@@ -52,6 +52,8 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
             }
 
             free(smdh);
+        } else {
+            res = R_FBI_OUT_OF_MEMORY;
         }
 
         FSFILE_Close(fileHandle);
@@ -74,5 +76,5 @@ static void action_extract_smdh_onresponse(ui_view* view, void* data, bool respo
 }
 
 void action_extract_smdh(title_info* info, bool* populated) {
-    prompt_display("Confirmation", "Extract SMDH of the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_extract_smdh_onresponse);
+    prompt_display("Confirmation", "Extract the SMDH of the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_extract_smdh_onresponse);
 }
