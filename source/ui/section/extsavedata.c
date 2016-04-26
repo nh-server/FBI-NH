@@ -6,25 +6,17 @@
 #include "action/action.h"
 #include "section.h"
 #include "../error.h"
+#include "../list.h"
 #include "../../screen.h"
 
-#define EXTSAVEDATA_MAX 512
+static list_item browse_user_save_data = {"Browse User Save Data", COLOR_TEXT, action_browse_user_ext_save_data};
+static list_item browse_spotpass_save_data = {"Browse SpotPass Save Data", COLOR_TEXT, action_browse_boss_ext_save_data};
+static list_item delete_save_data = {"Delete Save Data", COLOR_TEXT, action_delete_ext_save_data};
 
 typedef struct {
-    list_item items[EXTSAVEDATA_MAX];
-    u32 count;
     Handle cancelEvent;
     bool populated;
 } extsavedata_data;
-
-#define EXTSAVEDATA_ACTION_COUNT 3
-
-static u32 extsavedata_action_count = EXTSAVEDATA_ACTION_COUNT;
-static list_item extsavedata_action_items[EXTSAVEDATA_ACTION_COUNT] = {
-        {"Browse User Save Data", COLOR_TEXT, action_browse_user_ext_save_data},
-        {"Browse SpotPass Save Data", COLOR_TEXT, action_browse_boss_ext_save_data},
-        {"Delete Save Data", COLOR_TEXT, action_delete_ext_save_data},
-};
 
 typedef struct {
     ext_save_data_info* info;
@@ -35,7 +27,7 @@ static void extsavedata_action_draw_top(ui_view* view, void* data, float x1, flo
     ui_draw_ext_save_data_info(view, ((extsavedata_action_data*) data)->info, x1, y1, x2, y2);
 }
 
-static void extsavedata_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void extsavedata_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     extsavedata_action_data* actionData = (extsavedata_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -60,9 +52,10 @@ static void extsavedata_action_update(ui_view* view, void* data, list_item** ite
         return;
     }
 
-    if(*itemCount != &extsavedata_action_count || *items != extsavedata_action_items) {
-        *itemCount = &extsavedata_action_count;
-        *items = extsavedata_action_items;
+    if(linked_list_size(items) == 0) {
+        linked_list_add(items, &browse_user_save_data);
+        linked_list_add(items, &browse_spotpass_save_data);
+        linked_list_add(items, &delete_save_data);
     }
 }
 
@@ -86,7 +79,7 @@ static void extsavedata_draw_top(ui_view* view, void* data, float x1, float y1, 
     }
 }
 
-static void extsavedata_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void extsavedata_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     extsavedata_data* listData = (extsavedata_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -100,9 +93,10 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
         }
 
         ui_pop();
+
+        task_clear_ext_save_data(items);
         list_destroy(view);
 
-        task_clear_ext_save_data(listData->items, &listData->count);
         free(listData);
         return;
     }
@@ -117,18 +111,13 @@ static void extsavedata_update(ui_view* view, void* data, list_item** items, u32
             listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_ext_save_data(listData->items, &listData->count, EXTSAVEDATA_MAX);
+        listData->cancelEvent = task_populate_ext_save_data(items);
         listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         extsavedata_action_open((ext_save_data_info*) selected->data, &listData->populated);
         return;
-    }
-
-    if(*itemCount != &listData->count || *items != listData->items) {
-        *itemCount = &listData->count;
-        *items = listData->items;
     }
 }
 

@@ -6,24 +6,16 @@
 #include "action/action.h"
 #include "section.h"
 #include "../error.h"
+#include "../list.h"
 #include "../../screen.h"
 
-#define TICKETS_MAX 1024
+static list_item install_from_cdn = {"Install from CDN", COLOR_TEXT, action_install_cdn};
+static list_item delete_ticket = {"Delete Ticket", COLOR_TEXT, action_delete_ticket};
 
 typedef struct {
-    list_item items[TICKETS_MAX];
-    u32 count;
     Handle cancelEvent;
     bool populated;
 } tickets_data;
-
-#define TICKETS_ACTION_COUNT 2
-
-static u32 tickets_action_count = TICKETS_ACTION_COUNT;
-static list_item tickets_action_items[TICKETS_ACTION_COUNT] = {
-        {"Install from CDN", COLOR_TEXT, action_install_cdn},
-        {"Delete Ticket", COLOR_TEXT, action_delete_ticket},
-};
 
 typedef struct {
     ticket_info* info;
@@ -34,7 +26,7 @@ static void tickets_action_draw_top(ui_view* view, void* data, float x1, float y
     ui_draw_ticket_info(view, ((tickets_action_data*) data)->info, x1, y1, x2, y2);
 }
 
-static void tickets_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void tickets_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     tickets_action_data* actionData = (tickets_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -59,9 +51,9 @@ static void tickets_action_update(ui_view* view, void* data, list_item** items, 
         return;
     }
 
-    if(*itemCount != &tickets_action_count || *items != tickets_action_items) {
-        *itemCount = &tickets_action_count;
-        *items = tickets_action_items;
+    if(linked_list_size(items) == 0) {
+        linked_list_add(items, &install_from_cdn);
+        linked_list_add(items, &delete_ticket);
     }
 }
 
@@ -85,7 +77,7 @@ static void tickets_draw_top(ui_view* view, void* data, float x1, float y1, floa
     }
 }
 
-static void tickets_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void tickets_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     tickets_data* listData = (tickets_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -99,9 +91,10 @@ static void tickets_update(ui_view* view, void* data, list_item** items, u32** i
         }
 
         ui_pop();
+
+        task_clear_tickets(items);
         list_destroy(view);
 
-        task_clear_tickets(listData->items, &listData->count);
         free(listData);
         return;
     }
@@ -116,18 +109,13 @@ static void tickets_update(ui_view* view, void* data, list_item** items, u32** i
             listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_tickets(listData->items, &listData->count, TICKETS_MAX);
+        listData->cancelEvent = task_populate_tickets(items);
         listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         tickets_action_open((ticket_info*) selected->data, &listData->populated);
         return;
-    }
-
-    if(*itemCount != &listData->count || *items != listData->items) {
-        *itemCount = &listData->count;
-        *items = listData->items;
     }
 }
 

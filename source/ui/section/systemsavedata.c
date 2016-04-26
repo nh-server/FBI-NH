@@ -6,24 +6,16 @@
 #include "action/action.h"
 #include "section.h"
 #include "../error.h"
+#include "../list.h"
 #include "../../screen.h"
 
-#define SYSTEMSAVEDATA_MAX 512
+static list_item browse_save_data = {"Browse Save Data", COLOR_TEXT, action_browse_system_save_data};
+static list_item delete_save_data = {"Delete Save Data", COLOR_TEXT, action_delete_system_save_data};
 
 typedef struct {
-    list_item items[SYSTEMSAVEDATA_MAX];
-    u32 count;
     Handle cancelEvent;
     bool populated;
 } systemsavedata_data;
-
-#define SYSTEMSAVEDATA_ACTION_COUNT 2
-
-static u32 systemsavedata_action_count = SYSTEMSAVEDATA_ACTION_COUNT;
-static list_item systemsavedata_action_items[SYSTEMSAVEDATA_ACTION_COUNT] = {
-        {"Browse Save Data", COLOR_TEXT, action_browse_system_save_data},
-        {"Delete Save Data", COLOR_TEXT, action_delete_system_save_data},
-};
 
 typedef struct {
     system_save_data_info* info;
@@ -34,7 +26,7 @@ static void systemsavedata_action_draw_top(ui_view* view, void* data, float x1, 
     ui_draw_system_save_data_info(view, ((systemsavedata_action_data*) data)->info, x1, y1, x2, y2);
 }
 
-static void systemsavedata_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void systemsavedata_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     systemsavedata_action_data* actionData = (systemsavedata_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -59,9 +51,9 @@ static void systemsavedata_action_update(ui_view* view, void* data, list_item** 
         return;
     }
 
-    if(*itemCount != &systemsavedata_action_count || *items != systemsavedata_action_items) {
-        *itemCount = &systemsavedata_action_count;
-        *items = systemsavedata_action_items;
+    if(linked_list_size(items) == 0) {
+        linked_list_add(items, &browse_save_data);
+        linked_list_add(items, &delete_save_data);
     }
 }
 
@@ -85,7 +77,7 @@ static void systemsavedata_draw_top(ui_view* view, void* data, float x1, float y
     }
 }
 
-static void systemsavedata_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void systemsavedata_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     systemsavedata_data* listData = (systemsavedata_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -99,9 +91,10 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
         }
 
         ui_pop();
+
+        task_clear_system_save_data(items);
         list_destroy(view);
 
-        task_clear_system_save_data(listData->items, &listData->count);
         free(listData);
         return;
     }
@@ -116,18 +109,13 @@ static void systemsavedata_update(ui_view* view, void* data, list_item** items, 
             listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_system_save_data(listData->items, &listData->count, SYSTEMSAVEDATA_MAX);
+        listData->cancelEvent = task_populate_system_save_data(items);
         listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         systemsavedata_action_open((system_save_data_info*) selected->data, &listData->populated);
         return;
-    }
-
-    if(*itemCount != &listData->count || *items != listData->items) {
-        *itemCount = &listData->count;
-        *items = listData->items;
     }
 }
 

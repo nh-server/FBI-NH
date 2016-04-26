@@ -6,51 +6,21 @@
 #include "action/action.h"
 #include "section.h"
 #include "../error.h"
+#include "../list.h"
 #include "../../screen.h"
+#include "task/task.h"
 
-#define TITLES_MAX 1024
+static list_item launch_title = {"Launch Title", COLOR_TEXT, action_launch_title};
+static list_item delete_title = {"Delete Title", COLOR_TEXT, action_delete_title};
+static list_item browse_save_data = {"Browse Save Data", COLOR_TEXT, action_browse_title_save_data};
+static list_item import_secure_value = {"Import Secure Value", COLOR_TEXT, action_import_secure_value};
+static list_item export_secure_value = {"Export Secure Value", COLOR_TEXT, action_export_secure_value};
+static list_item delete_secure_value = {"Delete Secure Value", COLOR_TEXT, action_delete_secure_value};
 
 typedef struct {
-    list_item items[TITLES_MAX];
-    u32 count;
     Handle cancelEvent;
     bool populated;
 } titles_data;
-
-#define TITLES_ACTION_COUNT 6
-
-static u32 titles_action_count = TITLES_ACTION_COUNT;
-static list_item titles_action_items[TITLES_ACTION_COUNT] = {
-        {"Launch Title", COLOR_TEXT, action_launch_title},
-        {"Delete Title", COLOR_TEXT, action_delete_title},
-        {"Browse Save Data", COLOR_TEXT, action_browse_title_save_data},
-        {"Import Secure Value", COLOR_TEXT, action_import_secure_value},
-        {"Export Secure Value", COLOR_TEXT, action_export_secure_value},
-        {"Delete Secure Value", COLOR_TEXT, action_delete_secure_value},
-};
-
-#define CARD_TITLES_ACTION_COUNT 2
-
-static u32 card_titles_action_count = CARD_TITLES_ACTION_COUNT;
-static list_item card_titles_action_items[CARD_TITLES_ACTION_COUNT] = {
-        {"Launch Title", COLOR_TEXT, action_launch_title},
-        {"Browse Save Data", COLOR_TEXT, action_browse_title_save_data},
-};
-
-#define DSIWARE_TITLES_ACTION_COUNT 2
-
-static u32 dsiware_titles_action_count = DSIWARE_TITLES_ACTION_COUNT;
-static list_item dsiware_titles_action_items[DSIWARE_TITLES_ACTION_COUNT] = {
-        {"Launch Title", COLOR_TEXT, action_launch_title},
-        {"Delete Title", COLOR_TEXT, action_delete_title},
-};
-
-#define DSIWARE_CARD_TITLES_ACTION_COUNT 1
-
-static u32 dsiware_card_titles_action_count = DSIWARE_CARD_TITLES_ACTION_COUNT;
-static list_item dsiware_card_titles_action_items[DSIWARE_CARD_TITLES_ACTION_COUNT] = {
-        {"Launch Title", COLOR_TEXT, action_launch_title},
-};
 
 typedef struct {
     title_info* info;
@@ -61,7 +31,7 @@ static void titles_action_draw_top(ui_view* view, void* data, float x1, float y1
     ui_draw_title_info(view, ((titles_action_data*) data)->info, x1, y1, x2, y2);
 }
 
-static void titles_action_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void titles_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     titles_action_data* actionData = (titles_action_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -86,25 +56,21 @@ static void titles_action_update(ui_view* view, void* data, list_item** items, u
         return;
     }
 
-    if(actionData->info->mediaType == MEDIATYPE_GAME_CARD && actionData->info->twl) {
-        if(*itemCount != &dsiware_card_titles_action_count || *items != dsiware_card_titles_action_items) {
-            *itemCount = &dsiware_card_titles_action_count;
-            *items = dsiware_card_titles_action_items;
+    if(linked_list_size(items) == 0) {
+        linked_list_add(items, &launch_title);
+
+        if(actionData->info->mediaType != MEDIATYPE_GAME_CARD) {
+            linked_list_add(items, &delete_title);
         }
-    } else if(actionData->info->mediaType == MEDIATYPE_GAME_CARD) {
-        if(*itemCount != &card_titles_action_count || *items != card_titles_action_items) {
-            *itemCount = &card_titles_action_count;
-            *items = card_titles_action_items;
-        }
-    } else if(actionData->info->twl) {
-        if(*itemCount != &dsiware_titles_action_count || *items != dsiware_titles_action_items) {
-            *itemCount = &dsiware_titles_action_count;
-            *items = dsiware_titles_action_items;
-        }
-    } else {
-        if(*itemCount != &titles_action_count || *items != titles_action_items) {
-            *itemCount = &titles_action_count;
-            *items = titles_action_items;
+
+        if(!actionData->info->twl) {
+            linked_list_add(items, &browse_save_data);
+
+            if(actionData->info->mediaType != MEDIATYPE_GAME_CARD) {
+                linked_list_add(items, &import_secure_value);
+                linked_list_add(items, &export_secure_value);
+                linked_list_add(items, &delete_secure_value);
+            }
         }
     }
 }
@@ -129,7 +95,7 @@ static void titles_draw_top(ui_view* view, void* data, float x1, float y1, float
     }
 }
 
-static void titles_update(ui_view* view, void* data, list_item** items, u32** itemCount, list_item* selected, bool selectedTouched) {
+static void titles_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     titles_data* listData = (titles_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -143,9 +109,10 @@ static void titles_update(ui_view* view, void* data, list_item** items, u32** it
         }
 
         ui_pop();
+
+        task_clear_titles(items);
         list_destroy(view);
 
-        task_clear_titles(listData->items, &listData->count);
         free(listData);
         return;
     }
@@ -160,18 +127,13 @@ static void titles_update(ui_view* view, void* data, list_item** items, u32** it
             listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_titles(listData->items, &listData->count, TITLES_MAX);
+        listData->cancelEvent = task_populate_titles(items);
         listData->populated = true;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         titles_action_open((title_info*) selected->data, &listData->populated);
         return;
-    }
-
-    if(*itemCount != &listData->count || *items != listData->items) {
-        *itemCount = &listData->count;
-        *items = listData->items;
     }
 }
 

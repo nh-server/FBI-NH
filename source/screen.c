@@ -547,31 +547,35 @@ void screen_draw_texture_crop(u32 id, float x, float y, float width, float heigh
 
 static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine) {
     float w = 0;
-    float h = scaleY * fontGetInfo()->lineFeed;
+    float h = 0;
     float lineWidth = 0;
 
-    const uint8_t* p = (const uint8_t*) text;
-    uint32_t code = 0;
-    ssize_t units = -1;
-    while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
-        p += units;
+    if(text != NULL) {
+        h = scaleY * fontGetInfo()->lineFeed;
 
-        if(code == '\n') {
-            if(*p) {
-                if(lineWidth > w) {
-                    w = lineWidth;
+        const uint8_t* p = (const uint8_t*) text;
+        uint32_t code = 0;
+        ssize_t units = -1;
+        while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
+            p += units;
+
+            if(code == '\n') {
+                if(*p) {
+                    if(lineWidth > w) {
+                        w = lineWidth;
+                    }
+
+                    lineWidth = 0;
+
+                    if(oneLine) {
+                        break;
+                    }
+
+                    h += scaleY * fontGetInfo()->lineFeed;
                 }
-
-                lineWidth = 0;
-
-                if(oneLine) {
-                    break;
-                }
-
-                h += scaleY * fontGetInfo()->lineFeed;
+            } else {
+                lineWidth += scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth;
             }
-        } else {
-            lineWidth += scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth;
         }
     }
 
@@ -589,6 +593,10 @@ void screen_get_string_size(float* width, float* height, const char* text, float
 }
 
 void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool baseline) {
+    if(text == NULL) {
+        return;
+    }
+
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     if(env == NULL) {
         util_panic("Failed to retrieve combiner settings.");

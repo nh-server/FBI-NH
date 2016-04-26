@@ -2,7 +2,14 @@
 
 #include <sys/syslimits.h>
 
-#include "../../list.h"
+#include "../../../core/linkedlist.h"
+
+#define R_FBI_CANCELLED MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, 1)
+#define R_FBI_ERRNO MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 2)
+#define R_FBI_HTTP_RESPONSE_CODE MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 3)
+#define R_FBI_WRONG_SYSTEM MAKERESULT(RL_PERMANENT, RS_NOTSUPPORTED, RM_APPLICATION, 4)
+
+#define R_FBI_OUT_OF_MEMORY MAKERESULT(RL_FATAL, RS_OUTOFRESOURCE, RM_APPLICATION, RD_OUT_OF_MEMORY)
 
 typedef struct {
     char shortDescription[0x100];
@@ -68,13 +75,6 @@ typedef struct {
     ticket_info ticketInfo;
 } file_info;
 
-#define R_FBI_CANCELLED MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, 1)
-#define R_FBI_ERRNO MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 2)
-#define R_FBI_HTTP_RESPONSE_CODE MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 3)
-#define R_FBI_WRONG_SYSTEM MAKERESULT(RL_PERMANENT, RS_NOTSUPPORTED, RM_APPLICATION, 4)
-
-#define R_FBI_OUT_OF_MEMORY MAKERESULT(RL_FATAL, RS_OUTOFRESOURCE, RM_APPLICATION, RD_OUT_OF_MEMORY)
-
 typedef enum {
     DATAOP_COPY,
     DATAOP_DELETE
@@ -125,20 +125,20 @@ Handle task_capture_cam(Handle* mutex, u16* buffer, s16 width, s16 height);
 
 Handle task_data_op(data_op_info* info);
 
-void task_clear_ext_save_data(list_item* items, u32* count);
-Handle task_populate_ext_save_data(list_item* items, u32* count, u32 max);
+void task_clear_ext_save_data(linked_list* items);
+Handle task_populate_ext_save_data(linked_list* items);
 
-void task_clear_files(list_item* items, u32* count);
-Handle task_populate_files(list_item* items, u32* count, u32 max, file_info* dir);
+void task_clear_files(linked_list* items);
+Handle task_populate_files(linked_list* items, file_info* dir);
 
-void task_clear_pending_titles(list_item* items, u32* count);
-Handle task_populate_pending_titles(list_item* items, u32* count, u32 max);
+void task_clear_pending_titles(linked_list* items);
+Handle task_populate_pending_titles(linked_list* items);
 
-void task_clear_system_save_data(list_item* items, u32* count);
-Handle task_populate_system_save_data(list_item* items, u32* count, u32 max);
+void task_clear_system_save_data(linked_list* items);
+Handle task_populate_system_save_data(linked_list* items);
 
-void task_clear_tickets(list_item* items, u32* count);
-Handle task_populate_tickets(list_item* items, u32* count, u32 max);
+void task_clear_tickets(linked_list* items);
+Handle task_populate_tickets(linked_list* items);
 
-void task_clear_titles(list_item* items, u32* count);
-Handle task_populate_titles(list_item* items, u32* count, u32 max);
+void task_clear_titles(linked_list* items);
+Handle task_populate_titles(linked_list* items);

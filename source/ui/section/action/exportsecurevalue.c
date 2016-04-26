@@ -51,6 +51,9 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
         }
     }
 
+    ui_pop();
+    info_destroy(view);
+
     if(R_SUCCEEDED(res)) {
         prompt_display("Success", "Secure value exported.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, NULL);
     } else {

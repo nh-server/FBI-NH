@@ -12,10 +12,10 @@
 #include "../../../util.h"
 #include "task.h"
 
+#define MAX_SYSTEM_SAVE_DATA 512
+
 typedef struct {
-    list_item* items;
-    u32* count;
-    u32 max;
+    linked_list* items;
 
     Handle cancelEvent;
 } populate_system_save_data_data;
@@ -26,26 +26,32 @@ static void task_populate_system_save_data_thread(void* arg) {
     Result res = 0;
 
     u32 systemSaveDataCount = 0;
-    u32* systemSaveDataIds = (u32*) calloc(data->max, sizeof(u32));
+    u32* systemSaveDataIds = (u32*) calloc(MAX_SYSTEM_SAVE_DATA, sizeof(u32));
     if(systemSaveDataIds != NULL) {
-        if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, data->max * sizeof(u32), systemSaveDataIds))) {
+        if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, MAX_SYSTEM_SAVE_DATA * sizeof(u32), systemSaveDataIds))) {
             qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), util_compare_u32);
 
-            for(u32 i = 0; i < systemSaveDataCount && *data->count < data->max && R_SUCCEEDED(res); i++) {
+            for(u32 i = 0; i < systemSaveDataCount && R_SUCCEEDED(res); i++) {
                 if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                     break;
                 }
 
-                system_save_data_info* systemSaveDataInfo = (system_save_data_info*) calloc(1, sizeof(system_save_data_info));
-                if(systemSaveDataInfo != NULL) {
-                    systemSaveDataInfo->systemSaveDataId = systemSaveDataIds[i];
+                list_item* item = (list_item*) calloc(1, sizeof(list_item));
+                if(item != NULL) {
+                    system_save_data_info* systemSaveDataInfo = (system_save_data_info*) calloc(1, sizeof(system_save_data_info));
+                    if(systemSaveDataInfo != NULL) {
+                        systemSaveDataInfo->systemSaveDataId = systemSaveDataIds[i];
 
-                    list_item* item = &data->items[*data->count];
-                    snprintf(item->name, NAME_MAX, "%08lX", systemSaveDataIds[i]);
-                    item->rgba = COLOR_TEXT;
-                    item->data = systemSaveDataInfo;
+                        snprintf(item->name, NAME_MAX, "%08lX", systemSaveDataIds[i]);
+                        item->color = COLOR_TEXT;
+                        item->data = systemSaveDataInfo;
 
-                    (*data->count)++;
+                        linked_list_add(data->items, item);
+                    } else {
+                        free(item);
+
+                        res = R_FBI_OUT_OF_MEMORY;
+                    }
                 } else {
                     res = R_FBI_OUT_OF_MEMORY;
                 }
@@ -65,31 +71,33 @@ static void task_populate_system_save_data_thread(void* arg) {
     free(data);
 }
 
-void task_clear_system_save_data(list_item* items, u32* count) {
-    if(items == NULL || count == NULL) {
+void task_clear_system_save_data(linked_list* items) {
+    if(items == NULL) {
         return;
     }
 
-    u32 prevCount = *count;
-    *count = 0;
+    linked_list_iter iter;
+    linked_list_iterate(items, &iter);
 
-    for(u32 i = 0; i < prevCount; i++) {
-        if(items[i].data != NULL) {
-            free(items[i].data);
-            items[i].data = NULL;
+    while(linked_list_iter_has_next(&iter)) {
+        list_item* item = (list_item*) linked_list_iter_next(&iter);
+
+        if(item->data != NULL) {
+            free(item->data);
         }
 
-        memset(items[i].name, '\0', NAME_MAX);
-        items[i].rgba = 0;
+        free(item);
+
+        linked_list_iter_remove(&iter);
     }
 }
 
-Handle task_populate_system_save_data(list_item* items, u32* count, u32 max) {
-    if(items == NULL || count == NULL || max == 0) {
+Handle task_populate_system_save_data(linked_list* items) {
+    if(items == NULL) {
         return 0;
     }
 
-    task_clear_system_save_data(items, count);
+    task_clear_system_save_data(items);
 
     populate_system_save_data_data* data = (populate_system_save_data_data*) calloc(1, sizeof(populate_system_save_data_data));
     if(data == NULL) {
@@ -99,8 +107,6 @@ Handle task_populate_system_save_data(list_item* items, u32* count, u32 max) {
     }
 
     data->items = items;
-    data->count = count;
-    data->max = max;
 
     Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
     if(R_FAILED(eventRes)) {
