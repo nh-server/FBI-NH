@@ -57,6 +57,13 @@ static Result qrinstall_open_src(void* data, u32 index, u32* handle) {
             if(R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &qrInstallData->responseCode, 0))) {
                 if(qrInstallData->responseCode == 200) {
                     *handle = (u32) context;
+                } else if(qrInstallData->responseCode == 301 || qrInstallData->responseCode == 302 || qrInstallData->responseCode == 303) {
+                    if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", qrInstallData->urls[index], URL_MAX))) {
+                        httpcCloseContext(context);
+                        free(context);
+
+                        return qrinstall_open_src(data, index, handle);
+                    }
                 } else {
                     res = R_FBI_HTTP_RESPONSE_CODE;
                 }
