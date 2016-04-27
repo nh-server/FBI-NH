@@ -243,6 +243,28 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
 
         i++;
     }
+
+    u32 size = linked_list_size(&listData->items);
+    if(size > 0) {
+        float lastItemHeight;
+        screen_get_string_size(NULL, &lastItemHeight, ((list_item*) linked_list_get(&listData->items, size - 1))->name, 0.5f, 0.5f);
+
+        float totalHeight = list_get_item_screen_y(listData, size - 1) + listData->scrollPos + lastItemHeight;
+
+        float viewHeight = y2 - y1;
+
+        if(totalHeight > viewHeight) {
+            u32 scrollBarWidth = 0;
+            screen_get_texture_size(&scrollBarWidth, NULL, TEXTURE_SCROLL_BAR);
+
+            float scrollBarHeight = (viewHeight / totalHeight) * viewHeight;
+
+            float scrollBarX = x2 - scrollBarWidth;
+            float scrollBarY = y1 + (listData->scrollPos / totalHeight) * viewHeight;
+
+            screen_draw_texture(TEXTURE_SCROLL_BAR, scrollBarX, scrollBarY, scrollBarWidth, scrollBarHeight);
+        }
+    }
 }
 
 void list_display(const char* name, const char* info, void* data, void (*update)(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched),
