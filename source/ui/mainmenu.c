@@ -32,17 +32,6 @@ static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, flo
     float logoX = x1 + (x2 - x1 - logoWidth) / 2;
     float logoY = y1 + (y2 - y1 - logoHeight) / 2;
     screen_draw_texture(TEXTURE_LOGO, logoX, logoY, logoWidth, logoHeight);
-
-    char verString[64];
-    snprintf(verString, 64, "Ver. %s", VERSION_STRING);
-
-    float verWidth;
-    float verHeight;
-    screen_get_string_size(&verWidth, &verHeight, verString, 0.5f, 0.5f);
-
-    float verX = x1 + (x2 - x1 - verWidth) / 2;
-    float verY = logoY + logoHeight + (y2 - (logoY + logoHeight) - verHeight) / 2;
-    screen_draw_string(verString, verX, verY, 0.5f, 0.5f, COLOR_TEXT, false);
 }
 
 static void mainmenu_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
