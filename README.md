@@ -1,6 +1,6 @@
 # FBI
 
-FBI is an open source CIA (un)installer for the 3DS.
+FBI is an open source title manager for the 3DS.
 
 Banner credit: [OctopusRift](http://gbatemp.net/members/octopusrift.356526/), [Apache Thunder](https://gbatemp.net/members/apache-thunder.105648/)
 
