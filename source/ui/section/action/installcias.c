@@ -5,18 +5,27 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
-#include "../../../util.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 typedef struct {
-    file_info* base;
-    bool delete;
-    bool* populated;
-    char** contents;
+    linked_list* items;
+    list_item* selected;
+    file_info* target;
 
+    list_item* curr;
+
+    bool all;
+    bool delete;
+
+    u32 numDeleted;
     u64 currTitleId;
 
     data_op_info installInfo;
@@ -35,11 +44,32 @@ static Result action_install_cias_make_dst_directory(void* data, u32 index) {
 static Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
+    if(installData->all) {
+        linked_list_iter iter;
+        linked_list_iterate(installData->items, &iter);
+
+        u32 count = 0;
+        while(linked_list_iter_has_next(&iter) && count < index + 1 - installData->numDeleted) {
+            list_item* item = linked_list_iter_next(&iter);
+            file_info* info = (file_info*) item->data;
+
+            size_t len = strlen(info->path);
+            if(len > 4 && strcmp(&info->path[len - 4], ".cia") == 0) {
+                installData->curr = item;
+                count++;
+            }
+        }
+    } else {
+        installData->curr = installData->selected;
+    }
+
+    file_info* info = (file_info*) installData->curr->data;
+
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
+    FS_Path* fsPath = util_make_path_utf8(info->path);
     if(fsPath != NULL) {
-        res = FSUSER_OpenFile(handle, *installData->base->archive, *fsPath, FS_OPEN_READ, 0);
+        res = FSUSER_OpenFile(handle, *info->archive, *fsPath, FS_OPEN_READ, 0);
 
         util_free_path_utf8(fsPath);
     } else {
@@ -52,11 +82,21 @@ static Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
 static Result action_install_cias_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
+    file_info* info = (file_info*) installData->curr->data;
+
     Result res = 0;
+
     if(R_SUCCEEDED(res = FSFILE_Close(handle)) && installData->delete && succeeded) {
-        FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
+        FS_Path* fsPath = util_make_path_utf8(info->path);
         if(fsPath != NULL) {
-            FSUSER_DeleteFile(*installData->base->archive, *fsPath);
+            if(R_SUCCEEDED(FSUSER_DeleteFile(*info->archive, *fsPath))) {
+                linked_list_remove(installData->items, installData->curr);
+                task_free_file(installData->curr);
+
+                installData->curr = NULL;
+
+                installData->numDeleted++;
+            }
 
             util_free_path_utf8(fsPath);
         } else {
@@ -133,25 +173,17 @@ static Result action_install_cias_write_dst(void* data, u32 handle, u32* bytesWr
 bool action_install_cias_error(void* data, u32 index, Result res) {
     install_cias_data* installData = (install_cias_data*) data;
 
+    file_info* info = (file_info*) installData->curr->data;
+
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, installData->base, NULL, ui_draw_file_info, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, NULL);
         return false;
     } else {
-        char* path = installData->contents[index];
-
         volatile bool dismissed = false;
         if(res == R_FBI_WRONG_SYSTEM) {
-            if(strlen(path) > 48) {
-                error_display(&dismissed, installData->base, ui_draw_file_info, "Failed to install CIA file.\n%.45s...\nAttempted to install N3DS title to O3DS.", path);
-            } else {
-                error_display(&dismissed, installData->base, ui_draw_file_info, "Failed to install CIA file.\n%.48s\nAttempted to install N3DS title to O3DS.", path);
-            }
+            error_display(&dismissed, info, ui_draw_file_info, "Failed to install CIA file.\nAttempted to install N3DS title to O3DS.");
         } else {
-            if(strlen(path) > 48) {
-                error_display_res(&dismissed, installData->base, ui_draw_file_info, res, "Failed to install CIA file.\n%.45s...", path);
-            } else {
-                error_display_res(&dismissed, installData->base, ui_draw_file_info, res, "Failed to install CIA file.\n%.48s", path);
-            }
+            error_display_res(&dismissed, info, ui_draw_file_info, res, "Failed to install CIA file.");
         }
 
         while(!dismissed) {
@@ -163,30 +195,27 @@ bool action_install_cias_error(void* data, u32 index, Result res) {
 }
 
 static void action_install_cias_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    ui_draw_file_info(view, ((install_cias_data*) data)->base, x1, y1, x2, y2);
-}
+    install_cias_data* installData = (install_cias_data*) data;
 
-static void action_install_cias_free_data(install_cias_data* data) {
-    util_free_contents(data->contents, data->installInfo.total);
-    free(data);
+    if(installData->curr != NULL) {
+        ui_draw_file_info(view, installData->curr->data, x1, y1, x2, y2);
+    } else if(installData->target != NULL) {
+        ui_draw_file_info(view, installData->target, x1, y1, x2, y2);
+    }
 }
 
 static void action_install_cias_update(ui_view* view, void* data, float* progress, char* text) {
     install_cias_data* installData = (install_cias_data*) data;
 
     if(installData->installInfo.finished) {
-        if(installData->delete) {
-            *installData->populated = false;
-        }
-
         ui_pop();
         info_destroy(view);
 
         if(!installData->installInfo.premature) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->base, NULL, ui_draw_file_info, NULL);
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
         }
 
-        action_install_cias_free_data(installData);
+        free(installData);
 
         return;
     }
@@ -207,16 +236,16 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
         if(installData->cancelEvent != 0) {
             info_display("Installing CIA(s)", "Press B to cancel.", true, data, action_install_cias_update, action_install_cias_draw_top);
         } else {
-            error_display(NULL, installData->base, ui_draw_file_info, "Failed to initiate CIA installation.");
+            error_display(NULL, NULL, NULL, "Failed to initiate CIA installation.");
 
-            action_install_cias_free_data(installData);
+            free(installData);
         }
     } else {
-        action_install_cias_free_data(installData);
+        free(installData);
     }
 }
 
-static void action_install_cias_internal(file_info* info, bool* populated, bool delete) {
+static void action_install_cias_internal(linked_list* items, list_item* selected, file_info* target, const char* message, bool all, bool delete) {
     install_cias_data* data = (install_cias_data*) calloc(1, sizeof(install_cias_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate install CIAs data.");
@@ -224,10 +253,14 @@ static void action_install_cias_internal(file_info* info, bool* populated, bool 
         return;
     }
 
-    data->base = info;
-    data->delete = delete;
-    data->populated = populated;
+    data->items = items;
+    data->selected = selected;
+    data->target = target;
 
+    data->all = all;
+    data->delete = delete;
+
+    data->numDeleted = 0;
     data->currTitleId = 0;
 
     data->installInfo.data = data;
@@ -252,21 +285,38 @@ static void action_install_cias_internal(file_info* info, bool* populated, bool 
 
     data->cancelEvent = 0;
 
-    Result res = 0;
-    if(R_FAILED(res = util_populate_contents(&data->contents, &data->installInfo.total, info->archive, info->path, false, false, ".cia", util_filter_file_extension))) {
-        error_display_res(NULL, info, ui_draw_file_info, res, "Failed to retrieve content list.");
+    if(all) {
+        linked_list_iter iter;
+        linked_list_iterate(data->items, &iter);
 
-        free(data);
-        return;
+        while(linked_list_iter_has_next(&iter)) {
+            list_item* item = linked_list_iter_next(&iter);
+            file_info* info = (file_info*) item->data;
+
+            size_t len = strlen(info->path);
+            if(len > 4 && strcmp(&info->path[len - 4], ".cia") == 0) {
+                data->installInfo.total++;
+            }
+        }
+    } else {
+        data->installInfo.total = 1;
     }
 
-    prompt_display("Confirmation", "Install the selected CIA(s)?", COLOR_TEXT, true, data, NULL, action_install_cias_draw_top, action_install_cias_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_install_cias_draw_top, action_install_cias_onresponse);
 }
 
-void action_install_cias(file_info* info, bool* populated) {
-    action_install_cias_internal(info, populated, false);
+void action_install_cia(linked_list* items, list_item* selected, file_info* target) {
+    action_install_cias_internal(items, selected, target, "Install the selected CIA?", false, false);
 }
 
-void action_install_cias_delete(file_info* info, bool* populated) {
-    action_install_cias_internal(info, populated, true);
+void action_install_cia_delete(linked_list* items, list_item* selected, file_info* target) {
+    action_install_cias_internal(items, selected, target, "Install and delete the selected CIA?", false, true);
+}
+
+void action_install_cias(linked_list* items, list_item* selected, file_info* target) {
+    action_install_cias_internal(items, selected, target, "Install all CIAs in the current directory?", true, false);
+}
+
+void action_install_cias_delete(linked_list* items, list_item* selected, file_info* target) {
+    action_install_cias_internal(items, selected, target, "Install and delete all CIAs in the current directory?", true, true);
 }

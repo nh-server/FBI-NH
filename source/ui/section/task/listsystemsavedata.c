@@ -1,16 +1,15 @@
-#include <sys/syslimits.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include <3ds.h>
 
+#include "task.h"
 #include "../../list.h"
 #include "../../error.h"
-#include "../../../screen.h"
-#include "../../../util.h"
-#include "task.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 #define MAX_SYSTEM_SAVE_DATA 512
 
@@ -26,41 +25,36 @@ static void task_populate_system_save_data_thread(void* arg) {
     Result res = 0;
 
     u32 systemSaveDataCount = 0;
-    u32* systemSaveDataIds = (u32*) calloc(MAX_SYSTEM_SAVE_DATA, sizeof(u32));
-    if(systemSaveDataIds != NULL) {
-        if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, MAX_SYSTEM_SAVE_DATA * sizeof(u32), systemSaveDataIds))) {
-            qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), util_compare_u32);
+    u32 systemSaveDataIds[MAX_SYSTEM_SAVE_DATA];
+    if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, MAX_SYSTEM_SAVE_DATA * sizeof(u32), systemSaveDataIds))) {
+        qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), util_compare_u32);
 
-            for(u32 i = 0; i < systemSaveDataCount && R_SUCCEEDED(res); i++) {
-                if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
-                    break;
-                }
+        for(u32 i = 0; i < systemSaveDataCount && R_SUCCEEDED(res); i++) {
+            svcWaitSynchronization(task_get_pause_event(), U64_MAX);
+            if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
+                break;
+            }
 
-                list_item* item = (list_item*) calloc(1, sizeof(list_item));
-                if(item != NULL) {
-                    system_save_data_info* systemSaveDataInfo = (system_save_data_info*) calloc(1, sizeof(system_save_data_info));
-                    if(systemSaveDataInfo != NULL) {
-                        systemSaveDataInfo->systemSaveDataId = systemSaveDataIds[i];
+            list_item* item = (list_item*) calloc(1, sizeof(list_item));
+            if(item != NULL) {
+                system_save_data_info* systemSaveDataInfo = (system_save_data_info*) calloc(1, sizeof(system_save_data_info));
+                if(systemSaveDataInfo != NULL) {
+                    systemSaveDataInfo->systemSaveDataId = systemSaveDataIds[i];
 
-                        snprintf(item->name, NAME_MAX, "%08lX", systemSaveDataIds[i]);
-                        item->color = COLOR_TEXT;
-                        item->data = systemSaveDataInfo;
+                    snprintf(item->name, LIST_ITEM_NAME_MAX, "%08lX", systemSaveDataIds[i]);
+                    item->color = COLOR_TEXT;
+                    item->data = systemSaveDataInfo;
 
-                        linked_list_add(data->items, item);
-                    } else {
-                        free(item);
-
-                        res = R_FBI_OUT_OF_MEMORY;
-                    }
+                    linked_list_add(data->items, item);
                 } else {
+                    free(item);
+
                     res = R_FBI_OUT_OF_MEMORY;
                 }
+            } else {
+                res = R_FBI_OUT_OF_MEMORY;
             }
         }
-
-        free(systemSaveDataIds);
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
     }
 
     if(R_FAILED(res)) {
@@ -69,6 +63,18 @@ static void task_populate_system_save_data_thread(void* arg) {
 
     svcCloseHandle(data->cancelEvent);
     free(data);
+}
+
+void task_free_system_save_data(list_item* item) {
+    if(item == NULL) {
+        return;
+    }
+
+    if(item->data != NULL) {
+        free(item->data);
+    }
+
+    free(item);
 }
 
 void task_clear_system_save_data(linked_list* items) {
@@ -81,13 +87,7 @@ void task_clear_system_save_data(linked_list* items) {
 
     while(linked_list_iter_has_next(&iter)) {
         list_item* item = (list_item*) linked_list_iter_next(&iter);
-
-        if(item->data != NULL) {
-            free(item->data);
-        }
-
-        free(item);
-
+        task_free_system_save_data(item);
         linked_list_iter_remove(&iter);
     }
 }
@@ -116,7 +116,7 @@ Handle task_populate_system_save_data(linked_list* items) {
         return 0;
     }
 
-    if(threadCreate(task_populate_system_save_data_thread, data, 0x4000, 0x18, 1, true) == NULL) {
+    if(threadCreate(task_populate_system_save_data_thread, data, 0x10000, 0x18, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create system save data list thread.");
 
         svcCloseHandle(data->cancelEvent);

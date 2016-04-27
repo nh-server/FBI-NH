@@ -6,7 +6,7 @@
 #define BOTTOM_SCREEN_WIDTH 320
 #define BOTTOM_SCREEN_HEIGHT 240
 
-#define MAX_TEXTURES 1536 // Maximum number of 64x64 RGBA8 textures that can fit in 24MB of linear RAM.
+#define MAX_TEXTURES 1024
 
 #define TEXTURE_BOTTOM_SCREEN_BG 0
 #define TEXTURE_BOTTOM_SCREEN_TOP_BAR 1
@@ -40,21 +40,14 @@
 #define TEXTURE_WIFI_3 29
 #define TEXTURE_AUTO_START 30
 
+#define NUM_COLORS 6
+
 #define COLOR_TEXT 0
 #define COLOR_NAND 1
 #define COLOR_SD 2
 #define COLOR_GAME_CARD 3
 #define COLOR_DS_TITLE 4
 #define COLOR_DIRECTORY 5
-
-#define NUM_COLORS 6
-
-/*#define COLOR_TEXT 0xFF000000
-#define COLOR_NAND 0xFF0000FF
-#define COLOR_SD 0xFF00FF00
-#define COLOR_GAME_CARD 0xFFFF0000
-#define COLOR_DS_TITLE 0xFF82004B
-#define COLOR_DIRECTORY 0xFF0000FF */
 
 void screen_init();
 void screen_exit();

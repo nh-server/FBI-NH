@@ -5,7 +5,8 @@
 
 #include "error.h"
 #include "info.h"
-#include "../screen.h"
+#include "ui.h"
+#include "../core/screen.h"
 
 typedef struct {
     bool bar;

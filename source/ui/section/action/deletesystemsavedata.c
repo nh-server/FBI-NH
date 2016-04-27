@@ -3,35 +3,42 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
 
 typedef struct {
-    system_save_data_info* info;
-    bool* populated;
+    linked_list* items;
+    list_item* selected;
 } delete_system_save_data_data;
 
 static void action_delete_system_save_data_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    ui_draw_system_save_data_info(view, ((delete_system_save_data_data*) data)->info, x1, y1, x2, y2);
+    ui_draw_system_save_data_info(view, ((delete_system_save_data_data*) data)->selected->data, x1, y1, x2, y2);
 }
 
 static void action_delete_system_save_data_update(ui_view* view, void* data, float* progress, char* text) {
     delete_system_save_data_data* deleteData = (delete_system_save_data_data*) data;
 
-    FS_SystemSaveDataInfo sysInfo = {.mediaType = MEDIATYPE_NAND, .saveId = deleteData->info->systemSaveDataId};
+    system_save_data_info* info = (system_save_data_info*) deleteData->selected->data;
+
+    FS_SystemSaveDataInfo sysInfo = {.mediaType = MEDIATYPE_NAND, .saveId = info->systemSaveDataId};
     Result res = FSUSER_DeleteSystemSaveData(sysInfo);
 
     ui_pop();
     info_destroy(view);
 
     if(R_FAILED(res)) {
-        error_display_res(NULL, deleteData->info, ui_draw_system_save_data_info, res, "Failed to delete system save data.");
+        error_display_res(NULL, info, ui_draw_system_save_data_info, res, "Failed to delete system save data.");
     } else {
-        *deleteData->populated = false;
+        linked_list_remove(deleteData->items, deleteData->selected);
+        task_free_system_save_data(deleteData->selected);
 
-        prompt_display("Success", "System save data deleted.", COLOR_TEXT, false, deleteData->info, NULL, ui_draw_system_save_data_info, NULL);
+        prompt_display("Success", "System save data deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
     }
 
     free(data);
@@ -45,7 +52,7 @@ static void action_delete_system_save_data_onresponse(ui_view* view, void* data,
     }
 }
 
-void action_delete_system_save_data(system_save_data_info* info, bool* populated) {
+void action_delete_system_save_data(linked_list* items, list_item* selected) {
     delete_system_save_data_data* data = (delete_system_save_data_data*) calloc(1, sizeof(delete_system_save_data_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate delete system save data data.");
@@ -53,8 +60,8 @@ void action_delete_system_save_data(system_save_data_info* info, bool* populated
         return;
     }
 
-    data->info = info;
-    data->populated = populated;
+    data->items = items;
+    data->selected = selected;
 
     prompt_display("Confirmation", "Delete the selected system save data?", COLOR_TEXT, true, data, NULL, action_delete_system_save_data_draw_top, action_delete_system_save_data_onresponse);
 }

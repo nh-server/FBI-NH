@@ -4,9 +4,9 @@
 
 #include <3ds.h>
 
-#include "section/task/task.h"
 #include "ui.h"
-#include "../screen.h"
+#include "section/task/task.h"
+#include "../core/screen.h"
 
 #define MAX_UI_VIEWS 16
 

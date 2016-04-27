@@ -6,55 +6,80 @@
 
 #include "action.h"
 #include "clipboard.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
-#include "../../../util.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 typedef struct {
-    file_info* base;
-    bool* populated;
+    linked_list* items;
+    file_info* target;
+
     char** contents;
+    list_item* currSrc;
+    bool currExists;
 
     data_op_info pasteInfo;
     Handle cancelEvent;
 } paste_files_data;
 
 static void action_paste_files_get_dst_path(paste_files_data* data, u32 index, char* dstPath) {
-    char baseDstPath[PATH_MAX];
-    if(data->base->isDirectory) {
-        strncpy(baseDstPath, data->base->path, PATH_MAX);
+    char baseDstPath[FILE_PATH_MAX];
+    if(data->target->isDirectory) {
+        strncpy(baseDstPath, data->target->path, FILE_PATH_MAX);
     } else {
-        util_get_parent_path(baseDstPath, data->base->path, PATH_MAX);
+        util_get_parent_path(baseDstPath, data->target->path, FILE_PATH_MAX);
     }
 
-    util_get_parent_path(dstPath, clipboard_get_path(), PATH_MAX);
-    snprintf(dstPath, PATH_MAX, "%s%s", baseDstPath, data->contents[index] + strlen(dstPath));
+    util_get_parent_path(dstPath, clipboard_get_path(), FILE_PATH_MAX);
+    snprintf(dstPath, FILE_PATH_MAX, "%s%s", baseDstPath, data->contents[index] + strlen(dstPath));
 }
 
 static Result action_paste_files_is_src_directory(void* data, u32 index, bool* isDirectory) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
-    *isDirectory = util_is_dir(pasteData->base->archive, pasteData->contents[index]);
+    *isDirectory = util_is_dir(clipboard_get_archive(), pasteData->contents[index]);
     return 0;
 }
 
 static Result action_paste_files_make_dst_directory(void* data, u32 index) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
-    char dstPath[PATH_MAX];
+    list_item* old = pasteData->currSrc;
+    task_create_file_item(&pasteData->currSrc, clipboard_get_archive(), pasteData->contents[index]);
+    if(old != NULL) {
+        task_free_file(old);
+    }
+
+    char dstPath[FILE_PATH_MAX];
     action_paste_files_get_dst_path(pasteData, index, dstPath);
+
+    bool existed = util_exists(pasteData->target->archive, dstPath);
 
     Result res = 0;
 
     FS_Path* fsPath = util_make_path_utf8(dstPath);
     if(fsPath != NULL) {
-        res = FSUSER_CreateDirectory(*pasteData->base->archive, *fsPath, 0);
+        res = FSUSER_CreateDirectory(*pasteData->target->archive, *fsPath, 0);
 
         util_free_path_utf8(fsPath);
     } else {
         res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    char parentPath[FILE_PATH_MAX];
+    util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
+
+    if(!existed && strcmp(parentPath, pasteData->target->path) == 0) {
+        list_item* dstItem = NULL;
+        if(R_SUCCEEDED(res) && R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath))) {
+            linked_list_add(pasteData->items, dstItem);
+        }
     }
 
     return res;
@@ -63,11 +88,17 @@ static Result action_paste_files_make_dst_directory(void* data, u32 index) {
 static Result action_paste_files_open_src(void* data, u32 index, u32* handle) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
+    list_item* old = pasteData->currSrc;
+    task_create_file_item(&pasteData->currSrc, clipboard_get_archive(), pasteData->contents[index]);
+    if(old != NULL) {
+        task_free_file(old);
+    }
+
     Result res = 0;
 
     FS_Path* fsPath = util_make_path_utf8(pasteData->contents[index]);
     if(fsPath != NULL) {
-        res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_READ, 0);
+        res = FSUSER_OpenFile(handle, *clipboard_get_archive(), *fsPath, FS_OPEN_READ, 0);
 
         util_free_path_utf8(fsPath);
     } else {
@@ -92,14 +123,16 @@ static Result action_paste_files_read_src(void* data, u32 handle, u32* bytesRead
 static Result action_paste_files_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
-    char dstPath[PATH_MAX];
+    char dstPath[FILE_PATH_MAX];
     action_paste_files_get_dst_path(pasteData, index, dstPath);
+
+    pasteData->currExists = util_exists(pasteData->target->archive, dstPath);
 
     Result res = 0;
 
     FS_Path* fsPath = util_make_path_utf8(dstPath);
     if(fsPath != NULL) {
-        res = FSUSER_OpenFile(handle, *pasteData->base->archive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+        res = FSUSER_OpenFile(handle, *pasteData->target->archive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 
         util_free_path_utf8(fsPath);
     } else {
@@ -110,7 +143,26 @@ static Result action_paste_files_open_dst(void* data, u32 index, void* initialRe
 }
 
 static Result action_paste_files_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
-    return FSFILE_Close(handle);
+    paste_files_data* pasteData = (paste_files_data*) data;
+
+    Result res = FSFILE_Close(handle);
+
+    if(R_SUCCEEDED(res) && !pasteData->currExists) {
+        char dstPath[FILE_PATH_MAX];
+        action_paste_files_get_dst_path(pasteData, index, dstPath);
+
+        char parentPath[FILE_PATH_MAX];
+        util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
+
+        if(strcmp(parentPath, pasteData->target->path) == 0) {
+            list_item* dstItem = NULL;
+            if(R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath))) {
+                linked_list_add(pasteData->items, dstItem);
+            }
+        }
+    }
+
+    return res;
 }
 
 static Result action_paste_files_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
@@ -121,17 +173,13 @@ static bool action_paste_files_error(void* data, u32 index, Result res) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Paste cancelled.", COLOR_TEXT, false, pasteData->base, NULL, ui_draw_file_info, NULL);
+        prompt_display("Failure", "Paste cancelled.", COLOR_TEXT, false, pasteData->target, NULL, ui_draw_file_info, NULL);
         return false;
     } else {
         char* path = pasteData->contents[index];
 
         volatile bool dismissed = false;
-        if(strlen(path) > 48) {
-            error_display_res(&dismissed, pasteData->base, ui_draw_file_info, res, "Failed to paste content.\n%.45s...", path);
-        } else {
-            error_display_res(&dismissed, pasteData->base, ui_draw_file_info, res, "Failed to paste content.\n%.48s", path);
-        }
+        error_display_res(&dismissed, pasteData->currSrc != NULL ? pasteData->currSrc->data : pasteData->target, ui_draw_file_info, res, "Failed to paste content.", path);
 
         while(!dismissed) {
             svcSleepThread(1000000);
@@ -142,29 +190,50 @@ static bool action_paste_files_error(void* data, u32 index, Result res) {
 }
 
 static void action_paste_files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    ui_draw_file_info(view, ((paste_files_data*) data)->base, x1, y1, x2, y2);
+    paste_files_data* pasteData = (paste_files_data*) data;
+
+    if(pasteData->currSrc != NULL) {
+        ui_draw_file_info(view, ((paste_files_data*) data)->currSrc->data, x1, y1, x2, y2);
+    } else if(pasteData->target != NULL) {
+        ui_draw_file_info(view, ((paste_files_data*) data)->target, x1, y1, x2, y2);
+    }
 }
 
 static void action_paste_files_free_data(paste_files_data* data) {
+    if(data->currSrc != NULL) {
+        task_free_file(data->currSrc);
+        data->currSrc = NULL;
+    }
+
     util_free_contents(data->contents, data->pasteInfo.total);
     free(data);
+}
+
+static int action_paste_files_compare(const void* p1, const void* p2) {
+    list_item* info1 = (list_item*) p1;
+    list_item* info2 = (list_item*) p2;
+
+    file_info* f1 = (file_info*) info1->data;
+    file_info* f2 = (file_info*) info2->data;
+
+    return strcasecmp(f1->name, f2->name);
 }
 
 static void action_paste_files_update(ui_view* view, void* data, float* progress, char* text) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     if(pasteData->pasteInfo.finished) {
-        *pasteData->populated = false;
-
-        if(pasteData->base->archive->id == ARCHIVE_USER_SAVEDATA) {
-            FSUSER_ControlArchive(*pasteData->base->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+        if(pasteData->target->archive->id == ARCHIVE_USER_SAVEDATA) {
+            FSUSER_ControlArchive(*pasteData->target->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
         }
+
+        linked_list_sort(pasteData->items, action_paste_files_compare);
 
         ui_pop();
         info_destroy(view);
 
         if(!pasteData->pasteInfo.premature) {
-            prompt_display("Success", "Contents pasted.", COLOR_TEXT, false, pasteData->base, NULL, ui_draw_file_info, NULL);
+            prompt_display("Success", "Contents pasted.", COLOR_TEXT, false, pasteData->target, NULL, ui_draw_file_info, NULL);
         }
 
         action_paste_files_free_data(pasteData);
@@ -187,16 +256,16 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
         if(pasteData->cancelEvent != 0) {
             info_display("Pasting Contents", "Press B to cancel.", true, data, action_paste_files_update, action_paste_files_draw_top);
         } else {
-            error_display(NULL, pasteData->base, ui_draw_file_info, "Failed to initiate paste operation.");
+            error_display(NULL, pasteData->target, ui_draw_file_info, "Failed to initiate paste operation.");
         }
     } else {
         action_paste_files_free_data(pasteData);
     }
 }
 
-void action_paste_contents(file_info* info, bool* populated) {
+void action_paste_contents(linked_list* items, list_item* selected, file_info* target) {
     if(!clipboard_has_contents()) {
-        prompt_display("Failure", "Clipboard empty.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, NULL);
+        prompt_display("Failure", "Clipboard empty.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
         return;
     }
 
@@ -207,8 +276,10 @@ void action_paste_contents(file_info* info, bool* populated) {
         return;
     }
 
-    data->base = info;
-    data->populated = populated;
+    data->items = items;
+    data->target = target;
+
+    data->currSrc = NULL;
 
     data->pasteInfo.data = data;
 
@@ -234,7 +305,7 @@ void action_paste_contents(file_info* info, bool* populated) {
 
     Result res = 0;
     if(R_FAILED(res = util_populate_contents(&data->contents, &data->pasteInfo.total, clipboard_get_archive(), clipboard_get_path(), true, true, NULL, NULL))) {
-        error_display_res(NULL, info, ui_draw_file_info, res, "Failed to retrieve content list.");
+        error_display_res(NULL, data->target, ui_draw_file_info, res, "Failed to retrieve content list.");
 
         free(data);
         return;

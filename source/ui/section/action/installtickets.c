@@ -5,15 +5,27 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
-#include "../../../util.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 typedef struct {
-    file_info* base;
-    char** contents;
+    linked_list* items;
+    list_item* selected;
+    file_info* target;
+
+    list_item* curr;
+
+    bool all;
+    bool delete;
+
+    u32 numDeleted;
 
     data_op_info installInfo;
     Handle cancelEvent;
@@ -31,11 +43,32 @@ static Result action_install_tickets_make_dst_directory(void* data, u32 index) {
 static Result action_install_tickets_open_src(void* data, u32 index, u32* handle) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
+    if(installData->all) {
+        linked_list_iter iter;
+        linked_list_iterate(installData->items, &iter);
+
+        u32 count = 0;
+        while(linked_list_iter_has_next(&iter) && count < index + 1 - installData->numDeleted) {
+            list_item* item = linked_list_iter_next(&iter);
+            file_info* info = (file_info*) item->data;
+
+            size_t len = strlen(info->path);
+            if(len > 4 && strcmp(&info->path[len - 4], ".tik") == 0) {
+                installData->curr = item;
+                count++;
+            }
+        }
+    } else {
+        installData->curr = installData->selected;
+    }
+
+    file_info* info = (file_info*) installData->curr->data;
+
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(installData->contents[index]);
+    FS_Path* fsPath = util_make_path_utf8(info->path);
     if(fsPath != NULL) {
-        res = FSUSER_OpenFile(handle, *installData->base->archive, *fsPath, FS_OPEN_READ, 0);
+        res = FSUSER_OpenFile(handle, *info->archive, *fsPath, FS_OPEN_READ, 0);
 
         util_free_path_utf8(fsPath);
     } else {
@@ -46,7 +79,31 @@ static Result action_install_tickets_open_src(void* data, u32 index, u32* handle
 }
 
 static Result action_install_tickets_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    return FSFILE_Close(handle);
+    install_tickets_data* installData = (install_tickets_data*) data;
+
+    file_info* info = (file_info*) installData->curr->data;
+
+    Result res = 0;
+
+    if(R_SUCCEEDED(res = FSFILE_Close(handle)) && installData->delete && succeeded) {
+        FS_Path* fsPath = util_make_path_utf8(info->path);
+        if(fsPath != NULL) {
+            if(R_SUCCEEDED(FSUSER_DeleteFile(*info->archive, *fsPath))) {
+                linked_list_remove(installData->items, installData->curr);
+                task_free_file(installData->curr);
+
+                installData->curr = NULL;
+
+                installData->numDeleted++;
+            }
+
+            util_free_path_utf8(fsPath);
+        } else {
+            res = R_FBI_OUT_OF_MEMORY;
+        }
+    }
+
+    return res;
 }
 
 static Result action_install_tickets_get_src_size(void* data, u32 handle, u64* size) {
@@ -76,18 +133,14 @@ static Result action_install_tickets_write_dst(void* data, u32 handle, u32* byte
 static bool action_install_tickets_error(void* data, u32 index, Result res) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
+    file_info* info = (file_info*) installData->curr->data;
+
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, installData->base, NULL, ui_draw_file_info, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, NULL);
         return false;
     } else {
-        char* path = installData->contents[index];
-
         volatile bool dismissed = false;
-        if(strlen(path) > 48) {
-            error_display_res(&dismissed, installData->base, ui_draw_file_info, res, "Failed to install ticket.\n%.45s...", path);
-        } else {
-            error_display_res(&dismissed, installData->base, ui_draw_file_info, res, "Failed to install ticket.\n%.48s", path);
-        }
+        error_display_res(&dismissed, info, ui_draw_file_info, res, "Failed to install ticket.");
 
         while(!dismissed) {
             svcSleepThread(1000000);
@@ -98,12 +151,13 @@ static bool action_install_tickets_error(void* data, u32 index, Result res) {
 }
 
 static void action_install_tickets_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    ui_draw_file_info(view, ((install_tickets_data*) data)->base, x1, y1, x2, y2);
-}
+    install_tickets_data* installData = (install_tickets_data*) data;
 
-static void action_install_tickets_free_data(install_tickets_data* data) {
-    util_free_contents(data->contents, data->installInfo.total);
-    free(data);
+    if(installData->curr != NULL) {
+        ui_draw_file_info(view, installData->curr->data, x1, y1, x2, y2);
+    } else if(installData->target != NULL) {
+        ui_draw_file_info(view, installData->target, x1, y1, x2, y2);
+    }
 }
 
 static void action_install_tickets_update(ui_view* view, void* data, float* progress, char* text) {
@@ -114,10 +168,10 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(!installData->installInfo.premature) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->base, NULL, ui_draw_file_info, NULL);
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
         }
 
-        action_install_tickets_free_data(installData);
+        free(installData);
 
         return;
     }
@@ -138,16 +192,16 @@ static void action_install_tickets_onresponse(ui_view* view, void* data, bool re
         if(installData->cancelEvent != 0) {
             info_display("Installing ticket(s)", "Press B to cancel.", true, data, action_install_tickets_update, action_install_tickets_draw_top);
         } else {
-            error_display(NULL, installData->base, ui_draw_file_info, "Failed to initiate ticket installation.");
+            error_display(NULL, NULL, NULL, "Failed to initiate ticket installation.");
 
-            action_install_tickets_free_data(installData);
+            free(installData);
         }
     } else {
-        action_install_tickets_free_data(installData);
+        free(installData);
     }
 }
 
-void action_install_tickets(file_info* info, bool* populated) {
+static void action_install_tickets_internal(linked_list* items, list_item* selected, file_info* target, const char* message, bool all, bool delete) {
     install_tickets_data* data = (install_tickets_data*) calloc(1, sizeof(install_tickets_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate install tickets data.");
@@ -155,7 +209,14 @@ void action_install_tickets(file_info* info, bool* populated) {
         return;
     }
 
-    data->base = info;
+    data->items = items;
+    data->selected = selected;
+    data->target = target;
+
+    data->all = all;
+    data->delete = delete;
+
+    data->numDeleted = 0;
 
     data->installInfo.data = data;
 
@@ -179,13 +240,38 @@ void action_install_tickets(file_info* info, bool* populated) {
 
     data->cancelEvent = 0;
 
-    Result res = 0;
-    if(R_FAILED(res = util_populate_contents(&data->contents, &data->installInfo.total, info->archive, info->path, false, false, ".tik", util_filter_file_extension))) {
-        error_display_res(NULL, info, ui_draw_file_info, res, "Failed to retrieve content list.");
+    if(all) {
+        linked_list_iter iter;
+        linked_list_iterate(data->items, &iter);
 
-        free(data);
-        return;
+        while(linked_list_iter_has_next(&iter)) {
+            list_item* item = linked_list_iter_next(&iter);
+            file_info* info = (file_info*) item->data;
+
+            size_t len = strlen(info->path);
+            if(len > 4 && strcmp(&info->path[len - 4], ".tik") == 0) {
+                data->installInfo.total++;
+            }
+        }
+    } else {
+        data->installInfo.total = 1;
     }
 
-    prompt_display("Confirmation", "Install the selected ticket(s)?", COLOR_TEXT, true, data, NULL, action_install_tickets_draw_top, action_install_tickets_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_install_tickets_draw_top, action_install_tickets_onresponse);
+}
+
+void action_install_ticket(linked_list* items, list_item* selected, file_info* target) {
+    action_install_tickets_internal(items, selected, target, "Install the selected ticket?", false, false);
+}
+
+void action_install_ticket_delete(linked_list* items, list_item* selected, file_info* target) {
+    action_install_tickets_internal(items, selected, target, "Install and delete the selected ticket?", false, true);
+}
+
+void action_install_tickets(linked_list* items, list_item* selected, file_info* target) {
+    action_install_tickets_internal(items, selected, target, "Install all tickets in the current directory?", true, false);
+}
+
+void action_install_tickets_delete(linked_list* items, list_item* selected, file_info* target) {
+    action_install_tickets_internal(items, selected, target, "Install and delete all tickets in the current directory?", true, true);
 }

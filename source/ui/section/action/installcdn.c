@@ -4,10 +4,14 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
 
 #define CONTENTS_MAX 64
 
@@ -242,7 +246,7 @@ static void action_install_cdn_onresponse(ui_view* view, void* data, bool respon
     }
 }
 
-void action_install_cdn(ticket_info* info, bool* populated) {
+void action_install_cdn(linked_list* items, list_item* selected) {
     install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate install CDN data.");
@@ -250,7 +254,7 @@ void action_install_cdn(ticket_info* info, bool* populated) {
         return;
     }
 
-    data->ticket = info;
+    data->ticket = (ticket_info*) selected->data;
 
     data->responseCode = 0;
 

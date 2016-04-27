@@ -1,16 +1,15 @@
-#include <sys/syslimits.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include <3ds.h>
 
+#include "task.h"
 #include "../../list.h"
 #include "../../error.h"
-#include "../../../screen.h"
-#include "../../../util.h"
-#include "task.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 typedef struct {
     linked_list* items;
@@ -31,6 +30,7 @@ static void task_populate_tickets_thread(void* arg) {
                 qsort(ticketIds, ticketCount, sizeof(u64), util_compare_u64);
 
                 for(u32 i = 0; i < ticketCount && R_SUCCEEDED(res); i++) {
+                    svcWaitSynchronization(task_get_pause_event(), U64_MAX);
                     if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                         break;
                     }
@@ -41,7 +41,7 @@ static void task_populate_tickets_thread(void* arg) {
                         if(ticketInfo != NULL) {
                             ticketInfo->titleId = ticketIds[i];
 
-                            snprintf(item->name, NAME_MAX, "%016llX", ticketIds[i]);
+                            snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", ticketIds[i]);
                             item->color = COLOR_TEXT;
                             item->data = ticketInfo;
 
@@ -71,6 +71,18 @@ static void task_populate_tickets_thread(void* arg) {
     free(data);
 }
 
+void task_free_ticket(list_item* item) {
+    if(item == NULL) {
+        return;
+    }
+
+    if(item->data != NULL) {
+        free(item->data);
+    }
+
+    free(item);
+}
+
 void task_clear_tickets(linked_list* items) {
     if(items == NULL) {
         return;
@@ -81,13 +93,7 @@ void task_clear_tickets(linked_list* items) {
 
     while(linked_list_iter_has_next(&iter)) {
         list_item* item = (list_item*) linked_list_iter_next(&iter);
-
-        if(item->data != NULL) {
-            free(item->data);
-        }
-
-        free(item);
-
+        task_free_ticket(item);
         linked_list_iter_remove(&iter);
     }
 }
@@ -116,7 +122,7 @@ Handle task_populate_tickets(linked_list* items) {
         return 0;
     }
 
-    if(threadCreate(task_populate_tickets_thread, data, 0x4000, 0x18, 1, true) == NULL) {
+    if(threadCreate(task_populate_tickets_thread, data, 0x10000, 0x18, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create ticket list thread.");
 
         svcCloseHandle(data->cancelEvent);

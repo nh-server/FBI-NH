@@ -3,12 +3,13 @@
 
 #include <3ds.h>
 
-#include "task/task.h"
 #include "section.h"
+#include "task/task.h"
 #include "../error.h"
 #include "../info.h"
 #include "../prompt.h"
-#include "../../screen.h"
+#include "../ui.h"
+#include "../../core/screen.h"
 
 typedef struct {
     data_op_info dumpInfo;

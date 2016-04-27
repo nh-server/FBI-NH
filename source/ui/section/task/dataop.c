@@ -3,9 +3,9 @@
 
 #include <3ds.h>
 
+#include "task.h"
 #include "../../list.h"
 #include "../../error.h"
-#include "task.h"
 
 typedef struct {
     data_op_info* info;
@@ -41,6 +41,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
 
                         bool firstRun = true;
                         while(data->info->currProcessed < data->info->currTotal) {
+                            svcWaitSynchronization(task_get_pause_event(), U64_MAX);
                             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                                 res = R_FBI_CANCELLED;
                                 break;
@@ -177,7 +178,7 @@ Handle task_data_op(data_op_info* info) {
         return 0;
     }
 
-    if(threadCreate(task_data_op_thread, data, 0x4000, 0x18, 1, true) == NULL) {
+    if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create data operation thread.");
 
         svcCloseHandle(data->cancelEvent);

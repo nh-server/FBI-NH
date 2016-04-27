@@ -1,34 +1,41 @@
-#include <dirent.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <3ds.h>
 
-#include "action/action.h"
 #include "section.h"
+#include "action/action.h"
+#include "task/task.h"
 #include "../error.h"
 #include "../list.h"
-#include "../../screen.h"
-#include "../../util.h"
-#include "task/task.h"
+#include "../ui.h"
+#include "../../core/linkedlist.h"
+#include "../../core/screen.h"
+#include "../../core/util.h"
 
-static list_item delete = {"Delete", COLOR_TEXT, action_delete_contents};
-static list_item copy = {"Copy", COLOR_TEXT, action_copy_contents};
+static list_item copy = {"Copy", COLOR_TEXT, action_copy_content};
 static list_item paste = {"Paste", COLOR_TEXT, action_paste_contents};
 
-static list_item install_cia = {"Install CIA", COLOR_TEXT, action_install_cias};
-static list_item install_and_delete_cia = {"Install and delete CIA", COLOR_TEXT, action_install_cias_delete};
+static list_item delete_file = {"Delete", COLOR_TEXT, action_delete_contents};
 
-static list_item install_ticket = {"Install ticket", COLOR_TEXT, action_install_tickets};
+static list_item install_cia = {"Install CIA", COLOR_TEXT, action_install_cia};
+static list_item install_and_delete_cia = {"Install and delete CIA", COLOR_TEXT, action_install_cia_delete};
 
+static list_item install_ticket = {"Install ticket", COLOR_TEXT, action_install_ticket};
+static list_item install_and_delete_ticket = {"Install and delete ticket", COLOR_TEXT, action_install_ticket_delete};
+
+static list_item delete_dir = {"Delete", COLOR_TEXT, action_delete_dir};
 static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
+static list_item copy_all_contents = {"Copy all contents", COLOR_TEXT, action_copy_contents};
 
 static list_item install_all_cias = {"Install all CIAs", COLOR_TEXT, action_install_cias};
 static list_item install_and_delete_all_cias = {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete};
 static list_item delete_all_cias = {"Delete all CIAs", COLOR_TEXT, action_delete_dir_cias};
 
 static list_item install_all_tickets = {"Install all tickets", COLOR_TEXT, action_install_tickets};
+static list_item install_and_delete_all_tickets = {"Install and delete all tickets", COLOR_TEXT, action_install_tickets_delete};
+static list_item delete_all_tickets = {"Delete all tickets", COLOR_TEXT, action_delete_dir_tickets};
 
 typedef struct {
     Handle cancelEvent;
@@ -42,12 +49,14 @@ typedef struct {
 } files_data;
 
 typedef struct {
-    file_info* info;
-    bool* populated;
+    linked_list* items;
+    list_item* selected;
+
+    file_info* target;
 } files_action_data;
 
 static void files_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_file_info(view, ((files_action_data*) data)->info, x1, y1, x2, y2);
+    ui_draw_file_info(view, ((files_action_data*) data)->target, x1, y1, x2, y2);
 }
 
 static void files_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
@@ -63,12 +72,12 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(file_info*, bool*) = (void(*)(file_info*, bool*)) selected->data;
+        void(*action)(linked_list*, list_item*, file_info*) = (void(*)(linked_list*, list_item*, file_info*)) selected->data;
 
         ui_pop();
         list_destroy(view);
 
-        action(actionData->info, actionData->populated);
+        action(actionData->items, actionData->selected, actionData->target);
 
         free(data);
 
@@ -76,36 +85,43 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
     }
 
     if(linked_list_size(items) == 0) {
-        if(actionData->info->isDirectory) {
-            if(actionData->info->containsCias) {
+        if(actionData->target->isDirectory) {
+            if(actionData->target->containsCias) {
                 linked_list_add(items, &install_all_cias);
                 linked_list_add(items, &install_and_delete_all_cias);
                 linked_list_add(items, &delete_all_cias);
             }
 
-            if(actionData->info->containsTickets) {
+            if(actionData->target->containsTickets) {
                 linked_list_add(items, &install_all_tickets);
+                linked_list_add(items, &install_and_delete_all_tickets);
+                linked_list_add(items, &delete_all_tickets);
             }
 
             linked_list_add(items, &delete_all_contents);
+            linked_list_add(items, &copy_all_contents);
+
+            linked_list_add(items, &delete_dir);
         } else {
-            if(actionData->info->isCia) {
+            if(actionData->target->isCia) {
                 linked_list_add(items, &install_cia);
                 linked_list_add(items, &install_and_delete_cia);
             }
 
-            if(actionData->info->isTicket) {
+            if(actionData->target->isTicket) {
                 linked_list_add(items, &install_ticket);
+                linked_list_add(items, &install_and_delete_ticket);
             }
+
+            linked_list_add(items, &delete_file);
         }
 
-        linked_list_add(items, &delete);
         linked_list_add(items, &copy);
         linked_list_add(items, &paste);
     }
 }
 
-static void files_action_open(file_info* info, bool* populated) {
+static void files_action_open(linked_list* items, list_item* selected, file_info* target) {
     files_action_data* data = (files_action_data*) calloc(1, sizeof(files_action_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate files action data.");
@@ -113,10 +129,12 @@ static void files_action_open(file_info* info, bool* populated) {
         return;
     }
 
-    data->info = info;
-    data->populated = populated;
+    data->items = items;
+    data->selected = selected;
 
-    list_display(info->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
+    data->target = target;
+
+    list_display(target->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
 
 static void files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -136,15 +154,15 @@ static void files_repopulate(files_data* listData, linked_list* items) {
     }
 
     while(!util_is_dir(&listData->archive, listData->currDir.path)) {
-        char parentPath[PATH_MAX];
+        char parentPath[FILE_PATH_MAX];
 
-        util_get_parent_path(parentPath, listData->currDir.path, PATH_MAX);
-        strncpy(listData->currDir.path, parentPath, PATH_MAX);
-        util_get_path_file(listData->currDir.name, listData->currDir.path, NAME_MAX);
+        util_get_parent_path(parentPath, listData->currDir.path, FILE_PATH_MAX);
+        strncpy(listData->currDir.path, parentPath, FILE_PATH_MAX);
+        util_get_path_file(listData->currDir.name, listData->currDir.path, FILE_NAME_MAX);
 
-        util_get_parent_path(parentPath, listData->currDir.path, PATH_MAX);
-        strncpy(listData->parentDir.path, parentPath, PATH_MAX);
-        util_get_path_file(listData->parentDir.name, listData->parentDir.path, NAME_MAX);
+        util_get_parent_path(parentPath, listData->currDir.path, FILE_PATH_MAX);
+        strncpy(listData->parentDir.path, parentPath, FILE_PATH_MAX);
+        util_get_path_file(listData->parentDir.name, listData->parentDir.path, FILE_NAME_MAX);
     }
 
     listData->cancelEvent = task_populate_files(items, &listData->currDir);
@@ -152,13 +170,13 @@ static void files_repopulate(files_data* listData, linked_list* items) {
 }
 
 static void files_navigate(files_data* listData, linked_list* items, const char* path) {
-    strncpy(listData->currDir.path, path, PATH_MAX);
-    util_get_path_file(listData->currDir.name, listData->currDir.path, NAME_MAX);
+    strncpy(listData->currDir.path, path, FILE_PATH_MAX);
+    util_get_path_file(listData->currDir.name, listData->currDir.path, FILE_NAME_MAX);
 
-    char parentPath[PATH_MAX];
-    util_get_parent_path(parentPath, listData->currDir.path, PATH_MAX);
-    strncpy(listData->parentDir.path, parentPath, PATH_MAX);
-    util_get_path_file(listData->parentDir.name, listData->parentDir.path, NAME_MAX);
+    char parentPath[FILE_PATH_MAX];
+    util_get_parent_path(parentPath, listData->currDir.path, FILE_PATH_MAX);
+    strncpy(listData->parentDir.path, parentPath, FILE_PATH_MAX);
+    util_get_path_file(listData->parentDir.name, listData->parentDir.path, FILE_NAME_MAX);
 
     files_repopulate(listData, items);
 }
@@ -200,7 +218,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     }
 
     if(hidKeysDown() & KEY_Y) {
-        files_action_open(&listData->currDir, &listData->populated);
+        files_action_open(items, selected, &listData->currDir);
         return;
     }
 
@@ -210,7 +228,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
         if(util_is_dir(&listData->archive, fileInfo->path)) {
             files_navigate(listData, items, fileInfo->path);
         } else {
-            files_action_open(fileInfo, &listData->populated);
+            files_action_open(items, selected, fileInfo);
             return;
         }
     }
@@ -258,8 +276,8 @@ void files_open(FS_Archive archive) {
     }
 
     data->currDir.archive = &data->archive;
-    snprintf(data->currDir.path, PATH_MAX, "/");
-    util_get_path_file(data->currDir.name, data->currDir.path, NAME_MAX);
+    snprintf(data->currDir.path, FILE_PATH_MAX, "/");
+    util_get_path_file(data->currDir.name, data->currDir.path, FILE_NAME_MAX);
     data->currDir.isDirectory = true;
     data->currDir.containsCias = false;
     data->currDir.size = 0;

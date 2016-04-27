@@ -4,18 +4,20 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
 
 typedef struct {
-    pending_title_info* info;
-    bool* populated;
-    u64* titleIds;
+    linked_list* items;
+    list_item* selected;
 
-    u32 sdTotal;
-    u32 nandTotal;
+    bool all;
 
     data_op_info deleteInfo;
     Handle cancelEvent;
@@ -24,10 +26,14 @@ typedef struct {
 static Result action_delete_pending_titles_delete(void* data, u32 index) {
     delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
 
+    list_item* item = deleteData->all ? (list_item*) linked_list_get(deleteData->items, index) : deleteData->selected;
+    pending_title_info* info = (pending_title_info*) item->data;
+
     Result res = 0;
 
-    if(R_SUCCEEDED(res = AM_DeletePendingTitle(index >= deleteData->sdTotal ? MEDIATYPE_NAND : MEDIATYPE_SD, deleteData->titleIds[index]))) {
-        *deleteData->populated = false;
+    if(R_SUCCEEDED(res = AM_DeletePendingTitle(info->mediaType, info->titleId))) {
+        linked_list_remove(deleteData->items, item);
+        task_free_pending_title(item);
     }
 
     return res;
@@ -36,14 +42,14 @@ static Result action_delete_pending_titles_delete(void* data, u32 index) {
 static bool action_delete_pending_titles_error(void* data, u32 index, Result res) {
     delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
 
+    pending_title_info* info = (pending_title_info*) (deleteData->all ? ((list_item*) linked_list_get(deleteData->items, index))->data : deleteData->selected->data);
+
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, deleteData->info, NULL, deleteData->info != NULL ? ui_draw_pending_title_info : NULL, NULL);
+        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, info, NULL, ui_draw_pending_title_info, NULL);
         return false;
     } else {
-        u64 titleId = deleteData->titleIds[index];
-
         volatile bool dismissed = false;
-        error_display_res(&dismissed, deleteData->info, deleteData->info != NULL ? ui_draw_pending_title_info : NULL, res, "Failed to delete pending title.\n%llX", titleId);
+        error_display_res(&dismissed, info, ui_draw_pending_title_info, res, "Failed to delete pending title.");
 
         while(!dismissed) {
             svcSleepThread(1000000);
@@ -56,14 +62,10 @@ static bool action_delete_pending_titles_error(void* data, u32 index, Result res
 static void action_delete_pending_titles_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
 
-    if(deleteData->info != NULL) {
-        ui_draw_pending_title_info(view, deleteData->info, x1, y1, x2, y2);
+    u32 index = deleteData->deleteInfo.processed;
+    if(index < deleteData->deleteInfo.total) {
+        ui_draw_pending_title_info(view, (pending_title_info*) (deleteData->all ? ((list_item*) linked_list_get(deleteData->items, index))->data : deleteData->selected->data), x1, y1, x2, y2);
     }
-}
-
-static void action_delete_pending_titles_free_data(delete_pending_titles_data* data) {
-    free(data->titleIds);
-    free(data);
 }
 
 static void action_delete_pending_titles_update(ui_view* view, void* data, float* progress, char* text) {
@@ -73,13 +75,11 @@ static void action_delete_pending_titles_update(ui_view* view, void* data, float
         ui_pop();
         info_destroy(view);
 
-        if(deleteData->deleteInfo.premature) {
-            action_delete_pending_titles_free_data(deleteData);
-        } else {
-            prompt_display("Success", "Pending title(s) deleted.", COLOR_TEXT, false, deleteData->info, NULL, deleteData->info != NULL ? ui_draw_pending_title_info : NULL, NULL);
+        if(!deleteData->deleteInfo.premature) {
+            prompt_display("Success", "Pending title(s) deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
         }
 
-        action_delete_pending_titles_free_data(deleteData);
+        free(deleteData);
 
         return;
     }
@@ -103,30 +103,28 @@ static void action_delete_pending_titles_onresponse(ui_view* view, void* data, b
             error_display(NULL, NULL, NULL, "Failed to initiate delete operation.");
         }
     } else {
-        action_delete_pending_titles_free_data(deleteData);
+        free(deleteData);
     }
 }
 
-void action_delete_pending_titles(pending_title_info* info, bool* populated, const char* message, u64* titleIds, u32 sdTotal, u32 nandTotal) {
+void action_delete_pending_titles(linked_list* items, list_item* selected, const char* message, bool all) {
     delete_pending_titles_data* data = (delete_pending_titles_data*) calloc(1, sizeof(delete_pending_titles_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate delete pending titles data.");
 
-        free(titleIds);
         return;
     }
 
-    data->info = info;
-    data->populated = populated;
-    data->titleIds = titleIds;
-    data->sdTotal = sdTotal;
-    data->nandTotal = nandTotal;
+    data->items = items;
+    data->selected = selected;
+
+    data->all = all;
 
     data->deleteInfo.data = data;
 
     data->deleteInfo.op = DATAOP_DELETE;
 
-    data->deleteInfo.total = sdTotal + nandTotal;
+    data->deleteInfo.total = all ? linked_list_size(items) : 1;
 
     data->deleteInfo.delete = action_delete_pending_titles_delete;
 
@@ -134,48 +132,13 @@ void action_delete_pending_titles(pending_title_info* info, bool* populated, con
 
     data->cancelEvent = 0;
 
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_delete_pending_titles_draw_top, action_delete_pending_titles_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, !all ? action_delete_pending_titles_draw_top : NULL, action_delete_pending_titles_onresponse);
 }
 
-void action_delete_pending_title(pending_title_info* info, bool* populated) {
-    u64* titleIds = (u64*) calloc(1, sizeof(u64));
-    if(titleIds == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate title ID buffer.");
-
-        return;
-    }
-
-    titleIds[0] = info->titleId;
-    u32 sdTotal = info->mediaType == MEDIATYPE_SD ? 1 : 0;
-    u32 nandTotal = info->mediaType == MEDIATYPE_NAND ? 1 : 0;
-
-    action_delete_pending_titles(info, populated, "Delete the selected pending title?", titleIds, sdTotal, nandTotal);
+void action_delete_pending_title(linked_list* items, list_item* selected) {
+    action_delete_pending_titles(items, selected, "Delete the selected pending title?", false);
 }
 
-void action_delete_all_pending_titles(pending_title_info* info, bool* populated) {
-    u32 sdTotal = 0;
-    u32 nandTotal = 0;
-
-    Result res = 0;
-    if(R_FAILED(res = AM_GetPendingTitleCount(&sdTotal, MEDIATYPE_SD, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION)) || R_FAILED(res = AM_GetPendingTitleCount(&nandTotal, MEDIATYPE_NAND, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION))) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to retrieve pending title count.");
-
-        return;
-    }
-
-    u64* titleIds = (u64*) calloc(sdTotal + nandTotal, sizeof(u64));
-    if(titleIds == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate title ID buffer.");
-
-        return;
-    }
-
-    if(R_FAILED(res = AM_GetPendingTitleList(&sdTotal, sdTotal, MEDIATYPE_SD, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION, titleIds)) || R_FAILED(res = AM_GetPendingTitleList(&nandTotal, nandTotal, MEDIATYPE_NAND, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION, &titleIds[sdTotal]))) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to retrieve pending title list.");
-
-        free(titleIds);
-        return;
-    }
-
-    action_delete_pending_titles(info, populated, "Delete all pending titles?", titleIds, sdTotal, nandTotal);
+void action_delete_all_pending_titles(linked_list* items, list_item* selected) {
+    action_delete_pending_titles(items, selected, "Delete all pending titles?", true);
 }

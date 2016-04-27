@@ -4,10 +4,9 @@
 #include <string.h>
 
 #include <3ds.h>
-#include <3ds/services/fs.h>
 
 #include "util.h"
-#include "ui/section/task/task.h"
+#include "../ui/section/task/task.h"
 
 extern void cleanup();
 
@@ -125,6 +124,54 @@ void util_panic(const char* s, ...) {
     exit(1);
 }
 
+FS_Path* util_make_path_utf8(const char* path) {
+    size_t len = strlen(path);
+
+    u16* utf16 = (u16*) calloc(len + 1, sizeof(u16));
+    if(utf16 == NULL) {
+        return NULL;
+    }
+
+    ssize_t utf16Len = utf8_to_utf16(utf16, (const uint8_t*) path, len);
+
+    FS_Path* fsPath = (FS_Path*) calloc(1, sizeof(FS_Path));
+    if(fsPath == NULL) {
+        free(utf16);
+        return NULL;
+    }
+
+    fsPath->type = PATH_UTF16;
+    fsPath->size = (utf16Len + 1) * sizeof(u16);
+    fsPath->data = utf16;
+
+    return fsPath;
+}
+
+void util_free_path_utf8(FS_Path* path) {
+    free((void*) path->data);
+    free(path);
+}
+
+bool util_exists(FS_Archive* archive, const char* path) {
+    bool exists = false;
+
+    FS_Path* fsPath = util_make_path_utf8(path);
+    if(path != NULL) {
+        Handle handle = 0;
+        if(R_SUCCEEDED(FSUSER_OpenFile(&handle, *archive, *fsPath, FS_OPEN_READ, 0))) {
+            FSFILE_Close(handle);
+            exists = true;
+        } else if(R_SUCCEEDED(FSUSER_OpenDirectory(&handle, *archive, *fsPath))) {
+            FSDIR_Close(handle);
+            exists = true;
+        }
+
+        util_free_path_utf8(fsPath);
+    }
+
+    return exists;
+}
+
 bool util_is_dir(FS_Archive* archive, const char* path) {
     Result res = 0;
 
@@ -143,6 +190,95 @@ bool util_is_dir(FS_Archive* archive, const char* path) {
     return R_SUCCEEDED(res);
 }
 
+Result util_ensure_dir(FS_Archive* archive, const char* path) {
+    Result res = 0;
+
+    if(!util_is_dir(archive, path)) {
+        FS_Path* fsPath = util_make_path_utf8(path);
+        if(fsPath != NULL) {
+            FSUSER_DeleteFile(*archive, *fsPath);
+            res = FSUSER_CreateDirectory(*archive, *fsPath, 0);
+
+            util_free_path_utf8(fsPath);
+        } else {
+            res = R_FBI_OUT_OF_MEMORY;
+        }
+    }
+
+    return res;
+}
+
+void util_get_path_file(char* out, const char* path, u32 size) {
+    const char* start = NULL;
+    const char* end = NULL;
+    const char* curr = path - 1;
+    while((curr = strchr(curr + 1, '/')) != NULL) {
+        start = end != NULL ? end : path;
+        end = curr;
+    }
+
+    if(end != path + strlen(path) - 1) {
+        start = end;
+        end = path + strlen(path);
+    }
+
+    if(end - start == 0) {
+        strncpy(out, "/", size);
+    } else {
+        u32 terminatorPos = end - start - 1 < size - 1 ? end - start - 1 : size - 1;
+        strncpy(out, start + 1, terminatorPos);
+        out[terminatorPos] = '\0';
+    }
+}
+
+void util_get_parent_path(char* out, const char* path, u32 size) {
+    size_t pathLen = strlen(path);
+
+    const char* start = NULL;
+    const char* end = NULL;
+    const char* curr = path - 1;
+    while((curr = strchr(curr + 1, '/')) != NULL && (start == NULL || curr != path + pathLen - 1)) {
+        start = end != NULL ? end : path;
+        end = curr;
+    }
+
+    u32 terminatorPos = end - path + 1 < size - 1 ? end - path + 1 : size - 1;
+    strncpy(out, path, terminatorPos);
+    out[terminatorPos] = '\0';
+}
+
+bool util_filter_dirs(void* data, FS_Archive* archive, const char* path, u32 attributes) {
+    return (bool) (attributes & FS_ATTRIBUTE_DIRECTORY);
+}
+
+bool util_filter_files(void* data, FS_Archive* archive, const char* path, u32 attributes) {
+    return !(attributes & FS_ATTRIBUTE_DIRECTORY);
+}
+
+bool util_filter_hidden(void* data, FS_Archive* archive, const char* path, u32 attributes) {
+    return !(attributes & FS_ATTRIBUTE_HIDDEN);
+}
+
+bool util_filter_file_extension(void* data, FS_Archive* archive, const char* path, u32 attributes) {
+    if(data == NULL) {
+        return true;
+    }
+
+    char* extension = (char*) data;
+    size_t extensionLen = strlen(extension);
+
+    size_t len = strlen(path);
+    return util_filter_files(data, archive, path, attributes) && len >= extensionLen && strcmp(path + len - extensionLen, extension) == 0;
+}
+
+bool util_filter_not_path(void* data, FS_Archive* archive, const char* path, u32 attributes) {
+    if(data == NULL) {
+        return true;
+    }
+
+    return strcmp(path, (char*) data) != 0;
+}
+
 static Result util_traverse_dir_internal(FS_Archive* archive, const char* path, bool recursive, bool dirsFirst, void* data, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes),
                                                                                                                             void (*process)(void* data, FS_Archive* archive, const char* path, u32 attributes)) {
     Result res = 0;
@@ -152,19 +288,19 @@ static Result util_traverse_dir_internal(FS_Archive* archive, const char* path, 
         Handle handle = 0;
         if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&handle, *archive, *fsPath))) {
             size_t pathLen = strlen(path);
-            char* pathBuf = (char*) calloc(1, PATH_MAX);
+            char* pathBuf = (char*) calloc(1, FILE_PATH_MAX);
             if(pathBuf != NULL) {
-                strncpy(pathBuf, path, PATH_MAX);
+                strncpy(pathBuf, path, FILE_PATH_MAX);
 
                 u32 entryCount = 0;
                 FS_DirectoryEntry entry;
                 u32 done = 0;
                 while(R_SUCCEEDED(FSDIR_Read(handle, &entryCount, 1, &entry)) && entryCount > 0) {
-                    ssize_t units = utf16_to_utf8((uint8_t*) pathBuf + pathLen, entry.name, PATH_MAX - pathLen - 1);
+                    ssize_t units = utf16_to_utf8((uint8_t*) pathBuf + pathLen, entry.name, FILE_PATH_MAX - pathLen - 1);
                     if(units > 0) {
                         pathBuf[pathLen + units] = '\0';
                         if(entry.attributes & FS_ATTRIBUTE_DIRECTORY) {
-                            if(pathLen + units < PATH_MAX - 2) {
+                            if(pathLen + units < FILE_PATH_MAX - 2) {
                                 pathBuf[pathLen + units] = '/';
                                 pathBuf[pathLen + units + 1] = '\0';
                             }
@@ -228,7 +364,7 @@ static Result util_traverse_dir(FS_Archive* archive, const char* path, bool recu
 }
 
 static Result util_traverse_file(FS_Archive* archive, const char* path, bool recursive, bool dirsFirst, void* data, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes),
-                                                                                                        void (*process)(void* data, FS_Archive* archive, const char* path, u32 attributes)) {
+                                                                                                                    void (*process)(void* data, FS_Archive* archive, const char* path, u32 attributes)) {
     Result res = 0;
 
     FS_Path* fsPath = util_make_path_utf8(path);
@@ -261,38 +397,6 @@ Result util_traverse_contents(FS_Archive* archive, const char* path, bool recurs
     }
 
     return res;
-}
-
-bool util_filter_dirs(void* data, FS_Archive* archive, const char* path, u32 attributes) {
-    return (bool) (attributes & FS_ATTRIBUTE_DIRECTORY);
-}
-
-bool util_filter_files(void* data, FS_Archive* archive, const char* path, u32 attributes) {
-    return !(attributes & FS_ATTRIBUTE_DIRECTORY);
-}
-
-bool util_filter_hidden(void* data, FS_Archive* archive, const char* path, u32 attributes) {
-    return !(attributes & FS_ATTRIBUTE_HIDDEN);
-}
-
-bool util_filter_file_extension(void* data, FS_Archive* archive, const char* path, u32 attributes) {
-    if(data == NULL) {
-        return true;
-    }
-
-    char* extension = (char*) data;
-    size_t extensionLen = strlen(extension);
-
-    size_t len = strlen(path);
-    return util_filter_files(data, archive, path, attributes) && len >= extensionLen && strcmp(path + len - extensionLen, extension) == 0;
-}
-
-bool util_filter_not_path(void* data, FS_Archive* archive, const char* path, u32 attributes) {
-    if(data == NULL) {
-        return true;
-    }
-
-    return strcmp(path, (char*) data) != 0;
 }
 
 typedef struct {
@@ -391,86 +495,6 @@ void util_free_contents(char** contents, u32 count) {
     free(contents);
 }
 
-void util_get_path_file(char* out, const char* path, u32 size) {
-    const char* start = NULL;
-    const char* end = NULL;
-    const char* curr = path - 1;
-    while((curr = strchr(curr + 1, '/')) != NULL) {
-        start = end != NULL ? end : path;
-        end = curr;
-    }
-
-    if(end - start == 0) {
-        strncpy(out, "/", size);
-    } else {
-        u32 terminatorPos = end - start - 1 < size - 1 ? end - start - 1 : size - 1;
-        strncpy(out, start + 1, terminatorPos);
-        out[terminatorPos] = '\0';
-    }
-}
-
-void util_get_parent_path(char* out, const char* path, u32 size) {
-    size_t pathLen = strlen(path);
-
-    const char* start = NULL;
-    const char* end = NULL;
-    const char* curr = path - 1;
-    while((curr = strchr(curr + 1, '/')) != NULL && (start == NULL || curr != path + pathLen - 1)) {
-        start = end != NULL ? end : path;
-        end = curr;
-    }
-
-    u32 terminatorPos = end - path + 1 < size - 1 ? end - path + 1 : size - 1;
-    strncpy(out, path, terminatorPos);
-    out[terminatorPos] = '\0';
-}
-
-Result util_ensure_dir(FS_Archive* archive, const char* path) {
-    Result res = 0;
-
-    if(!util_is_dir(archive, path)) {
-        FS_Path* fsPath = util_make_path_utf8(path);
-        if(fsPath != NULL) {
-            FSUSER_DeleteFile(*archive, *fsPath);
-            res = FSUSER_CreateDirectory(*archive, *fsPath, 0);
-
-            util_free_path_utf8(fsPath);
-        } else {
-            res = R_FBI_OUT_OF_MEMORY;
-        }
-    }
-
-    return res;
-}
-
-FS_Path* util_make_path_utf8(const char* path) {
-    size_t len = strlen(path);
-
-    u16* utf16 = (u16*) calloc(len + 1, sizeof(u16));
-    if(utf16 == NULL) {
-        return NULL;
-    }
-
-    ssize_t utf16Len = utf8_to_utf16(utf16, (const uint8_t*) path, len);
-
-    FS_Path* fsPath = (FS_Path*) calloc(1, sizeof(FS_Path));
-    if(fsPath == NULL) {
-        free(utf16);
-        return NULL;
-    }
-
-    fsPath->type = PATH_UTF16;
-    fsPath->size = (utf16Len + 1) * sizeof(u16);
-    fsPath->data = utf16;
-
-    return fsPath;
-}
-
-void util_free_path_utf8(FS_Path* path) {
-    free((void*) path->data);
-    free(path);
-}
-
 int util_compare_u32(const void* e1, const void* e2) {
     u32 id1 = *(u32*) e1;
     u32 id2 = *(u32*) e2;
@@ -501,37 +525,5 @@ int util_compare_directory_entries(const void* e1, const void* e2) {
         utf16_to_utf8((uint8_t*) entryName2, ent2->name, sizeof(entryName2) - 1);
 
         return strcasecmp(entryName1, entryName2);
-    }
-}
-
-u32 util_next_pow_2(u32 i) {
-    i--;
-    i |= i >> 1;
-    i |= i >> 2;
-    i |= i >> 4;
-    i |= i >> 8;
-    i |= i >> 16;
-    i++;
-
-    return i;
-}
-
-u32 util_tiled_texture_index(u32 x, u32 y, u32 w, u32 h) {
-    return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3));
-}
-
-FILE* util_open_resource(const char* path) {
-    u32 realPathSize = strlen(path) + 16;
-    char realPath[realPathSize];
-
-    snprintf(realPath, realPathSize, "sdmc:/fbitheme/%s", path);
-    FILE* fd = fopen(realPath, "rb");
-
-    if(fd != NULL) {
-        return fd;
-    } else {
-        snprintf(realPath, realPathSize, "romfs:/%s", path);
-
-        return fopen(realPath, "rb");
     }
 }

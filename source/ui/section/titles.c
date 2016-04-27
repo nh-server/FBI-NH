@@ -3,12 +3,14 @@
 
 #include <3ds.h>
 
-#include "action/action.h"
 #include "section.h"
+#include "action/action.h"
+#include "task/task.h"
 #include "../error.h"
 #include "../list.h"
-#include "../../screen.h"
-#include "task/task.h"
+#include "../ui.h"
+#include "../../core/linkedlist.h"
+#include "../../core/screen.h"
 
 static list_item launch_title = {"Launch Title", COLOR_TEXT, action_launch_title};
 static list_item delete_title = {"Delete Title", COLOR_TEXT, action_delete_title};
@@ -24,12 +26,12 @@ typedef struct {
 } titles_data;
 
 typedef struct {
-    title_info* info;
-    bool* populated;
+    linked_list* items;
+    list_item* selected;
 } titles_action_data;
 
 static void titles_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_title_info(view, ((titles_action_data*) data)->info, x1, y1, x2, y2);
+    ui_draw_title_info(view, ((titles_action_data*) data)->selected->data, x1, y1, x2, y2);
 }
 
 static void titles_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
@@ -45,12 +47,12 @@ static void titles_action_update(ui_view* view, void* data, linked_list* items, 
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(title_info*, bool*) = (void(*)(title_info*, bool*)) selected->data;
+        void(*action)(linked_list*, list_item*) = (void(*)(linked_list*, list_item*)) selected->data;
 
         ui_pop();
         list_destroy(view);
 
-        action(actionData->info, actionData->populated);
+        action(actionData->items, actionData->selected);
 
         free(data);
 
@@ -60,15 +62,17 @@ static void titles_action_update(ui_view* view, void* data, linked_list* items, 
     if(linked_list_size(items) == 0) {
         linked_list_add(items, &launch_title);
 
-        if(actionData->info->mediaType != MEDIATYPE_GAME_CARD) {
+        title_info* info = (title_info*) actionData->selected->data;
+
+        if(info->mediaType != MEDIATYPE_GAME_CARD) {
             linked_list_add(items, &delete_title);
         }
 
-        if(!actionData->info->twl) {
+        if(!info->twl) {
             linked_list_add(items, &extract_smdh);
             linked_list_add(items, &browse_save_data);
 
-            if(actionData->info->mediaType != MEDIATYPE_GAME_CARD) {
+            if(info->mediaType != MEDIATYPE_GAME_CARD) {
                 linked_list_add(items, &import_secure_value);
                 linked_list_add(items, &export_secure_value);
                 linked_list_add(items, &delete_secure_value);
@@ -77,7 +81,7 @@ static void titles_action_update(ui_view* view, void* data, linked_list* items, 
     }
 }
 
-static void titles_action_open(title_info* info, bool* populated) {
+static void titles_action_open(linked_list* items, list_item* selected) {
     titles_action_data* data = (titles_action_data*) calloc(1, sizeof(titles_action_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate titles action data.");
@@ -85,8 +89,8 @@ static void titles_action_open(title_info* info, bool* populated) {
         return;
     }
 
-    data->info = info;
-    data->populated = populated;
+    data->items = items;
+    data->selected = selected;
 
     list_display("Title Action", "A: Select, B: Return", data, titles_action_update, titles_action_draw_top);
 }
@@ -134,7 +138,7 @@ static void titles_update(ui_view* view, void* data, linked_list* items, list_it
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        titles_action_open((title_info*) selected->data, &listData->populated);
+        titles_action_open(items, selected);
         return;
     }
 }
