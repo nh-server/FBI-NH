@@ -4,11 +4,15 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../util.h"
-#include "../../../screen.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 static void action_extract_smdh_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
@@ -22,38 +26,33 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
 
     Handle fileHandle;
     if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, archive, filePath, FS_OPEN_READ, 0))) {
-        SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
-        if(smdh != NULL) {
-            u32 bytesRead;
-            if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
-                FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
-                if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive))) {
-                    if(R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/smdh/"))) {
-                        char pathBuf[64];
-                        snprintf(pathBuf, 64, "/fbi/smdh/%016llX.smdh", info->titleId);
+        SMDH smdh;
 
-                        FS_Path* fsPath = util_make_path_utf8(pathBuf);
-                        if(fsPath != NULL) {
-                            Handle smdhHandle = 0;
-                            if(R_SUCCEEDED(res = FSUSER_OpenFile(&smdhHandle, sdmcArchive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
-                                u32 bytesWritten = 0;
-                                res = FSFILE_Write(smdhHandle, &bytesWritten, 0, smdh, sizeof(SMDH), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
-                                FSFILE_Close(smdhHandle);
-                            }
+        u32 bytesRead = 0;
+        if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, &smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
+            FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
+            if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive))) {
+                if(R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/smdh/"))) {
+                    char pathBuf[64];
+                    snprintf(pathBuf, 64, "/fbi/smdh/%016llX.smdh", info->titleId);
 
-                            util_free_path_utf8(fsPath);
-                        } else {
-                            res = R_FBI_OUT_OF_MEMORY;
+                    FS_Path* fsPath = util_make_path_utf8(pathBuf);
+                    if(fsPath != NULL) {
+                        Handle smdhHandle = 0;
+                        if(R_SUCCEEDED(res = FSUSER_OpenFile(&smdhHandle, sdmcArchive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
+                            u32 bytesWritten = 0;
+                            res = FSFILE_Write(smdhHandle, &bytesWritten, 0, &smdh, sizeof(SMDH), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
+                            FSFILE_Close(smdhHandle);
                         }
+
+                        util_free_path_utf8(fsPath);
+                    } else {
+                        res = R_FBI_OUT_OF_MEMORY;
                     }
-
-                    FSUSER_CloseArchive(&sdmcArchive);
                 }
-            }
 
-            free(smdh);
-        } else {
-            res = R_FBI_OUT_OF_MEMORY;
+                FSUSER_CloseArchive(&sdmcArchive);
+            }
         }
 
         FSFILE_Close(fileHandle);
@@ -75,6 +74,6 @@ static void action_extract_smdh_onresponse(ui_view* view, void* data, bool respo
     }
 }
 
-void action_extract_smdh(title_info* info, bool* populated) {
-    prompt_display("Confirmation", "Extract the SMDH of the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_extract_smdh_onresponse);
+void action_extract_smdh(linked_list* items, list_item* selected) {
+    prompt_display("Confirmation", "Extract the SMDH of the selected title?", COLOR_TEXT, true, selected->data, NULL, ui_draw_title_info, action_extract_smdh_onresponse);
 }

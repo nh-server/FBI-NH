@@ -7,7 +7,7 @@
 
 #include "error.h"
 #include "prompt.h"
-#include "../screen.h"
+#include "../core/screen.h"
 
 static const char* level_to_string(Result res) {
     switch(R_LEVEL(res)) {

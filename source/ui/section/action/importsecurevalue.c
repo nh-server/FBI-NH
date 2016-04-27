@@ -3,11 +3,15 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
-#include "../../../util.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 static void action_import_secure_value_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
@@ -52,6 +56,6 @@ static void action_import_secure_value_onresponse(ui_view* view, void* data, boo
     }
 }
 
-void action_import_secure_value(title_info* info, bool* populated) {
-    prompt_display("Confirmation", "Import the secure value of the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_import_secure_value_onresponse);
+void action_import_secure_value(linked_list* items, list_item* selected) {
+    prompt_display("Confirmation", "Import the secure value of the selected title?", COLOR_TEXT, true, selected->data, NULL, ui_draw_title_info, action_import_secure_value_onresponse);
 }

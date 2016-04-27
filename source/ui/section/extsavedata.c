@@ -3,11 +3,14 @@
 
 #include <3ds.h>
 
-#include "action/action.h"
 #include "section.h"
+#include "action/action.h"
+#include "task/task.h"
 #include "../error.h"
 #include "../list.h"
-#include "../../screen.h"
+#include "../ui.h"
+#include "../../core/linkedlist.h"
+#include "../../core/screen.h"
 
 static list_item browse_user_save_data = {"Browse User Save Data", COLOR_TEXT, action_browse_user_ext_save_data};
 static list_item browse_spotpass_save_data = {"Browse SpotPass Save Data", COLOR_TEXT, action_browse_boss_ext_save_data};
@@ -19,12 +22,12 @@ typedef struct {
 } extsavedata_data;
 
 typedef struct {
-    ext_save_data_info* info;
-    bool* populated;
+    linked_list* items;
+    list_item* selected;
 } extsavedata_action_data;
 
 static void extsavedata_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_ext_save_data_info(view, ((extsavedata_action_data*) data)->info, x1, y1, x2, y2);
+    ui_draw_ext_save_data_info(view, ((extsavedata_action_data*) data)->selected->data, x1, y1, x2, y2);
 }
 
 static void extsavedata_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
@@ -40,12 +43,12 @@ static void extsavedata_action_update(ui_view* view, void* data, linked_list* it
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(ext_save_data_info*, bool*) = (void(*)(ext_save_data_info*, bool*)) selected->data;
+        void(*action)(linked_list*, list_item*) = (void(*)(linked_list*, list_item*)) selected->data;
 
         ui_pop();
         list_destroy(view);
 
-        action(actionData->info, actionData->populated);
+        action(actionData->items, actionData->selected);
 
         free(data);
 
@@ -59,7 +62,7 @@ static void extsavedata_action_update(ui_view* view, void* data, linked_list* it
     }
 }
 
-static void extsavedata_action_open(ext_save_data_info* info, bool* populated) {
+static void extsavedata_action_open(linked_list* items, list_item* selected) {
     extsavedata_action_data* data = (extsavedata_action_data*) calloc(1, sizeof(extsavedata_action_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate ext save data action data.");
@@ -67,8 +70,8 @@ static void extsavedata_action_open(ext_save_data_info* info, bool* populated) {
         return;
     }
 
-    data->info = info;
-    data->populated = populated;
+    data->items = items;
+    data->selected = selected;
 
     list_display("Ext Save Data Action", "A: Select, B: Return", data, extsavedata_action_update, extsavedata_action_draw_top);
 }
@@ -116,7 +119,7 @@ static void extsavedata_update(ui_view* view, void* data, linked_list* items, li
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        extsavedata_action_open((ext_save_data_info*) selected->data, &listData->populated);
+        extsavedata_action_open(items, selected);
         return;
     }
 }

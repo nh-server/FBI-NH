@@ -1,4 +1,3 @@
-#include <sys/syslimits.h>
 #include <malloc.h>
 #include <string.h>
 
@@ -8,9 +7,10 @@
 #include "../task/task.h"
 
 static bool clipboard_has = false;
+static bool clipboard_contents_only;
 static FS_Archive clipboard_archive;
 static void* clipboard_archive_path;
-static char clipboard_path[PATH_MAX];
+static char clipboard_path[FILE_PATH_MAX];
 
 bool clipboard_has_contents() {
     return clipboard_has;
@@ -24,12 +24,17 @@ char* clipboard_get_path() {
     return clipboard_path;
 }
 
-Result clipboard_set_contents(FS_Archive archive, const char* path) {
+bool clipboard_is_contents_only() {
+    return clipboard_contents_only;
+}
+
+Result clipboard_set_contents(FS_Archive archive, const char* path, bool contentsOnly) {
     clipboard_clear();
 
     clipboard_has = true;
+    clipboard_contents_only = contentsOnly;
     clipboard_archive = archive;
-    strncpy(clipboard_path, path, PATH_MAX);
+    strncpy(clipboard_path, path, FILE_PATH_MAX);
 
     if(clipboard_archive.lowPath.size > 0) {
         clipboard_archive_path = calloc(1, clipboard_archive.lowPath.size);
@@ -58,5 +63,6 @@ void clipboard_clear() {
     }
 
     clipboard_has = false;
-    clipboard_path[0] = '\0';
+    clipboard_contents_only = false;
+    memset(clipboard_path, '\0', FILE_PATH_MAX);
 }

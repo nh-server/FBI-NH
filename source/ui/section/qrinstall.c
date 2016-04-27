@@ -4,12 +4,13 @@
 
 #include <3ds.h>
 
-#include "task/task.h"
 #include "section.h"
+#include "task/task.h"
 #include "../error.h"
 #include "../info.h"
 #include "../prompt.h"
-#include "../../screen.h"
+#include "../ui.h"
+#include "../../core/screen.h"
 #include "../../quirc/quirc_internal.h"
 
 #define IMAGE_WIDTH 400

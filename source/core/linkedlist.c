@@ -1,4 +1,5 @@
 #include <malloc.h>
+#include <stdlib.h>
 
 #include "linkedlist.h"
 
@@ -183,6 +184,26 @@ bool linked_list_remove_at(linked_list* list, unsigned int index) {
 
     linked_list_remove_node(list, node);
     return true;
+}
+
+void linked_list_sort(linked_list* list, int (*compare)(const void* p1, const void* p2)) {
+    unsigned int count = list->size;
+    void* elements[count];
+
+    unsigned int i = 0;
+    linked_list_node* node = list->first;
+    while(node != NULL && i < count) {
+        elements[i++] = node->value;
+        node = node->next;
+    }
+
+    linked_list_clear(list);
+
+    qsort(elements, count, sizeof(void*), compare);
+
+    for(unsigned int index = 0; index < count; index++) {
+        linked_list_add(list, elements[index]);
+    }
 }
 
 void linked_list_iterate(linked_list* list, linked_list_iter* iter) {

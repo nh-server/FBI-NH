@@ -6,7 +6,7 @@
 #include <3ds.h>
 #include <citro3d.h>
 
-#include "stb_image/stb_image.h"
+#include "../stb_image/stb_image.h"
 #include "screen.h"
 #include "util.h"
 
@@ -51,6 +51,22 @@ static struct {
 } textures[MAX_TEXTURES];
 
 static C3D_Tex* glyphSheets;
+
+static FILE* screen_open_resource(const char* path) {
+    u32 realPathSize = strlen(path) + 16;
+    char realPath[realPathSize];
+
+    snprintf(realPath, realPathSize, "sdmc:/fbitheme/%s", path);
+    FILE* fd = fopen(realPath, "rb");
+
+    if(fd != NULL) {
+        return fd;
+    } else {
+        snprintf(realPath, realPathSize, "romfs:/%s", path);
+
+        return fopen(realPath, "rb");
+    }
+}
 
 void screen_init() {
     if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4)) {
@@ -150,7 +166,7 @@ void screen_init() {
         tex->param = GPU_TEXTURE_MAG_FILTER(GPU_LINEAR) | GPU_TEXTURE_MIN_FILTER(GPU_LINEAR) | GPU_TEXTURE_WRAP_S(GPU_CLAMP_TO_EDGE) | GPU_TEXTURE_WRAP_T(GPU_CLAMP_TO_EDGE);
     }
 
-    FILE* fd = util_open_resource("textcolor.cfg");
+    FILE* fd = screen_open_resource("textcolor.cfg");
     if(fd == NULL) {
         util_panic("Failed to open text color config: %s\n", strerror(errno));
         return;
@@ -259,18 +275,30 @@ void screen_exit() {
     }
 }
 
+static u32 screen_next_pow_2(u32 i) {
+    i--;
+    i |= i >> 1;
+    i |= i >> 2;
+    i |= i >> 4;
+    i |= i >> 8;
+    i |= i >> 16;
+    i++;
+
+    return i;
+}
+
 void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
         util_panic("Attempted to load buffer to invalid texture ID \"%lu\".", id);
         return;
     }
 
-    u32 pow2Width = util_next_pow_2(width);
+    u32 pow2Width = screen_next_pow_2(width);
     if(pow2Width < 64) {
         pow2Width = 64;
     }
 
-    u32 pow2Height = util_next_pow_2(height);
+    u32 pow2Height = screen_next_pow_2(height);
     if(pow2Height < 64) {
         pow2Height = 64;
     }
@@ -345,7 +373,7 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
         return;
     }
 
-    FILE* fd = util_open_resource(path);
+    FILE* fd = screen_open_resource(path);
     if(fd == NULL) {
         util_panic("Failed to load PNG file \"%s\": %s", path, strerror(errno));
         return;
@@ -401,13 +429,15 @@ u32 screen_load_texture_file_auto(const char* path, bool linearFilter) {
     return (u32) id;
 }
 
+static u32 screen_tiled_texture_index(u32 x, u32 y, u32 w, u32 h) {
+    return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3));
+}
+
 void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
         util_panic("Attempted to load tiled data to invalid texture ID \"%lu\".", id);
         return;
     }
-
-    u32 pixelSize = size / width / height;
 
     u8* untiledData = (u8*) calloc(1, size);
     if(untiledData == NULL) {
@@ -415,9 +445,11 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
         return;
     }
 
+    u32 pixelSize = size / width / height;
+
     for(u32 x = 0; x < width; x++) {
         for(u32 y = 0; y < height; y++) {
-            u32 tiledDataPos = util_tiled_texture_index(x, y, width, height) * pixelSize;
+            u32 tiledDataPos = screen_tiled_texture_index(x, y, width, height) * pixelSize;
             u32 untiledDataPos = (y * width + x) * pixelSize;
 
             for(u32 i = 0; i < pixelSize; i++) {

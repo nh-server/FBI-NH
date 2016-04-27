@@ -1,12 +1,12 @@
 #pragma once
 
-#include <sys/syslimits.h>
+#define LIST_ITEM_NAME_MAX 512
 
-#include "ui.h"
-#include "../core/linkedlist.h"
+typedef struct linked_list_s linked_list;
+typedef struct ui_view_s ui_view;
 
-typedef struct {
-    char name[NAME_MAX];
+typedef struct list_item_s {
+    char name[LIST_ITEM_NAME_MAX];
     u32 color;
     void* data;
 } list_item;

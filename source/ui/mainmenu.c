@@ -5,8 +5,10 @@
 
 #include "list.h"
 #include "mainmenu.h"
+#include "ui.h"
 #include "section/section.h"
-#include "../screen.h"
+#include "../core/linkedlist.h"
+#include "../core/screen.h"
 
 static list_item sd = {"SD", COLOR_TEXT, files_open_sd};
 static list_item ctr_nand = {"CTR NAND", COLOR_TEXT, files_open_ctr_nand};

@@ -1,15 +1,15 @@
-#include <sys/syslimits.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <3ds.h>
 
+#include "task.h"
 #include "../../list.h"
 #include "../../error.h"
-#include "../../../screen.h"
-#include "../../../util.h"
-#include "task.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 typedef struct {
     linked_list* items;
@@ -31,6 +31,7 @@ static Result task_populate_pending_titles_from(populate_pending_titles_data* da
                 if(pendingTitleInfos != NULL) {
                     if(R_SUCCEEDED(res = AM_GetPendingTitleInfo(pendingTitleCount, mediaType, pendingTitleIds, pendingTitleInfos))) {
                         for(u32 i = 0; i < pendingTitleCount && R_SUCCEEDED(res); i++) {
+                            svcWaitSynchronization(task_get_pause_event(), U64_MAX);
                             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                                 break;
                             }
@@ -43,7 +44,7 @@ static Result task_populate_pending_titles_from(populate_pending_titles_data* da
                                     pendingTitleInfo->titleId = pendingTitleIds[i];
                                     pendingTitleInfo->version = pendingTitleInfos[i].version;
 
-                                    snprintf(item->name, NAME_MAX, "%016llX", pendingTitleIds[i]);
+                                    snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", pendingTitleIds[i]);
                                     if(mediaType == MEDIATYPE_NAND) {
                                         item->color = COLOR_NAND;
                                     } else if(mediaType == MEDIATYPE_SD) {
@@ -91,6 +92,18 @@ static void task_populate_pending_titles_thread(void* arg) {
     free(data);
 }
 
+void task_free_pending_title(list_item* item) {
+    if(item == NULL) {
+        return;
+    }
+
+    if(item->data != NULL) {
+        free(item->data);
+    }
+
+    free(item);
+}
+
 void task_clear_pending_titles(linked_list* items) {
     if(items == NULL) {
         return;
@@ -101,13 +114,7 @@ void task_clear_pending_titles(linked_list* items) {
 
     while(linked_list_iter_has_next(&iter)) {
         list_item* item = (list_item*) linked_list_iter_next(&iter);
-
-        if(item->data != NULL) {
-            free(item->data);
-        }
-
-        free(item);
-
+        task_free_pending_title(item);
         linked_list_iter_remove(&iter);
     }
 }
@@ -136,7 +143,7 @@ Handle task_populate_pending_titles(linked_list* items) {
         return 0;
     }
 
-    if(threadCreate(task_populate_pending_titles_thread, data, 0x4000, 0x18, 1, true) == NULL) {
+    if(threadCreate(task_populate_pending_titles_thread, data, 0x10000, 0x18, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create pending title list thread.");
 
         svcCloseHandle(data->cancelEvent);

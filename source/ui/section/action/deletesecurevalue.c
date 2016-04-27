@@ -3,10 +3,14 @@
 #include <3ds.h>
 
 #include "action.h"
+#include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../list.h"
 #include "../../prompt.h"
-#include "../../../screen.h"
+#include "../../ui.h"
+#include "../../../core/linkedlist.h"
+#include "../../../core/screen.h"
 
 static void action_delete_secure_value_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
@@ -31,6 +35,6 @@ static void action_delete_secure_value_onresponse(ui_view* view, void* data, boo
     }
 }
 
-void action_delete_secure_value(title_info* info, bool* populated) {
-    prompt_display("Confirmation", "Delete the secure value of the selected title?", COLOR_TEXT, true, info, NULL, ui_draw_title_info, action_delete_secure_value_onresponse);
+void action_delete_secure_value(linked_list* items, list_item* selected) {
+    prompt_display("Confirmation", "Delete the secure value of the selected title?", COLOR_TEXT, true, selected->data, NULL, ui_draw_title_info, action_delete_secure_value_onresponse);
 }

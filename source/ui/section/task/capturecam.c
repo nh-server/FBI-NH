@@ -3,9 +3,9 @@
 
 #include <3ds.h>
 
+#include "task.h"
 #include "../../list.h"
 #include "../../error.h"
-#include "task.h"
 
 #define EVENT_CANCEL 0
 #define EVENT_RECV 1
@@ -54,6 +54,8 @@ static void task_capture_cam_thread(void* arg) {
                    && R_SUCCEEDED(res = CAMU_StartCapture(PORT_CAM1))) {
                     bool cancelRequested = false;
                     while(!task_is_quit_all() && !cancelRequested && R_SUCCEEDED(res)) {
+                        svcWaitSynchronization(task_get_pause_event(), U64_MAX);
+
                         s32 index = 0;
                         if(R_SUCCEEDED(res = svcWaitSynchronizationN(&index, events, EVENT_COUNT, false, U64_MAX))) {
                             switch(index) {
@@ -155,7 +157,7 @@ Handle task_capture_cam(Handle* mutex, u16* buffer, s16 width, s16 height) {
         return 0;
     }
 
-    if(threadCreate(task_capture_cam_thread, data, 0x4000, 0x19, 1, true) == NULL) {
+    if(threadCreate(task_capture_cam_thread, data, 0x10000, 0x19, 1, true) == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create camera capture thread.");
 
         svcCloseHandle(data->mutex);

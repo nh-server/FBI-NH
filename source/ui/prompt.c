@@ -4,7 +4,8 @@
 
 #include "error.h"
 #include "prompt.h"
-#include "../screen.h"
+#include "ui.h"
+#include "../core/screen.h"
 
 typedef struct {
     const char* text;

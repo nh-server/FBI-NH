@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdio.h>
-
 typedef struct {
     u16 shortDescription[0x40];
     u16 longDescription[0x80];
@@ -42,29 +40,28 @@ typedef struct {
 
 void util_panic(const char* s, ...);
 
+FS_Path* util_make_path_utf8(const char* path);
+void util_free_path_utf8(FS_Path* path);
+
+bool util_exists(FS_Archive* archive, const char* path);
 bool util_is_dir(FS_Archive* archive, const char* path);
-Result util_traverse_contents(FS_Archive* archive, const char* path, bool recursive, bool dirsFirst, void* data, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes),
-                                                                                                                 void (*process)(void* data, FS_Archive* archive, const char* path, u32 attributes));
+Result util_ensure_dir(FS_Archive* archive, const char* path);
+
+void util_get_path_file(char* out, const char* path, u32 size);
+void util_get_parent_path(char* out, const char* path, u32 size);
+
 bool util_filter_dirs(void* data, FS_Archive* archive, const char* path, u32 attributes);
 bool util_filter_files(void* data, FS_Archive* archive, const char* path, u32 attributes);
 bool util_filter_hidden(void* data, FS_Archive* archive, const char* path, u32 attributes);
 bool util_filter_file_extension(void* data, FS_Archive* archive, const char* path, u32 attributes);
 bool util_filter_not_path(void* data, FS_Archive* archive, const char* path, u32 attributes);
+
+Result util_traverse_contents(FS_Archive* archive, const char* path, bool recursive, bool dirsFirst, void* data, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes),
+                                                                                                                 void (*process)(void* data, FS_Archive* archive, const char* path, u32 attributes));
 Result util_count_contents(u32* out, FS_Archive* archive, const char* path, bool recursive, bool dirsFirst, void* data, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes));
 Result util_populate_contents(char*** contentsOut, u32* countOut, FS_Archive* archive, const char* path, bool recursive, bool dirsFirst, void* data, bool (*filter)(void* data, FS_Archive* archive, const char* path, u32 attributes));
 void util_free_contents(char** contents, u32 count);
-void util_get_path_file(char* out, const char* path, u32 size);
-void util_get_parent_path(char* out, const char* path, u32 size);
-Result util_ensure_dir(FS_Archive* archive, const char* path);
-
-FS_Path* util_make_path_utf8(const char* path);
-void util_free_path_utf8(FS_Path* path);
 
 int util_compare_u32(const void* e1, const void* e2);
 int util_compare_u64(const void* e1, const void* e2);
 int util_compare_directory_entries(const void* e1, const void* e2);
-
-u32 util_next_pow_2(u32 i);
-u32 util_tiled_texture_index(u32 x, u32 y, u32 w, u32 h);
-
-FILE* util_open_resource(const char* path);

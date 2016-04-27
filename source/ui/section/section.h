@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../ui.h"
-
 void dumpnand_open();
 void extsavedata_open();
 void files_open(FS_Archive archive);
