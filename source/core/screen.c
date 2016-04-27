@@ -219,6 +219,7 @@ void screen_init() {
     screen_load_texture_file(TEXTURE_TOP_SCREEN_BOTTOM_BAR_SHADOW, "top_screen_bottom_bar_shadow.png", true);
     screen_load_texture_file(TEXTURE_LOGO, "logo.png", true);
     screen_load_texture_file(TEXTURE_SELECTION_OVERLAY, "selection_overlay.png", true);
+    screen_load_texture_file(TEXTURE_SCROLL_BAR, "scroll_bar.png", true);
     screen_load_texture_file(TEXTURE_BUTTON_SMALL, "button_small.png", true);
     screen_load_texture_file(TEXTURE_BUTTON_LARGE, "button_large.png", true);
     screen_load_texture_file(TEXTURE_PROGRESS_BAR_BG, "progress_bar_bg.png", true);
