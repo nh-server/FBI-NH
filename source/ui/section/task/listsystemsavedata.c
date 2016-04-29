@@ -13,11 +13,12 @@
 
 #define MAX_SYSTEM_SAVE_DATA 512
 
-typedef struct {
-    linked_list* items;
+static int task_populate_system_save_data_compare_ids(const void* e1, const void* e2) {
+    u32 id1 = *(u32*) e1;
+    u32 id2 = *(u32*) e2;
 
-    Handle cancelEvent;
-} populate_system_save_data_data;
+    return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+}
 
 static void task_populate_system_save_data_thread(void* arg) {
     populate_system_save_data_data* data = (populate_system_save_data_data*) arg;
@@ -27,7 +28,7 @@ static void task_populate_system_save_data_thread(void* arg) {
     u32 systemSaveDataCount = 0;
     u32 systemSaveDataIds[MAX_SYSTEM_SAVE_DATA];
     if(R_SUCCEEDED(res = FSUSER_EnumerateSystemSaveData(&systemSaveDataCount, MAX_SYSTEM_SAVE_DATA * sizeof(u32), systemSaveDataIds))) {
-        qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), util_compare_u32);
+        qsort(systemSaveDataIds, systemSaveDataCount, sizeof(u32), task_populate_system_save_data_compare_ids);
 
         for(u32 i = 0; i < systemSaveDataCount && R_SUCCEEDED(res); i++) {
             svcWaitSynchronization(task_get_pause_event(), U64_MAX);
@@ -57,12 +58,10 @@ static void task_populate_system_save_data_thread(void* arg) {
         }
     }
 
-    if(R_FAILED(res)) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to load system save data listing.");
-    }
-
     svcCloseHandle(data->cancelEvent);
-    free(data);
+
+    data->result = res;
+    data->finished = true;
 }
 
 void task_free_system_save_data(list_item* item) {
@@ -92,37 +91,30 @@ void task_clear_system_save_data(linked_list* items) {
     }
 }
 
-Handle task_populate_system_save_data(linked_list* items) {
-    if(items == NULL) {
-        return 0;
+Result task_populate_system_save_data(populate_system_save_data_data* data) {
+    if(data == NULL || data->items == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
     }
 
-    task_clear_system_save_data(items);
+    task_clear_system_save_data(data->items);
 
-    populate_system_save_data_data* data = (populate_system_save_data_data*) calloc(1, sizeof(populate_system_save_data_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate system save data list data.");
+    data->finished = false;
+    data->result = 0;
+    data->cancelEvent = 0;
 
-        return 0;
+    Result res = 0;
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1))) {
+        if(threadCreate(task_populate_system_save_data_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+            res = R_FBI_THREAD_CREATE_FAILED;
+        }
     }
 
-    data->items = items;
-
-    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
-    if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create system save data list cancel event.");
-
-        free(data);
-        return 0;
+    if(R_FAILED(res)) {
+        if(data->cancelEvent != 0) {
+            svcCloseHandle(data->cancelEvent);
+            data->cancelEvent = 0;
+        }
     }
 
-    if(threadCreate(task_populate_system_save_data_thread, data, 0x10000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create system save data list thread.");
-
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
-    }
-
-    return data->cancelEvent;
+    return res;
 }

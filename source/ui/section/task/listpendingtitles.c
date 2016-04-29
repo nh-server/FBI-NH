@@ -11,11 +11,12 @@
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 
-typedef struct {
-    linked_list* items;
+static int task_populate_pending_titles_compare_ids(const void* e1, const void* e2) {
+    u64 id1 = *(u64*) e1;
+    u64 id2 = *(u64*) e2;
 
-    Handle cancelEvent;
-} populate_pending_titles_data;
+    return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+}
 
 static Result task_populate_pending_titles_from(populate_pending_titles_data* data, FS_MediaType mediaType) {
     Result res = 0;
@@ -25,7 +26,7 @@ static Result task_populate_pending_titles_from(populate_pending_titles_data* da
         u64* pendingTitleIds = (u64*) calloc(pendingTitleCount, sizeof(u64));
         if(pendingTitleIds != NULL) {
             if(R_SUCCEEDED(res = AM_GetPendingTitleList(&pendingTitleCount, pendingTitleCount, mediaType, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION, pendingTitleIds))) {
-                qsort(pendingTitleIds, pendingTitleCount, sizeof(u64), util_compare_u64);
+                qsort(pendingTitleIds, pendingTitleCount, sizeof(u64), task_populate_pending_titles_compare_ids);
 
                 AM_PendingTitleEntry* pendingTitleInfos = (AM_PendingTitleEntry*) calloc(pendingTitleCount, sizeof(AM_PendingTitleEntry));
                 if(pendingTitleInfos != NULL) {
@@ -84,12 +85,15 @@ static void task_populate_pending_titles_thread(void* arg) {
     populate_pending_titles_data* data = (populate_pending_titles_data*) arg;
 
     Result res = 0;
-    if(R_FAILED(res = task_populate_pending_titles_from(data, MEDIATYPE_SD)) || R_FAILED(res = task_populate_pending_titles_from(data, MEDIATYPE_NAND))) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to load pending title listing.");
+
+    if(R_SUCCEEDED(res = task_populate_pending_titles_from(data, MEDIATYPE_SD))) {
+        res = task_populate_pending_titles_from(data, MEDIATYPE_NAND);
     }
 
     svcCloseHandle(data->cancelEvent);
-    free(data);
+
+    data->result = res;
+    data->finished = true;
 }
 
 void task_free_pending_title(list_item* item) {
@@ -119,37 +123,30 @@ void task_clear_pending_titles(linked_list* items) {
     }
 }
 
-Handle task_populate_pending_titles(linked_list* items) {
-    if(items == NULL) {
-        return 0;
+Result task_populate_pending_titles(populate_pending_titles_data* data) {
+    if(data == NULL || data->items == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
     }
 
-    task_clear_pending_titles(items);
+    task_clear_pending_titles(data->items);
 
-    populate_pending_titles_data* data = (populate_pending_titles_data*) calloc(1, sizeof(populate_pending_titles_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate pending title list data.");
+    data->finished = false;
+    data->result = 0;
+    data->cancelEvent = 0;
 
-        return 0;
+    Result res = 0;
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1))) {
+        if(threadCreate(task_populate_pending_titles_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+            res = R_FBI_THREAD_CREATE_FAILED;
+        }
     }
 
-    data->items = items;
-
-    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
-    if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create pending title list cancel event.");
-
-        free(data);
-        return 0;
+    if(R_FAILED(res)) {
+        if(data->cancelEvent != 0) {
+            svcCloseHandle(data->cancelEvent);
+            data->cancelEvent = 0;
+        }
     }
 
-    if(threadCreate(task_populate_pending_titles_thread, data, 0x10000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create pending title list thread.");
-
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
-    }
-
-    return data->cancelEvent;
+    return res;
 }

@@ -13,12 +13,6 @@
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 
-typedef struct {
-    linked_list* items;
-
-    Handle cancelEvent;
-} populate_titles_data;
-
 static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaType mediaType, u64 titleId) {
     Result res = 0;
 
@@ -36,30 +30,31 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                 titleInfo->twl = false;
                 titleInfo->hasMeta = false;
 
-                static const u32 filePathData[] = {0x00000000, 0x00000000, 0x00000002, 0x6E6F6369, 0x00000000};
-                static const FS_Path filePath = (FS_Path) {PATH_BINARY, 0x14, (u8*) filePathData};
-                u32 archivePath[] = {(u32) (titleId & 0xFFFFFFFF), (u32) ((titleId >> 32) & 0xFFFFFFFF), mediaType, 0x00000000};
-                FS_Archive archive = {ARCHIVE_SAVEDATA_AND_CONTENT, (FS_Path) {PATH_BINARY, 0x10, (u8*) archivePath}};
+                static const u32 filePath[5] = {0x00000000, 0x00000000, 0x00000002, 0x6E6F6369, 0x00000000};
+                u32 archivePath[4] = {(u32) (titleId & 0xFFFFFFFF), (u32) ((titleId >> 32) & 0xFFFFFFFF), mediaType, 0x00000000};
 
                 Handle fileHandle;
-                if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&fileHandle, archive, filePath, FS_OPEN_READ, 0))) {
-                    SMDH smdh;
+                if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT, util_make_binary_path(archivePath, sizeof(archivePath)), util_make_binary_path(filePath, sizeof(filePath)), FS_OPEN_READ, 0))) {
+                    SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
+                    if(smdh != NULL) {
+                        u32 bytesRead = 0;
+                        if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 0, smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
+                            if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
+                                titleInfo->hasMeta = true;
 
-                    u32 bytesRead = 0;
-                    if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 0, &smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
-                        if(smdh.magic[0] == 'S' && smdh.magic[1] == 'M' && smdh.magic[2] == 'D' && smdh.magic[3] == 'H') {
-                            titleInfo->hasMeta = true;
+                                u8 systemLanguage = CFG_LANGUAGE_EN;
+                                CFGU_GetSystemLanguage(&systemLanguage);
 
-                            u8 systemLanguage = CFG_LANGUAGE_EN;
-                            CFGU_GetSystemLanguage(&systemLanguage);
+                                utf16_to_utf8((uint8_t*) item->name, smdh->titles[systemLanguage].shortDescription, NAME_MAX - 1);
 
-                            utf16_to_utf8((uint8_t*) item->name, smdh.titles[systemLanguage].shortDescription, NAME_MAX - 1);
-
-                            utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(titleInfo->meta.shortDescription) - 1);
-                            utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(titleInfo->meta.longDescription) - 1);
-                            utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdh.titles[systemLanguage].publisher, sizeof(titleInfo->meta.publisher) - 1);
-                            titleInfo->meta.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
+                                utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(titleInfo->meta.shortDescription) - 1);
+                                utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->meta.longDescription) - 1);
+                                utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->meta.publisher) - 1);
+                                titleInfo->meta.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
+                            }
                         }
+
+                        free(smdh);
                     }
 
                     FSFILE_Close(fileHandle);
@@ -153,59 +148,63 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                 titleInfo->twl = true;
                 titleInfo->hasMeta = false;
 
-                BNR bnr;
-                if(R_SUCCEEDED(FSUSER_GetLegacyBannerData(mediaType, titleId, (u8*) &bnr))) {
-                    titleInfo->hasMeta = true;
+                BNR* bnr = (BNR*) calloc(1, sizeof(BNR));
+                if(bnr != NULL) {
+                    if(R_SUCCEEDED(FSUSER_GetLegacyBannerData(mediaType, titleId, (u8*) bnr))) {
+                        titleInfo->hasMeta = true;
 
-                    u8 systemLanguage = CFG_LANGUAGE_EN;
-                    CFGU_GetSystemLanguage(&systemLanguage);
+                        u8 systemLanguage = CFG_LANGUAGE_EN;
+                        CFGU_GetSystemLanguage(&systemLanguage);
 
-                    char title[0x100] = {'\0'};
-                    utf16_to_utf8((uint8_t*) title, bnr.titles[systemLanguage], sizeof(title) - 1);
+                        char title[0x100] = {'\0'};
+                        utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], sizeof(title) - 1);
 
-                    if(strchr(title, '\n') == NULL) {
-                        size_t len = strlen(title);
-                        strncpy(item->name, title, len);
-                        strncpy(titleInfo->meta.shortDescription, title, len);
-                    } else {
-                        char* destinations[] = {titleInfo->meta.shortDescription, titleInfo->meta.longDescription, titleInfo->meta.publisher};
-                        int currDest = 0;
+                        if(strchr(title, '\n') == NULL) {
+                            size_t len = strlen(title);
+                            strncpy(item->name, title, len);
+                            strncpy(titleInfo->meta.shortDescription, title, len);
+                        } else {
+                            char* destinations[] = {titleInfo->meta.shortDescription, titleInfo->meta.longDescription, titleInfo->meta.publisher};
+                            int currDest = 0;
 
-                        char* last = title;
-                        char* curr = NULL;
+                            char* last = title;
+                            char* curr = NULL;
 
-                        while(currDest < 3 && (curr = strchr(last, '\n')) != NULL) {
-                            strncpy(destinations[currDest++], last, curr - last);
-                            last = curr + 1;
-                            *curr = ' ';
+                            while(currDest < 3 && (curr = strchr(last, '\n')) != NULL) {
+                                strncpy(destinations[currDest++], last, curr - last);
+                                last = curr + 1;
+                                *curr = ' ';
+                            }
+
+                            strncpy(item->name, title, last - title);
+                            if(currDest < 3) {
+                                strncpy(destinations[currDest], last, strlen(title) - (last - title));
+                            }
                         }
 
-                        strncpy(item->name, title, last - title);
-                        if(currDest < 3) {
-                            strncpy(destinations[currDest], last, strlen(title) - (last - title));
+                        u8 icon[32 * 32 * 2];
+                        for(u32 x = 0; x < 32; x++) {
+                            for(u32 y = 0; y < 32; y++) {
+                                u32 srcPos = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
+                                u32 srcShift = (x & 1) * 4;
+                                u16 srcPx = bnr->mainIconPalette[(bnr->mainIconBitmap[srcPos] >> srcShift) & 0xF];
+
+                                u8 r = (u8) (srcPx & 0x1F);
+                                u8 g = (u8) ((srcPx >> 5) & 0x1F);
+                                u8 b = (u8) ((srcPx >> 10) & 0x1F);
+
+                                u16 reversedPx = (u16) ((r << 11) | (g << 6) | (b << 1) | 1);
+
+                                u32 dstPos = (y * 32 + x) * 2;
+                                icon[dstPos + 0] = (u8) (reversedPx & 0xFF);
+                                icon[dstPos + 1] = (u8) ((reversedPx >> 8) & 0xFF);
+                            }
                         }
+
+                        titleInfo->meta.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
                     }
 
-                    u8 icon[32 * 32 * 2];
-                    for(u32 x = 0; x < 32; x++) {
-                        for(u32 y = 0; y < 32; y++) {
-                            u32 srcPos = (((y >> 3) * 4 + (x >> 3)) * 8 + (y & 7)) * 4 + ((x & 7) >> 1);
-                            u32 srcShift = (x & 1) * 4;
-                            u16 srcPx = bnr.mainIconPalette[(bnr.mainIconBitmap[srcPos] >> srcShift) & 0xF];
-
-                            u8 r = (u8) (srcPx & 0x1F);
-                            u8 g = (u8) ((srcPx >> 5) & 0x1F);
-                            u8 b = (u8) ((srcPx >> 10) & 0x1F);
-
-                            u16 reversedPx = (u16) ((r << 11) | (g << 6) | (b << 1) | 1);
-
-                            u32 dstPos = (y * 32 + x) * 2;
-                            icon[dstPos + 0] = (u8) (reversedPx & 0xFF);
-                            icon[dstPos + 1] = (u8) ((reversedPx >> 8) & 0xFF);
-                        }
-                    }
-
-                    titleInfo->meta.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
+                    free(bnr);
                 }
 
                 bool empty = strlen(item->name) == 0;
@@ -244,6 +243,13 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
     return res;
 }
 
+static int task_populate_titles_compare_ids(const void* e1, const void* e2) {
+    u64 id1 = *(u64*) e1;
+    u64 id2 = *(u64*) e2;
+
+    return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+}
+
 static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType mediaType, bool useDSiWare) {
     bool inserted;
     FS_CardType type;
@@ -259,7 +265,7 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
             u64* titleIds = (u64*) calloc(titleCount, sizeof(u64));
             if(titleIds != NULL) {
                 if(R_SUCCEEDED(res = AM_GetTitleList(&titleCount, mediaType, titleCount, titleIds))) {
-                    qsort(titleIds, titleCount, sizeof(u64), util_compare_u64);
+                    qsort(titleIds, titleCount, sizeof(u64), task_populate_titles_compare_ids);
 
                     for(u32 i = 0; i < titleCount && R_SUCCEEDED(res); i++) {
                         svcWaitSynchronization(task_get_pause_event(), U64_MAX);
@@ -292,12 +298,19 @@ static void task_populate_titles_thread(void* arg) {
     populate_titles_data* data = (populate_titles_data*) arg;
 
     Result res = 0;
-    if(R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_GAME_CARD, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_SD, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_NAND, false)) || R_FAILED(res = task_populate_titles_from(data, MEDIATYPE_NAND, true))) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to load title listing.");
+
+    if(R_SUCCEEDED(res = task_populate_titles_from(data, MEDIATYPE_GAME_CARD, false))) {
+        if(R_SUCCEEDED(res = task_populate_titles_from(data, MEDIATYPE_SD, false))) {
+            if(R_SUCCEEDED(res = task_populate_titles_from(data, MEDIATYPE_NAND, false))) {
+                res = task_populate_titles_from(data, MEDIATYPE_NAND, true);
+            }
+        }
     }
 
     svcCloseHandle(data->cancelEvent);
-    free(data);
+
+    data->result = res;
+    data->finished = true;
 }
 
 void task_free_title(list_item* item) {
@@ -332,37 +345,30 @@ void task_clear_titles(linked_list* items) {
     }
 }
 
-Handle task_populate_titles(linked_list* items) {
-    if(items == NULL) {
-        return 0;
+Result task_populate_titles(populate_titles_data* data) {
+    if(data == NULL || data->items == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
     }
 
-    task_clear_titles(items);
+    task_clear_titles(data->items);
 
-    populate_titles_data* data = (populate_titles_data*) calloc(1, sizeof(populate_titles_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate title list data.");
+    data->finished = false;
+    data->result = 0;
+    data->cancelEvent = 0;
 
-        return 0;
+    Result res = 0;
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1))) {
+        if(threadCreate(task_populate_titles_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+            res = R_FBI_THREAD_CREATE_FAILED;
+        }
     }
 
-    data->items = items;
-
-    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
-    if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create title list cancel event.");
-
-        free(data);
-        return 0;
+    if(R_FAILED(res)) {
+        if(data->cancelEvent != 0) {
+            svcCloseHandle(data->cancelEvent);
+            data->cancelEvent = 0;
+        }
     }
 
-    if(threadCreate(task_populate_titles_thread, data, 0x10000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create title list thread.");
-
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
-    }
-
-    return data->cancelEvent;
+    return res;
 }

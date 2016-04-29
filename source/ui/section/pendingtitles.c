@@ -16,7 +16,8 @@ static list_item delete_pending_title = {"Delete Pending Title", COLOR_TEXT, act
 static list_item delete_all_pending_titles = {"Delete All Pending Titles", COLOR_TEXT, action_delete_all_pending_titles};
 
 typedef struct {
-    Handle cancelEvent;
+    populate_pending_titles_data populateData;
+
     bool populated;
 } pendingtitles_data;
 
@@ -84,13 +85,11 @@ static void pendingtitles_update(ui_view* view, void* data, linked_list* items, 
     pendingtitles_data* listData = (pendingtitles_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
         ui_pop();
@@ -103,17 +102,26 @@ static void pendingtitles_update(ui_view* view, void* data, linked_list* items, 
     }
 
     if(!listData->populated || (hidKeysDown() & KEY_X)) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_pending_titles(items);
+        listData->populateData.items = items;
+        Result res = task_populate_pending_titles(&listData->populateData);
+        if(R_FAILED(res)) {
+            error_display_res(NULL, NULL, NULL, res, "Failed to initiate pending title list population.");
+        }
+
         listData->populated = true;
+    }
+
+    if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
+        listData->populateData.result = 0;
+
+        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate pending title list.");
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
@@ -129,6 +137,8 @@ void pendingtitles_open() {
 
         return;
     }
+
+    data->populateData.finished = true;
 
     list_display("Pending Titles", "A: Select, B: Return, X: Refresh", data, pendingtitles_update, pendingtitles_draw_top);
 }

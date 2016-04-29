@@ -6,18 +6,20 @@
 
 #include "section.h"
 #include "action/action.h"
+#include "action/clipboard.h"
 #include "task/task.h"
 #include "../error.h"
 #include "../list.h"
+#include "../prompt.h"
 #include "../ui.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
 
-static list_item copy = {"Copy", COLOR_TEXT, action_copy_content};
+static list_item copy = {"Copy", COLOR_TEXT, NULL};
 static list_item paste = {"Paste", COLOR_TEXT, action_paste_contents};
 
-static list_item delete_file = {"Delete", COLOR_TEXT, action_delete_contents};
+static list_item delete_file = {"Delete", COLOR_TEXT, action_delete_file};
 
 static list_item install_cia = {"Install CIA", COLOR_TEXT, action_install_cia};
 static list_item install_and_delete_cia = {"Install and delete CIA", COLOR_TEXT, action_install_cia_delete};
@@ -27,7 +29,7 @@ static list_item install_and_delete_ticket = {"Install and delete ticket", COLOR
 
 static list_item delete_dir = {"Delete", COLOR_TEXT, action_delete_dir};
 static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
-static list_item copy_all_contents = {"Copy all contents", COLOR_TEXT, action_copy_contents};
+static list_item copy_all_contents = {"Copy all contents", COLOR_TEXT, NULL};
 
 static list_item install_all_cias = {"Install all CIAs", COLOR_TEXT, action_install_cias};
 static list_item install_and_delete_all_cias = {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete};
@@ -38,25 +40,26 @@ static list_item install_and_delete_all_tickets = {"Install and delete all ticke
 static list_item delete_all_tickets = {"Delete all tickets", COLOR_TEXT, action_delete_dir_tickets};
 
 typedef struct {
-    Handle cancelEvent;
+    populate_files_data populateData;
+
     bool populated;
 
+    FS_ArchiveID archiveId;
+    FS_Path archivePath;
     FS_Archive archive;
-    void* archivePath;
 
-    file_info currDir;
-    file_info parentDir;
+    char currDir[FILE_PATH_MAX];
+    list_item* dirItem;
 } files_data;
 
 typedef struct {
     linked_list* items;
     list_item* selected;
-
-    file_info* target;
+    files_data* parent;
 } files_action_data;
 
 static void files_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_file_info(view, ((files_action_data*) data)->target, x1, y1, x2, y2);
+    ui_draw_file_info(view, ((files_action_data*) data)->selected->data, x1, y1, x2, y2);
 }
 
 static void files_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
@@ -71,13 +74,24 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
         return;
     }
 
-    if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(linked_list*, list_item*, file_info*) = (void(*)(linked_list*, list_item*, file_info*)) selected->data;
+    if(selected != NULL && (selected->data != NULL || selected == &copy || selected == &copy_all_contents) && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        void(*action)(linked_list*, list_item*) = (void(*)(linked_list*, list_item*)) selected->data;
 
         ui_pop();
         list_destroy(view);
 
-        action(actionData->items, actionData->selected, actionData->target);
+        if(selected == &copy || selected == &copy_all_contents) {
+            file_info* info = (file_info*) actionData->selected->data;
+
+            Result res = 0;
+            if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archiveId, &actionData->parent->archivePath, info->path, selected == &copy_all_contents))) {
+                prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : info->isDirectory ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, NULL);
+            } else {
+                error_display_res(NULL, info, ui_draw_file_info, res, "Failed to copy to clipboard.");
+            }
+        } else {
+            action(actionData->items, actionData->selected);
+        }
 
         free(data);
 
@@ -85,14 +99,16 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
     }
 
     if(linked_list_size(items) == 0) {
-        if(actionData->target->isDirectory) {
-            if(actionData->target->containsCias) {
+        file_info* info = (file_info*) actionData->selected->data;
+
+        if(info->isDirectory) {
+            if(info->containsCias) {
                 linked_list_add(items, &install_all_cias);
                 linked_list_add(items, &install_and_delete_all_cias);
                 linked_list_add(items, &delete_all_cias);
             }
 
-            if(actionData->target->containsTickets) {
+            if(info->containsTickets) {
                 linked_list_add(items, &install_all_tickets);
                 linked_list_add(items, &install_and_delete_all_tickets);
                 linked_list_add(items, &delete_all_tickets);
@@ -103,12 +119,12 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
 
             linked_list_add(items, &delete_dir);
         } else {
-            if(actionData->target->isCia) {
+            if(info->isCia) {
                 linked_list_add(items, &install_cia);
                 linked_list_add(items, &install_and_delete_cia);
             }
 
-            if(actionData->target->isTicket) {
+            if(info->isTicket) {
                 linked_list_add(items, &install_ticket);
                 linked_list_add(items, &install_and_delete_ticket);
             }
@@ -121,7 +137,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
     }
 }
 
-static void files_action_open(linked_list* items, list_item* selected, file_info* target) {
+static void files_action_open(linked_list* items, list_item* selected, files_data* parent) {
     files_action_data* data = (files_action_data*) calloc(1, sizeof(files_action_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate files action data.");
@@ -131,10 +147,9 @@ static void files_action_open(linked_list* items, list_item* selected, file_info
 
     data->items = items;
     data->selected = selected;
+    data->parent = parent;
 
-    data->target = target;
-
-    list_display(target->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
+    list_display(((file_info*) selected->data)->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
 
 static void files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -144,91 +159,105 @@ static void files_draw_top(ui_view* view, void* data, float x1, float y1, float 
 }
 
 static void files_repopulate(files_data* listData, linked_list* items) {
-    if(listData->cancelEvent != 0) {
-        svcSignalEvent(listData->cancelEvent);
-        while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+    if(!listData->populateData.finished) {
+        svcSignalEvent(listData->populateData.cancelEvent);
+        while(!listData->populateData.finished) {
             svcSleepThread(1000000);
         }
-
-        listData->cancelEvent = 0;
     }
 
-    while(!util_is_dir(&listData->archive, listData->currDir.path)) {
-        char parentPath[FILE_PATH_MAX];
-
-        util_get_parent_path(parentPath, listData->currDir.path, FILE_PATH_MAX);
-        strncpy(listData->currDir.path, parentPath, FILE_PATH_MAX);
-        util_get_path_file(listData->currDir.name, listData->currDir.path, FILE_NAME_MAX);
-
-        util_get_parent_path(parentPath, listData->currDir.path, FILE_PATH_MAX);
-        strncpy(listData->parentDir.path, parentPath, FILE_PATH_MAX);
-        util_get_path_file(listData->parentDir.name, listData->parentDir.path, FILE_NAME_MAX);
+    if(listData->dirItem != NULL) {
+        task_free_file(listData->dirItem);
+        listData->dirItem = NULL;
     }
 
-    listData->cancelEvent = task_populate_files(items, &listData->currDir);
+    Result res = 0;
+    if(R_SUCCEEDED(res = task_create_file_item(&listData->dirItem, listData->archive, listData->currDir))) {
+        listData->populateData.items = items;
+        listData->populateData.base = (file_info*) listData->dirItem->data;
+
+        res = task_populate_files(&listData->populateData);
+    }
+
+    if(R_FAILED(res)) {
+        error_display_res(NULL, NULL, NULL, res, "Failed to initiate file list population.");
+    }
+
     listData->populated = true;
 }
 
 static void files_navigate(files_data* listData, linked_list* items, const char* path) {
-    strncpy(listData->currDir.path, path, FILE_PATH_MAX);
-    util_get_path_file(listData->currDir.name, listData->currDir.path, FILE_NAME_MAX);
+    strncpy(listData->currDir, path, FILE_PATH_MAX);
 
-    char parentPath[FILE_PATH_MAX];
-    util_get_parent_path(parentPath, listData->currDir.path, FILE_PATH_MAX);
-    strncpy(listData->parentDir.path, parentPath, FILE_PATH_MAX);
-    util_get_path_file(listData->parentDir.name, listData->parentDir.path, FILE_NAME_MAX);
+    listData->populated = false;
+}
 
-    files_repopulate(listData, items);
+static void files_free_data(files_data* data) {
+    if(!data->populateData.finished) {
+        svcSignalEvent(data->populateData.cancelEvent);
+        while(!data->populateData.finished) {
+            svcSleepThread(1000000);
+        }
+    }
+
+    if(data->dirItem != NULL) {
+        task_free_file(data->dirItem);
+        data->dirItem = NULL;
+    }
+
+    if(data->archive != 0) {
+        FSUSER_CloseArchive(data->archive);
+        data->archive = 0;
+    }
+
+    if(data->archivePath.data != NULL) {
+        free((void*) data->archivePath.data);
+        data->archivePath.data = NULL;
+    }
+
+    free(data);
 }
 
 static void files_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     files_data* listData = (files_data*) data;
 
+    while(!util_is_dir(listData->archive, listData->currDir)) {
+        char parentDir[FILE_PATH_MAX] = {'\0'};
+        util_get_parent_path(parentDir, listData->currDir, FILE_PATH_MAX);
+
+        files_navigate(listData, items, parentDir);
+    }
+
     if(hidKeysDown() & KEY_B) {
-        if(strcmp(listData->currDir.path, "/") == 0) {
-            if(listData->archive.handle != 0) {
-                FSUSER_CloseArchive(&listData->archive);
-                listData->archive.handle = 0;
-            }
-
-            if(listData->archivePath != NULL) {
-                free(listData->archivePath);
-                listData->archivePath = NULL;
-            }
-
-            if(listData->cancelEvent != 0) {
-                svcSignalEvent(listData->cancelEvent);
-                while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
-                    svcSleepThread(1000000);
-                }
-
-                listData->cancelEvent = 0;
-            }
-
+        if(strncmp(listData->currDir, "/", FILE_PATH_MAX) == 0) {
             ui_pop();
+
+            files_free_data(listData);
 
             task_clear_files(items);
             list_destroy(view);
 
-            free(listData);
             return;
         } else {
-            files_navigate(listData, items, listData->parentDir.path);
+            char parentDir[FILE_PATH_MAX] = {'\0'};
+            util_get_parent_path(parentDir, listData->currDir, FILE_PATH_MAX);
+
+            files_navigate(listData, items, parentDir);
         }
     }
 
-    if(hidKeysDown() & KEY_Y) {
-        files_action_open(items, selected, &listData->currDir);
+    if((hidKeysDown() & KEY_Y) && listData->dirItem != NULL) {
+        files_action_open(items, listData->dirItem, listData);
         return;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         file_info* fileInfo = (file_info*) selected->data;
 
-        if(util_is_dir(&listData->archive, fileInfo->path)) {
+        if(fileInfo->isDirectory) {
             files_navigate(listData, items, fileInfo->path);
         } else {
-            files_action_open(items, selected, fileInfo);
+            files_action_open(items, selected, listData);
             return;
         }
     }
@@ -236,9 +265,15 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     if(!listData->populated || (hidKeysDown() & KEY_X)) {
         files_repopulate(listData, items);
     }
+
+    if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
+        listData->populateData.result = 0;
+
+        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate file list.");
+    }
 }
 
-void files_open(FS_Archive archive) {
+void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     files_data* data = (files_data*) calloc(1, sizeof(files_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate files data.");
@@ -246,69 +281,61 @@ void files_open(FS_Archive archive) {
         return;
     }
 
-    data->archive = archive;
+    data->populateData.recursive = false;
+    data->populateData.includeBase = false;
+    data->populateData.dirsFirst = true;
 
-    if(data->archive.lowPath.size > 0) {
-        data->archivePath = calloc(1,  data->archive.lowPath.size);
-        if(data->archivePath == NULL) {
-            error_display(NULL, NULL, NULL, "Failed to allocate files archive.");
+    data->populateData.finished = true;
 
-            free(data);
+    data->populated = false;
+
+    data->archiveId = archiveId;
+    data->archivePath.type = archivePath.type;
+    data->archivePath.size = archivePath.size;
+    if(archivePath.data != NULL) {
+        data->archivePath.data = calloc(1, data->archivePath.size);
+        if(data->archivePath.data == NULL) {
+            error_display(NULL, NULL, NULL, "Failed to allocate files data.");
+
+            files_free_data(data);
             return;
         }
 
-        memcpy(data->archivePath,  data->archive.lowPath.data,  data->archive.lowPath.size);
-        data->archive.lowPath.data = data->archivePath;
+        memcpy((void*) data->archivePath.data, archivePath.data, data->archivePath.size);
+    } else {
+        data->archivePath.data = NULL;
     }
 
-    data->archive.handle = 0;
+    snprintf(data->currDir, FILE_PATH_MAX, "/");
+    data->dirItem = NULL;
 
     Result res = 0;
-    if(R_FAILED(res = FSUSER_OpenArchive(&data->archive))) {
+    if(R_FAILED(res = FSUSER_OpenArchive(&data->archive, archiveId, archivePath))) {
         error_display_res(NULL, NULL, NULL, res, "Failed to open file listing archive.");
 
-        if(data->archivePath != NULL) {
-            free(data->archivePath);
-        }
-
-        free(data);
+        files_free_data(data);
         return;
     }
-
-    data->currDir.archive = &data->archive;
-    snprintf(data->currDir.path, FILE_PATH_MAX, "/");
-    util_get_path_file(data->currDir.name, data->currDir.path, FILE_NAME_MAX);
-    data->currDir.isDirectory = true;
-    data->currDir.containsCias = false;
-    data->currDir.size = 0;
-    data->currDir.isCia = false;
-
-    memcpy(&data->parentDir, &data->currDir, sizeof(data->parentDir));
 
     list_display("Files", "A: Select, B: Back, X: Refresh, Y: Directory Action", data, files_update, files_draw_top);
 }
 
 void files_open_sd() {
-    FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
-    files_open(sdmcArchive);
+    files_open(ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 }
 
 void files_open_ctr_nand() {
-    FS_Archive ctrNandArchive = {ARCHIVE_NAND_CTR_FS, fsMakePath(PATH_EMPTY, "")};
-    files_open(ctrNandArchive);
+    files_open(ARCHIVE_NAND_CTR_FS, fsMakePath(PATH_EMPTY, ""));
 }
 
 void files_open_twl_nand() {
-    FS_Archive twlNandArchive = {ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, "")};
-    files_open(twlNandArchive);
+    files_open(ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, ""));
 }
 
 void files_open_twl_photo() {
-    FS_Archive twlPhotoArchive = {ARCHIVE_TWL_PHOTO, fsMakePath(PATH_EMPTY, "")};
-    files_open(twlPhotoArchive);
+    files_open(ARCHIVE_TWL_PHOTO, fsMakePath(PATH_EMPTY, ""));
 }
 
 void files_open_twl_sound() {
-    FS_Archive twlSoundArchive = {ARCHIVE_TWL_SOUND, {PATH_EMPTY, 0, ""}};
-    files_open(twlSoundArchive);
+    files_open(ARCHIVE_TWL_SOUND, fsMakePath(PATH_EMPTY, ""));
 }

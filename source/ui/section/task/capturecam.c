@@ -13,16 +13,6 @@
 
 #define EVENT_COUNT 3
 
-typedef struct {
-    u16* buffer;
-    s16 width;
-    s16 height;
-
-    Handle mutex;
-
-    Handle cancelEvent;
-} capture_cam_data;
-
 static void task_capture_cam_thread(void* arg) {
     capture_cam_data* data = (capture_cam_data*) arg;
 
@@ -109,10 +99,6 @@ static void task_capture_cam_thread(void* arg) {
         res = R_FBI_OUT_OF_MEMORY;
     }
 
-    if(R_FAILED(res)) {
-        error_display_res(NULL, NULL, NULL, res, "Error capturing camera image.");
-    }
-
     for(int i = 0; i < EVENT_COUNT; i++) {
         if(events[i] != 0) {
             svcCloseHandle(events[i]);
@@ -121,51 +107,41 @@ static void task_capture_cam_thread(void* arg) {
     }
 
     svcCloseHandle(data->mutex);
-    free(data);
+
+    data->result = res;
+    data->finished = true;
 }
 
-Handle task_capture_cam(Handle* mutex, u16* buffer, s16 width, s16 height) {
-    if(buffer == NULL || width <= 0 || width > 640 || height <= 0 || height > 480 || mutex == 0) {
-        return 0;
+Result task_capture_cam(capture_cam_data* data) {
+    if(data == NULL || data->buffer == NULL || data->width <= 0 || data->width > 640 || data->height <= 0 || data->height > 480 || data->mutex == 0) {
+        return R_FBI_INVALID_ARGUMENT;
     }
 
-    capture_cam_data* data = (capture_cam_data*) calloc(1, sizeof(capture_cam_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate camera capture data.");
 
-        return 0;
+    data->mutex = 0;
+
+    data->finished = false;
+    data->result = 0;
+    data->cancelEvent = 0;
+
+    Result res = 0;
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1)) && R_SUCCEEDED(res = svcCreateMutex(&data->mutex, false))) {
+        if(threadCreate(task_capture_cam_thread, data, 0x10000, 0x19, 1, true) == NULL) {
+            res = R_FBI_THREAD_CREATE_FAILED;
+        }
     }
 
-    data->buffer = buffer;
-    data->width = width;
-    data->height = height;
+    if(R_FAILED(res)) {
+        if(data->cancelEvent != 0) {
+            svcCloseHandle(data->cancelEvent);
+            data->cancelEvent = 0;
+        }
 
-    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
-    if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create camera capture cancel event.");
-
-        free(data);
-        return 0;
+        if(data->mutex != 0) {
+            svcCloseHandle(data->mutex);
+            data->mutex = 0;
+        }
     }
 
-    Result mutexRes = svcCreateMutex(&data->mutex, false);
-    if(R_FAILED(mutexRes)) {
-        error_display_res(NULL, NULL, NULL, mutexRes, "Failed to create camera capture buffer mutex.");
-
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
-    }
-
-    if(threadCreate(task_capture_cam_thread, data, 0x10000, 0x19, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create camera capture thread.");
-
-        svcCloseHandle(data->mutex);
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
-    }
-
-    *mutex = data->mutex;
-    return data->cancelEvent;
+    return res;
 }

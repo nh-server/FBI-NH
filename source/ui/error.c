@@ -482,6 +482,23 @@ static const char* description_to_string(Result res) {
             }
 
             break;
+        case RM_APPLICATION:
+            switch(res) {
+                case R_FBI_CANCELLED:
+                    return "Operation cancelled";
+                case R_FBI_ERRNO:
+                    return "I/O error";
+                case R_FBI_HTTP_RESPONSE_CODE:
+                    return "HTTP request returned error";
+                case R_FBI_WRONG_SYSTEM:
+                    return "Attempted to install an N3DS title on an O3DS";
+                case R_FBI_INVALID_ARGUMENT:
+                    return "Invalid argument";
+                case R_FBI_THREAD_CREATE_FAILED:
+                    return "Thread creation failed";
+                default:
+                    break;
+            }
         default:
             break;
     }

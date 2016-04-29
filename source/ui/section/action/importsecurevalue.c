@@ -23,9 +23,8 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
 
     FS_Path* fsPath = util_make_path_utf8(pathBuf);
     if(fsPath != NULL) {
-        FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
         Handle fileHandle = 0;
-        if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, sdmcArchive, *fsPath, FS_OPEN_READ, 0))) {
+        if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
             u32 bytesRead = 0;
             u64 value = 0;
             if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, &value, sizeof(u64)))) {

@@ -4,11 +4,11 @@
 #include "../section.h"
 #include "../task/task.h"
 #include "../../list.h"
+#include "../../../core/util.h"
 
 void action_browse_system_save_data(linked_list* items, list_item* selected) {
     system_save_data_info* info = (system_save_data_info*) selected->data;
 
     u32 path[2] = {MEDIATYPE_NAND, info->systemSaveDataId};
-    FS_Archive archive = {ARCHIVE_SYSTEM_SAVEDATA, {PATH_BINARY, 8, path}};
-    files_open(archive);
+    files_open(ARCHIVE_SYSTEM_SAVEDATA, util_make_binary_path(path, sizeof(path)));
 }

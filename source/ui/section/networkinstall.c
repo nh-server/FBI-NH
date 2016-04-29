@@ -22,8 +22,7 @@ typedef struct {
     u64 currTitleId;
     bool ticket;
 
-    data_op_info installInfo;
-    Handle cancelEvent;
+    data_op_data installInfo;
 } network_install_data;
 
 static int recvwait(int sockfd, void* buf, size_t len, int flags) {
@@ -174,8 +173,6 @@ static bool networkinstall_error(void* data, u32 index, Result res) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
     } else if(res == R_FBI_ERRNO) {
         error_display_errno(NULL, NULL, NULL, errno, "Failed to install over the network.");
-    } else if(res == R_FBI_WRONG_SYSTEM) {
-        error_display(NULL, NULL, NULL, "Failed to install over the network.\nAttempted to install N3DS title to O3DS.");
     } else {
         error_display_res(NULL, NULL, NULL, res, "Failed to install over the network.");
     }
@@ -190,7 +187,6 @@ static void networkinstall_close_client(network_install_data* data) {
     close(data->clientSocket);
 
     data->currTitleId = 0;
-    data->cancelEvent = 0;
 }
 
 static void networkinstall_install_update(ui_view* view, void* data, float* progress, char* text) {
@@ -202,15 +198,15 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
         ui_pop();
         info_destroy(view);
 
-        if(!networkInstallData->installInfo.premature) {
+        if(R_SUCCEEDED(networkInstallData->installInfo.result)) {
             prompt_display("Success", "Install finished.", COLOR_TEXT, false, data, NULL, NULL, NULL);
         }
 
         return;
     }
 
-    if(hidKeysDown() & KEY_B) {
-        svcSignalEvent(networkInstallData->cancelEvent);
+    if((hidKeysDown() & KEY_B) && !networkInstallData->installInfo.finished) {
+        svcSignalEvent(networkInstallData->installInfo.cancelEvent);
     }
 
     *progress = networkInstallData->installInfo.currTotal != 0 ? (float) ((double) networkInstallData->installInfo.currProcessed / (double) networkInstallData->installInfo.currTotal) : 0;
@@ -221,11 +217,11 @@ static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool re
     network_install_data* networkInstallData = (network_install_data*) data;
 
     if(response) {
-        networkInstallData->cancelEvent = task_data_op(&networkInstallData->installInfo);
-        if(networkInstallData->cancelEvent != 0) {
-            info_display("Installing Over Network", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
+        Result res = task_data_op(&networkInstallData->installInfo);
+        if(R_SUCCEEDED(res)) {
+            info_display("Installing Received Files", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
         } else {
-            error_display(NULL, NULL, NULL, "Failed to initiate installation.");
+            error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
 
             networkinstall_close_client(networkInstallData);
         }
@@ -338,8 +334,6 @@ void networkinstall_open() {
     data->installInfo.writeDst = networkinstall_write_dst;
 
     data->installInfo.error = networkinstall_error;
-
-    data->cancelEvent = 0;
 
     info_display("Network Install", "B: Return", false, data, networkinstall_wait_update, NULL);
 }

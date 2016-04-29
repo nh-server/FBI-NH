@@ -16,7 +16,8 @@ static list_item install_from_cdn = {"Install from CDN", COLOR_TEXT, action_inst
 static list_item delete_ticket = {"Delete Ticket", COLOR_TEXT, action_delete_ticket};
 
 typedef struct {
-    Handle cancelEvent;
+    populate_tickets_data populateData;
+
     bool populated;
 } tickets_data;
 
@@ -84,13 +85,11 @@ static void tickets_update(ui_view* view, void* data, linked_list* items, list_i
     tickets_data* listData = (tickets_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
         ui_pop();
@@ -103,17 +102,26 @@ static void tickets_update(ui_view* view, void* data, linked_list* items, list_i
     }
 
     if(!listData->populated || (hidKeysDown() & KEY_X)) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_tickets(items);
+        listData->populateData.items = items;
+        Result res = task_populate_tickets(&listData->populateData);
+        if(R_FAILED(res)) {
+            error_display_res(NULL, NULL, NULL, res, "Failed to initiate ticket list population.");
+        }
+
         listData->populated = true;
+    }
+
+    if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
+        listData->populateData.result = 0;
+
+        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate ticket list.");
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
@@ -129,6 +137,8 @@ void tickets_open() {
 
         return;
     }
+
+    data->populateData.finished = true;
 
     list_display("Tickets", "A: Select, B: Return, X: Refresh", data, tickets_update, tickets_draw_top);
 }

@@ -17,7 +17,8 @@ static list_item browse_spotpass_save_data = {"Browse SpotPass Save Data", COLOR
 static list_item delete_save_data = {"Delete Save Data", COLOR_TEXT, action_delete_ext_save_data};
 
 typedef struct {
-    Handle cancelEvent;
+    populate_ext_save_data_data populateData;
+
     bool populated;
 } extsavedata_data;
 
@@ -86,13 +87,11 @@ static void extsavedata_update(ui_view* view, void* data, linked_list* items, li
     extsavedata_data* listData = (extsavedata_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
         ui_pop();
@@ -105,17 +104,26 @@ static void extsavedata_update(ui_view* view, void* data, linked_list* items, li
     }
 
     if(!listData->populated || (hidKeysDown() & KEY_X)) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_ext_save_data(items);
+        listData->populateData.items = items;
+        Result res = task_populate_ext_save_data(&listData->populateData);
+        if(R_FAILED(res)) {
+            error_display_res(NULL, NULL, NULL, res, "Failed to initiate ext save data list population.");
+        }
+
         listData->populated = true;
+    }
+
+    if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
+        listData->populateData.result = 0;
+
+        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate ext save data list.");
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
@@ -131,6 +139,8 @@ void extsavedata_open() {
 
         return;
     }
+
+    data->populateData.finished = true;
 
     list_display("Ext Save Data", "A: Select, B: Return, X: Refresh", data, extsavedata_update, extsavedata_draw_top);
 }

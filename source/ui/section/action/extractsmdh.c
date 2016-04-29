@@ -19,40 +19,43 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
 
     Result res = 0;
 
-    static const u32 filePathData[] = {0x00000000, 0x00000000, 0x00000002, 0x6E6F6369, 0x00000000};
-    static const FS_Path filePath = (FS_Path) {PATH_BINARY, 0x14, (u8*) filePathData};
-    u32 archivePath[] = {(u32) (info->titleId & 0xFFFFFFFF), (u32) ((info->titleId >> 32) & 0xFFFFFFFF), info->mediaType, 0x00000000};
-    FS_Archive archive = {ARCHIVE_SAVEDATA_AND_CONTENT, (FS_Path) {PATH_BINARY, 0x10, (u8*) archivePath}};
+    static const u32 filePath[5] = {0x00000000, 0x00000000, 0x00000002, 0x6E6F6369, 0x00000000};
+    u32 archivePath[4] = {(u32) (info->titleId & 0xFFFFFFFF), (u32) ((info->titleId >> 32) & 0xFFFFFFFF), info->mediaType, 0x00000000};
 
     Handle fileHandle;
-    if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, archive, filePath, FS_OPEN_READ, 0))) {
-        SMDH smdh;
+    if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT, util_make_binary_path(archivePath, sizeof(archivePath)), util_make_binary_path(filePath, sizeof(filePath)), FS_OPEN_READ, 0))) {
+        SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
+        if(smdh != NULL) {
+            u32 bytesRead = 0;
+            if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
+                FS_Archive sdmcArchive = 0;
+                if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
+                    if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/smdh/"))) {
+                        char pathBuf[64];
+                        snprintf(pathBuf, 64, "/fbi/smdh/%016llX.smdh", info->titleId);
 
-        u32 bytesRead = 0;
-        if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, &smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
-            FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
-            if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive))) {
-                if(R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/smdh/"))) {
-                    char pathBuf[64];
-                    snprintf(pathBuf, 64, "/fbi/smdh/%016llX.smdh", info->titleId);
+                        FS_Path* fsPath = util_make_path_utf8(pathBuf);
+                        if(fsPath != NULL) {
+                            Handle smdhHandle = 0;
+                            if(R_SUCCEEDED(res = FSUSER_OpenFile(&smdhHandle, sdmcArchive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
+                                u32 bytesWritten = 0;
+                                res = FSFILE_Write(smdhHandle, &bytesWritten, 0, smdh, sizeof(SMDH), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
+                                FSFILE_Close(smdhHandle);
+                            }
 
-                    FS_Path* fsPath = util_make_path_utf8(pathBuf);
-                    if(fsPath != NULL) {
-                        Handle smdhHandle = 0;
-                        if(R_SUCCEEDED(res = FSUSER_OpenFile(&smdhHandle, sdmcArchive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
-                            u32 bytesWritten = 0;
-                            res = FSFILE_Write(smdhHandle, &bytesWritten, 0, &smdh, sizeof(SMDH), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
-                            FSFILE_Close(smdhHandle);
+                            util_free_path_utf8(fsPath);
+                        } else {
+                            res = R_FBI_OUT_OF_MEMORY;
                         }
-
-                        util_free_path_utf8(fsPath);
-                    } else {
-                        res = R_FBI_OUT_OF_MEMORY;
                     }
-                }
 
-                FSUSER_CloseArchive(&sdmcArchive);
+                    FSUSER_CloseArchive(sdmcArchive);
+                }
             }
+
+            free(smdh);
+        } else {
+            res = R_FBI_OUT_OF_MEMORY;
         }
 
         FSFILE_Close(fileHandle);
