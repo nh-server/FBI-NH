@@ -11,11 +11,12 @@
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 
-typedef struct {
-    linked_list* items;
+static int task_populate_tickets_compare_ids(const void* e1, const void* e2) {
+    u64 id1 = *(u64*) e1;
+    u64 id2 = *(u64*) e2;
 
-    Handle cancelEvent;
-} populate_tickets_data;
+    return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+}
 
 static void task_populate_tickets_thread(void* arg) {
     populate_tickets_data* data = (populate_tickets_data*) arg;
@@ -27,7 +28,7 @@ static void task_populate_tickets_thread(void* arg) {
         u64* ticketIds = (u64*) calloc(ticketCount, sizeof(u64));
         if(ticketIds != NULL) {
             if(R_SUCCEEDED(res = AM_GetTicketList(&ticketCount, ticketCount, 0, ticketIds))) {
-                qsort(ticketIds, ticketCount, sizeof(u64), util_compare_u64);
+                qsort(ticketIds, ticketCount, sizeof(u64), task_populate_tickets_compare_ids);
 
                 for(u32 i = 0; i < ticketCount && R_SUCCEEDED(res); i++) {
                     svcWaitSynchronization(task_get_pause_event(), U64_MAX);
@@ -63,12 +64,10 @@ static void task_populate_tickets_thread(void* arg) {
         }
     }
 
-    if(R_FAILED(res)) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to load ticket listing.");
-    }
-
     svcCloseHandle(data->cancelEvent);
-    free(data);
+
+    data->result = res;
+    data->finished = true;
 }
 
 void task_free_ticket(list_item* item) {
@@ -98,37 +97,30 @@ void task_clear_tickets(linked_list* items) {
     }
 }
 
-Handle task_populate_tickets(linked_list* items) {
-    if(items == NULL) {
-        return 0;
+Result task_populate_tickets(populate_tickets_data* data) {
+    if(data == NULL || data->items == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
     }
 
-    task_clear_tickets(items);
+    task_clear_tickets(data->items);
 
-    populate_tickets_data* data = (populate_tickets_data*) calloc(1, sizeof(populate_tickets_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate ticket list data.");
+    data->finished = false;
+    data->result = 0;
+    data->cancelEvent = 0;
 
-        return 0;
+    Result res = 0;
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1))) {
+        if(threadCreate(task_populate_tickets_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+            res = R_FBI_THREAD_CREATE_FAILED;
+        }
     }
 
-    data->items = items;
-
-    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
-    if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create ticket list cancel event.");
-
-        free(data);
-        return 0;
+    if(R_FAILED(res)) {
+        if(data->cancelEvent != 0) {
+            svcCloseHandle(data->cancelEvent);
+            data->cancelEvent = 0;
+        }
     }
 
-    if(threadCreate(task_populate_tickets_thread, data, 0x10000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create ticket list thread.");
-
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
-    }
-
-    return data->cancelEvent;
+    return res;
 }

@@ -186,23 +186,27 @@ bool linked_list_remove_at(linked_list* list, unsigned int index) {
     return true;
 }
 
-void linked_list_sort(linked_list* list, int (*compare)(const void* p1, const void* p2)) {
+void linked_list_sort(linked_list* list, int (*compare)(const void** p1, const void** p2)) {
     unsigned int count = list->size;
-    void* elements[count];
 
-    unsigned int i = 0;
-    linked_list_node* node = list->first;
-    while(node != NULL && i < count) {
-        elements[i++] = node->value;
-        node = node->next;
-    }
+    void** elements = (void**) calloc(count, sizeof(void*));
+    if(elements != NULL) {
+        unsigned int num = 0;
+        linked_list_node* node = list->first;
+        while(node != NULL && num < count) {
+            elements[num++] = node->value;
+            node = node->next;
+        }
 
-    linked_list_clear(list);
+        linked_list_clear(list);
 
-    qsort(elements, count, sizeof(void*), compare);
+        qsort(elements, num, sizeof(void*), (int (*)(const void* p1, const void* p2)) compare);
 
-    for(unsigned int index = 0; index < count; index++) {
-        linked_list_add(list, elements[index]);
+        for(unsigned int i = 0; i < num; i++) {
+            linked_list_add(list, elements[i]);
+        }
+
+        free(elements);
     }
 }
 
@@ -240,4 +244,5 @@ void linked_list_iter_remove(linked_list_iter* iter) {
     }
 
     linked_list_remove_node(iter->list, iter->curr);
+    iter->curr = NULL;
 }

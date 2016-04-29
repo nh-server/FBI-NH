@@ -7,30 +7,24 @@
 #include "../../list.h"
 #include "../../error.h"
 
-typedef struct {
-    data_op_info* info;
-
-    Handle cancelEvent;
-} data_op_data;
-
 static bool task_data_op_copy(data_op_data* data, u32 index) {
-    data->info->currProcessed = 0;
-    data->info->currTotal = 0;
+    data->currProcessed = 0;
+    data->currTotal = 0;
 
     Result res = 0;
 
     bool isDir = false;
-    if(R_SUCCEEDED(res = data->info->isSrcDirectory(data->info->data, index, &isDir)) && isDir) {
-        res = data->info->makeDstDirectory(data->info->data, index);
+    if(R_SUCCEEDED(res = data->isSrcDirectory(data->data, index, &isDir)) && isDir) {
+        res = data->makeDstDirectory(data->data, index);
     } else {
         u32 srcHandle = 0;
-        if(R_SUCCEEDED(res = data->info->openSrc(data->info->data, index, &srcHandle))) {
-            if(R_SUCCEEDED(res = data->info->getSrcSize(data->info->data, srcHandle, &data->info->currTotal))) {
-                if(data->info->currTotal == 0) {
-                    if(data->info->copyEmpty) {
+        if(R_SUCCEEDED(res = data->openSrc(data->data, index, &srcHandle))) {
+            if(R_SUCCEEDED(res = data->getSrcSize(data->data, srcHandle, &data->currTotal))) {
+                if(data->currTotal == 0) {
+                    if(data->copyEmpty) {
                         u32 dstHandle = 0;
-                        if(R_SUCCEEDED(res = data->info->openDst(data->info->data, index, NULL, &dstHandle))) {
-                            res = data->info->closeDst(data->info->data, index, true, dstHandle);
+                        if(R_SUCCEEDED(res = data->openDst(data->data, index, NULL, &dstHandle))) {
+                            res = data->closeDst(data->data, index, true, dstHandle);
                         }
                     }
                 } else {
@@ -40,7 +34,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
                         u32 dstHandle = 0;
 
                         bool firstRun = true;
-                        while(data->info->currProcessed < data->info->currTotal) {
+                        while(data->currProcessed < data->currTotal) {
                             svcWaitSynchronization(task_get_pause_event(), U64_MAX);
                             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                                 res = R_FBI_CANCELLED;
@@ -48,33 +42,33 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
                             }
 
                             u32 currSize = bufferSize;
-                            if((u64) currSize > data->info->currTotal - data->info->currProcessed) {
-                                currSize = (u32) (data->info->currTotal - data->info->currProcessed);
+                            if((u64) currSize > data->currTotal - data->currProcessed) {
+                                currSize = (u32) (data->currTotal - data->currProcessed);
                             }
 
                             u32 bytesRead = 0;
                             u32 bytesWritten = 0;
-                            if(R_FAILED(res = data->info->readSrc(data->info->data, srcHandle, &bytesRead, buffer, data->info->currProcessed, currSize))) {
+                            if(R_FAILED(res = data->readSrc(data->data, srcHandle, &bytesRead, buffer, data->currProcessed, currSize))) {
                                 break;
                             }
 
                             if(firstRun) {
                                 firstRun = false;
 
-                                if(R_FAILED(res = data->info->openDst(data->info->data, index, buffer, &dstHandle))) {
+                                if(R_FAILED(res = data->openDst(data->data, index, buffer, &dstHandle))) {
                                     break;
                                 }
                             }
 
-                            if(R_FAILED(res = data->info->writeDst(data->info->data, dstHandle, &bytesWritten, buffer, data->info->currProcessed, currSize))) {
+                            if(R_FAILED(res = data->writeDst(data->data, dstHandle, &bytesWritten, buffer, data->currProcessed, currSize))) {
                                 break;
                             }
 
-                            data->info->currProcessed += bytesWritten;
+                            data->currProcessed += bytesWritten;
                         }
 
                         if(dstHandle != 0) {
-                            Result closeDstRes = data->info->closeDst(data->info->data, index, res == 0, dstHandle);
+                            Result closeDstRes = data->closeDst(data->data, index, res == 0, dstHandle);
                             if(R_SUCCEEDED(res)) {
                                 res = closeDstRes;
                             }
@@ -87,7 +81,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
                 }
             }
 
-            Result closeSrcRes = data->info->closeSrc(data->info->data, index, res == 0, srcHandle);
+            Result closeSrcRes = data->closeSrc(data->data, index, res == 0, srcHandle);
             if(R_SUCCEEDED(res)) {
                 res = closeSrcRes;
             }
@@ -95,7 +89,8 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
     }
 
     if(R_FAILED(res)) {
-        return data->info->error(data->info->data, index, res);
+        data->result = res;
+        return data->error(data->data, index, res);
     }
 
     return true;
@@ -103,8 +98,8 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
 
 static bool task_data_op_delete(data_op_data* data, u32 index) {
     Result res = 0;
-    if(R_FAILED(res = data->info->delete(data->info->data, index))) {
-        return data->info->error(data->info->data, index, res);
+    if(R_FAILED(res = data->delete(data->data, index))) {
+        return data->error(data->data, index, res);
     }
 
     return true;
@@ -113,78 +108,57 @@ static bool task_data_op_delete(data_op_data* data, u32 index) {
 static void task_data_op_thread(void* arg) {
     data_op_data* data = (data_op_data*) arg;
 
-    data->info->finished = false;
-    data->info->premature = false;
-
-    data->info->processed = 0;
-
-    for(data->info->processed = 0; data->info->processed < data->info->total; data->info->processed++) {
+    for(data->processed = 0; data->processed < data->total; data->processed++) {
         bool cont = false;
 
-        switch(data->info->op) {
+        switch(data->op) {
             case DATAOP_COPY:
-                cont = task_data_op_copy(data, data->info->processed);
+                cont = task_data_op_copy(data, data->processed);
                 break;
             case DATAOP_DELETE:
-                cont = task_data_op_delete(data, data->info->processed);
+                cont = task_data_op_delete(data, data->processed);
                 break;
             default:
                 break;
         }
 
         if(!cont) {
-            data->info->premature = true;
             break;
         }
     }
 
-    data->info->finished = true;
-
     svcCloseHandle(data->cancelEvent);
-    free(data);
+
+    data->finished = true;
 }
 
-static void task_data_op_reset_info(data_op_info* info) {
-    info->finished = false;
-    info->premature = false;
-
-    info->processed = 0;
-
-    info->currProcessed = 0;
-    info->currTotal = 0;
-}
-
-Handle task_data_op(data_op_info* info) {
-    if(info == NULL) {
-        return 0;
-    }
-
-    task_data_op_reset_info(info);
-
-    data_op_data* data = (data_op_data*) calloc(1, sizeof(data_op_data));
+Result task_data_op(data_op_data* data) {
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate data operation data.");
-
-        return 0;
+        return R_FBI_INVALID_ARGUMENT;
     }
 
-    data->info = info;
+    data->processed = 0;
 
-    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
-    if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create data operation cancel event.");
+    data->currProcessed = 0;
+    data->currTotal = 0;
 
-        free(data);
-        return 0;
+    data->finished = false;
+    data->result = 0;
+    data->cancelEvent = 0;
+
+    Result res = 0;
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1))) {
+        if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+            res = R_FBI_THREAD_CREATE_FAILED;
+        }
     }
 
-    if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create data operation thread.");
-
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
+    if(R_FAILED(res)) {
+        if(data->cancelEvent != 0) {
+            svcCloseHandle(data->cancelEvent);
+            data->cancelEvent = 0;
+        }
     }
 
-    return data->cancelEvent;
+    return res;
 }

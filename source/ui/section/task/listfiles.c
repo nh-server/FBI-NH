@@ -14,14 +14,7 @@
 
 #define MAX_FILES 1024
 
-typedef struct {
-    linked_list* items;
-    file_info* dir;
-
-    Handle cancelEvent;
-} populate_files_data;
-
-Result task_create_file_item(list_item** out, FS_Archive* archive, const char* path) {
+Result task_create_file_item(list_item** out, FS_Archive archive, const char* path) {
     Result res = 0;
 
     list_item* item = (list_item*) calloc(1, sizeof(list_item));
@@ -30,7 +23,6 @@ Result task_create_file_item(list_item** out, FS_Archive* archive, const char* p
         if(fileInfo != NULL) {
             fileInfo->archive = archive;
             util_get_path_file(fileInfo->name, path, FILE_NAME_MAX);
-            fileInfo->containsCias = false;
             fileInfo->size = 0;
             fileInfo->isCia = false;
 
@@ -46,7 +38,7 @@ Result task_create_file_item(list_item** out, FS_Archive* archive, const char* p
 
                 fileInfo->isDirectory = true;
             } else {
-                item->color = COLOR_TEXT;
+                item->color = COLOR_FILE;
 
                 strncpy(fileInfo->path, path, FILE_PATH_MAX);
                 fileInfo->isDirectory = false;
@@ -54,7 +46,7 @@ Result task_create_file_item(list_item** out, FS_Archive* archive, const char* p
                 FS_Path* fileFsPath = util_make_path_utf8(fileInfo->path);
                 if(fileFsPath != NULL) {
                     Handle fileHandle;
-                    if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, *archive, *fileFsPath, FS_OPEN_READ, 0))) {
+                    if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, archive, *fileFsPath, FS_OPEN_READ, 0))) {
                         FSFILE_GetSize(fileHandle, &fileInfo->size);
 
                         size_t len = strlen(fileInfo->path);
@@ -72,16 +64,22 @@ Result task_create_file_item(list_item** out, FS_Archive* archive, const char* p
                                         fileInfo->ciaInfo.installedSize = titleEntry.size;
                                     }
 
-                                    SMDH smdh;
-                                    if(R_SUCCEEDED(AM_GetCiaIcon(&smdh, fileHandle))) {
-                                        u8 systemLanguage = CFG_LANGUAGE_EN;
-                                        CFGU_GetSystemLanguage(&systemLanguage);
+                                    SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
+                                    if(smdh != NULL) {
+                                        if(R_SUCCEEDED(AM_GetCiaIcon(smdh, fileHandle))) {
+                                            if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
+                                                u8 systemLanguage = CFG_LANGUAGE_EN;
+                                                CFGU_GetSystemLanguage(&systemLanguage);
 
-                                        fileInfo->ciaInfo.hasMeta = true;
-                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdh.titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription) - 1);
-                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdh.titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription) - 1);
-                                        utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdh.titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.meta.publisher) - 1);
-                                        fileInfo->ciaInfo.meta.texture = screen_load_texture_tiled_auto(smdh.largeIcon, sizeof(smdh.largeIcon), 48, 48, GPU_RGB565, false);
+                                                fileInfo->ciaInfo.hasMeta = true;
+                                                utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription) - 1);
+                                                utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription) - 1);
+                                                utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.meta.publisher) - 1);
+                                                fileInfo->ciaInfo.meta.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
+                                            }
+                                        }
+
+                                        free(smdh);
                                     }
                                 }
                             } else if(strcasecmp(&fileInfo->path[len - 4], ".tik") == 0) {
@@ -124,72 +122,128 @@ Result task_create_file_item(list_item** out, FS_Archive* archive, const char* p
     return res;
 }
 
+static int task_populate_files_compare_directory_entries(const void* e1, const void* e2) {
+    FS_DirectoryEntry* ent1 = (FS_DirectoryEntry*) e1;
+    FS_DirectoryEntry* ent2 = (FS_DirectoryEntry*) e2;
+
+    if((ent1->attributes & FS_ATTRIBUTE_DIRECTORY) && !(ent2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
+        return -1;
+    } else if(!(ent1->attributes & FS_ATTRIBUTE_DIRECTORY) && (ent2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
+        return 1;
+    } else {
+        char entryName1[0x213] = {'\0'};
+        utf16_to_utf8((uint8_t*) entryName1, ent1->name, sizeof(entryName1) - 1);
+
+        char entryName2[0x213] = {'\0'};
+        utf16_to_utf8((uint8_t*) entryName2, ent2->name, sizeof(entryName2) - 1);
+
+        return strcasecmp(entryName1, entryName2);
+    }
+}
+
 static void task_populate_files_thread(void* arg) {
     populate_files_data* data = (populate_files_data*) arg;
 
-    data->dir->containsCias = false;
-    data->dir->containsTickets = false;
-
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(data->dir->path);
-    if(fsPath != NULL) {
-        Handle dirHandle = 0;
-        if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, *data->dir->archive, *fsPath))) {
-            u32 entryCount = 0;
-            FS_DirectoryEntry* entries = (FS_DirectoryEntry*) calloc(MAX_FILES, sizeof(FS_DirectoryEntry));
-            if(entries != NULL) {
-                if(R_SUCCEEDED(res = FSDIR_Read(dirHandle, &entryCount, MAX_FILES, entries)) && entryCount > 0) {
-                    qsort(entries, entryCount, sizeof(FS_DirectoryEntry), util_compare_directory_entries);
+    data->base->containsCias = false;
+    data->base->containsTickets = false;
 
-                    for(u32 i = 0; i < entryCount && R_SUCCEEDED(res); i++) {
-                        svcWaitSynchronization(task_get_pause_event(), U64_MAX);
-                        if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
-                            break;
-                        }
+    list_item* baseItem = NULL;
+    if(R_SUCCEEDED(res = task_create_file_item(&baseItem, data->base->archive, data->base->path))) {
+        linked_list queue;
+        linked_list_init(&queue);
 
-                        if(entries[i].attributes & FS_ATTRIBUTE_HIDDEN) {
-                            continue;
-                        }
+        linked_list_add(&queue, baseItem);
 
-                        char name[FILE_NAME_MAX] = {'\0'};
-                        utf16_to_utf8((uint8_t*) name, entries[i].name, FILE_NAME_MAX - 1);
+        bool quit = false;
+        while(!quit && R_SUCCEEDED(res) && linked_list_size(&queue) > 0) {
+            u32 tail = linked_list_size(&queue) - 1;
+            list_item* currItem = (list_item*) linked_list_get(&queue, tail);
+            file_info* curr = (file_info*) currItem->data;
+            linked_list_remove_at(&queue, tail);
 
-                        char path[FILE_PATH_MAX] = {'\0'};
-                        snprintf(path, FILE_PATH_MAX, "%s%s", data->dir->path, name);
-
-                        list_item* item = NULL;
-                        if(R_SUCCEEDED(res = task_create_file_item(&item, data->dir->archive, path))) {
-                            if(((file_info*) item->data)->isCia) {
-                                data->dir->containsCias = true;
-                            } else if(((file_info*) item->data)->isTicket) {
-                                data->dir->containsTickets = true;
-                            }
-
-                            linked_list_add(data->items, item);
-                        }
-                    }
-                }
-
-                free(entries);
-            } else {
-                res = R_FBI_OUT_OF_MEMORY;
+            if(data->dirsFirst && (data->includeBase || currItem != baseItem)) {
+                linked_list_add(data->items, currItem);
             }
 
-            FSDIR_Close(dirHandle);
+            if(curr->isDirectory) {
+                FS_Path* fsPath = util_make_path_utf8(curr->path);
+                if(fsPath != NULL) {
+                    Handle dirHandle = 0;
+                    if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, curr->archive, *fsPath))) {
+                        u32 entryCount = 0;
+                        FS_DirectoryEntry* entries = (FS_DirectoryEntry*) calloc(MAX_FILES, sizeof(FS_DirectoryEntry));
+                        if(entries != NULL) {
+                            if(R_SUCCEEDED(res = FSDIR_Read(dirHandle, &entryCount, MAX_FILES, entries)) && entryCount > 0) {
+                                qsort(entries, entryCount, sizeof(FS_DirectoryEntry), task_populate_files_compare_directory_entries);
+
+                                for(u32 i = 0; i < entryCount && R_SUCCEEDED(res); i++) {
+                                    svcWaitSynchronization(task_get_pause_event(), U64_MAX);
+                                    if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
+                                        quit = true;
+                                        break;
+                                    }
+
+                                    if(entries[i].attributes & FS_ATTRIBUTE_HIDDEN) {
+                                        continue;
+                                    }
+
+                                    char name[FILE_NAME_MAX] = {'\0'};
+                                    utf16_to_utf8((uint8_t*) name, entries[i].name, FILE_NAME_MAX - 1);
+
+                                    char path[FILE_PATH_MAX] = {'\0'};
+                                    snprintf(path, FILE_PATH_MAX, "%s%s", curr->path, name);
+
+                                    list_item* item = NULL;
+                                    if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path))) {
+                                        if(curr->isDirectory && strncmp(curr->path, data->base->path, FILE_PATH_MAX) == 0) {
+                                            file_info* info = (file_info*) item->data;
+
+                                            if(info->isCia) {
+                                                data->base->containsCias = true;
+                                            } else if(info->isTicket) {
+                                                data->base->containsTickets = true;
+                                            }
+                                        }
+
+                                        if(data->recursive && ((file_info*) item->data)->isDirectory) {
+                                            linked_list_add(&queue, item);
+                                        } else {
+                                            linked_list_add(data->items, item);
+                                        }
+                                    }
+                                }
+                            }
+
+                            free(entries);
+                        } else {
+                            res = R_FBI_OUT_OF_MEMORY;
+                        }
+
+                        FSDIR_Close(dirHandle);
+                    }
+
+                    util_free_path_utf8(fsPath);
+                } else {
+                    res = R_FBI_OUT_OF_MEMORY;
+                }
+            }
+
+            if(!data->dirsFirst && (data->includeBase || currItem != baseItem)) {
+                linked_list_add(data->items, currItem);
+            }
         }
 
-        util_free_path_utf8(fsPath);
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
-    }
-
-    if(R_FAILED(res)) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to load file listing.");
+        if(!data->includeBase) {
+            task_free_file(baseItem);
+        }
     }
 
     svcCloseHandle(data->cancelEvent);
-    free(data);
+
+    data->result = res;
+    data->finished = true;
 }
 
 void task_free_file(list_item* item) {
@@ -219,43 +273,36 @@ void task_clear_files(linked_list* items) {
 
     while(linked_list_iter_has_next(&iter)) {
         list_item* item = (list_item*) linked_list_iter_next(&iter);
-        task_free_file(item);
+
         linked_list_iter_remove(&iter);
+        task_free_file(item);
     }
 }
 
-Handle task_populate_files(linked_list* items, file_info* dir) {
-    if(items == NULL || dir == NULL) {
-        return 0;
+Result task_populate_files(populate_files_data* data) {
+    if(data == NULL || data->base == NULL || data->items == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
     }
 
-    task_clear_files(items);
+    task_clear_files(data->items);
 
-    populate_files_data* data = (populate_files_data*) calloc(1, sizeof(populate_files_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate file list data.");
+    data->finished = false;
+    data->result = 0;
+    data->cancelEvent = 0;
 
-        return 0;
+    Result res = 0;
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1))) {
+        if(threadCreate(task_populate_files_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+            res = R_FBI_THREAD_CREATE_FAILED;
+        }
     }
 
-    data->items = items;
-    data->dir = dir;
-
-    Result eventRes = svcCreateEvent(&data->cancelEvent, 1);
-    if(R_FAILED(eventRes)) {
-        error_display_res(NULL, NULL, NULL, eventRes, "Failed to create file list cancel event.");
-
-        free(data);
-        return 0;
+    if(R_FAILED(res)) {
+        if(data->cancelEvent != 0) {
+            svcCloseHandle(data->cancelEvent);
+            data->cancelEvent = 0;
+        }
     }
 
-    if(threadCreate(task_populate_files_thread, data, 0x10000, 0x18, 1, true) == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create file list thread.");
-
-        svcCloseHandle(data->cancelEvent);
-        free(data);
-        return 0;
-    }
-
-    return data->cancelEvent;
+    return res;
 }

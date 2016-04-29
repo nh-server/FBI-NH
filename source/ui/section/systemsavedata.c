@@ -16,7 +16,8 @@ static list_item browse_save_data = {"Browse Save Data", COLOR_TEXT, action_brow
 static list_item delete_save_data = {"Delete Save Data", COLOR_TEXT, action_delete_system_save_data};
 
 typedef struct {
-    Handle cancelEvent;
+    populate_system_save_data_data populateData;
+
     bool populated;
 } systemsavedata_data;
 
@@ -84,13 +85,11 @@ static void systemsavedata_update(ui_view* view, void* data, linked_list* items,
     systemsavedata_data* listData = (systemsavedata_data*) data;
 
     if(hidKeysDown() & KEY_B) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
         ui_pop();
@@ -103,17 +102,26 @@ static void systemsavedata_update(ui_view* view, void* data, linked_list* items,
     }
 
     if(!listData->populated || (hidKeysDown() & KEY_X)) {
-        if(listData->cancelEvent != 0) {
-            svcSignalEvent(listData->cancelEvent);
-            while(svcWaitSynchronization(listData->cancelEvent, 0) == 0) {
+        if(!listData->populateData.finished) {
+            svcSignalEvent(listData->populateData.cancelEvent);
+            while(!listData->populateData.finished) {
                 svcSleepThread(1000000);
             }
-
-            listData->cancelEvent = 0;
         }
 
-        listData->cancelEvent = task_populate_system_save_data(items);
+        listData->populateData.items = items;
+        Result res = task_populate_system_save_data(&listData->populateData);
+        if(R_FAILED(res)) {
+            error_display_res(NULL, NULL, NULL, res, "Failed to initiate system save data list population.");
+        }
+
         listData->populated = true;
+    }
+
+    if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
+        listData->populateData.result = 0;
+
+        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate system save data list.");
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
@@ -129,6 +137,8 @@ void systemsavedata_open() {
 
         return;
     }
+
+    data->populateData.finished = true;
 
     list_display("System Save Data", "A: Select, B: Return, X: Refresh", data, systemsavedata_update, systemsavedata_draw_top);
 }

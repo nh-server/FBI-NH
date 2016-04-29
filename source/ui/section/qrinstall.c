@@ -23,17 +23,14 @@ typedef struct {
     struct quirc* qrContext;
     char urls[URLS_MAX][URL_MAX];
 
-    Handle mutex;
-    u16* buffer;
     u32 tex;
-    Handle camCancelEvent;
 
     u32 responseCode;
     u64 currTitleId;
     bool ticket;
 
-    data_op_info installInfo;
-    Handle installCancelEvent;
+    capture_cam_data captureInfo;
+    data_op_data installInfo;
 } qr_install_data;
 
 static Result qrinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
@@ -182,13 +179,7 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
         char* url = qrInstallData->urls[index];
 
         volatile bool dismissed = false;
-        if(res == R_FBI_WRONG_SYSTEM) {
-            if(strlen(url) > 48) {
-                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.45s...\nAttempted to install N3DS title to O3DS.", url);
-            } else {
-                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.48s\nAttempted to install N3DS title to O3DS.", url);
-            }
-        } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
+        if(res == R_FBI_HTTP_RESPONSE_CODE) {
             if(strlen(url) > 48) {
                 error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.45s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             } else {
@@ -217,7 +208,7 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
         ui_pop();
         info_destroy(view);
 
-        if(!qrInstallData->installInfo.premature) {
+        if(R_SUCCEEDED(qrInstallData->installInfo.result)) {
             prompt_display("Success", "Install finished.", COLOR_TEXT, false, data, NULL, NULL, NULL);
         }
 
@@ -225,7 +216,7 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
     }
 
     if(hidKeysDown() & KEY_B) {
-        svcSignalEvent(qrInstallData->installCancelEvent);
+        svcSignalEvent(qrInstallData->installInfo.cancelEvent);
     }
 
     *progress = qrInstallData->installInfo.currTotal != 0 ? (float) ((double) qrInstallData->installInfo.currProcessed / (double) qrInstallData->installInfo.currTotal) : 0;
@@ -236,38 +227,36 @@ static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool respons
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
     if(response) {
-        qrInstallData->installCancelEvent = task_data_op(&qrInstallData->installInfo);
-        if(qrInstallData->installCancelEvent != 0) {
+        Result res = task_data_op(&qrInstallData->installInfo);
+        if(R_SUCCEEDED(res)) {
             info_display("Installing From QR Code", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
         } else {
-            error_display(NULL, NULL, NULL, "Failed to initiate installation.");
+            error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
         }
     }
 }
 
 static void qrinstall_free_data(qr_install_data* data) {
-    if(data->camCancelEvent != 0) {
-        svcSignalEvent(data->camCancelEvent);
-        while(svcWaitSynchronization(data->camCancelEvent, 0) == 0) {
+    if(!data->installInfo.finished) {
+        svcSignalEvent(data->installInfo.cancelEvent);
+        while(!data->installInfo.finished) {
             svcSleepThread(1000000);
         }
-
-        data->camCancelEvent = 0;
     }
 
-    if(data->qrContext != NULL) {
-        quirc_destroy(data->qrContext);
-        data->qrContext = NULL;
-    }
-
-    if(data->buffer != NULL) {
-        free(data->buffer);
-        data->buffer = NULL;
+    if(data->captureInfo.buffer != NULL) {
+        free(data->captureInfo.buffer);
+        data->captureInfo.buffer = NULL;
     }
 
     if(data->tex != 0) {
         screen_unload_texture(data->tex);
         data->tex = 0;
+    }
+
+    if(data->qrContext != NULL) {
+        quirc_destroy(data->qrContext);
+        data->qrContext = NULL;
     }
 
     free(data);
@@ -293,6 +282,19 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         return;
     }
 
+    if(qrInstallData->captureInfo.finished) {
+        ui_pop();
+        info_destroy(view);
+
+        if(R_FAILED(qrInstallData->captureInfo.result)) {
+            error_display_res(NULL, NULL, NULL, qrInstallData->captureInfo.result, "Error while capturing camera frames.");
+        }
+
+        qrinstall_free_data(qrInstallData);
+
+        return;
+    }
+
     if(qrInstallData->tex != 0) {
         screen_unload_texture(qrInstallData->tex);
         qrInstallData->tex = 0;
@@ -302,18 +304,18 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
     int h = 0;
     uint8_t* qrBuf = quirc_begin(qrInstallData->qrContext, &w, &h);
 
-    svcWaitSynchronization(qrInstallData->mutex, U64_MAX);
+    svcWaitSynchronization(qrInstallData->captureInfo.mutex, U64_MAX);
 
-    qrInstallData->tex = screen_load_texture_auto(qrInstallData->buffer, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16), IMAGE_WIDTH, IMAGE_HEIGHT, GPU_RGB565, false);
+    qrInstallData->tex = screen_load_texture_auto(qrInstallData->captureInfo.buffer, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16), IMAGE_WIDTH, IMAGE_HEIGHT, GPU_RGB565, false);
 
     for(int x = 0; x < w; x++) {
         for(int y = 0; y < h; y++) {
-            u16 px = qrInstallData->buffer[y * IMAGE_WIDTH + x];
+            u16 px = qrInstallData->captureInfo.buffer[y * IMAGE_WIDTH + x];
             qrBuf[y * w + x] = (u8) (((((px >> 11) & 0x1F) << 3) + (((px >> 5) & 0x3F) << 2) + ((px & 0x1F) << 3)) / 3);
         }
     }
 
-    svcReleaseMutex(qrInstallData->mutex);
+    svcReleaseMutex(qrInstallData->captureInfo.mutex);
 
     quirc_end(qrInstallData->qrContext);
 
@@ -375,17 +377,19 @@ void qrinstall_open() {
         return;
     }
 
-    data->buffer = (u16*) calloc(1, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
-    if(data->buffer == NULL) {
+    data->captureInfo.width = IMAGE_WIDTH;
+    data->captureInfo.height = IMAGE_HEIGHT;
+    data->captureInfo.buffer = (u16*) calloc(1, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+    if(data->captureInfo.buffer == NULL) {
         error_display(NULL, NULL, NULL, "Failed to create image buffer.");
 
         qrinstall_free_data(data);
         return;
     }
 
-    data->camCancelEvent = task_capture_cam(&data->mutex, data->buffer, IMAGE_WIDTH, IMAGE_HEIGHT);
-    if(data->camCancelEvent == 0) {
-        error_display(NULL, NULL, NULL, "Failed to start camera capture.");
+    Result capRes = task_capture_cam(&data->captureInfo);
+    if(R_FAILED(capRes)) {
+        error_display_res(NULL, NULL, NULL, capRes, "Failed to start camera capture.");
 
         qrinstall_free_data(data);
         return;
@@ -418,8 +422,6 @@ void qrinstall_open() {
     data->installInfo.writeDst = qrinstall_write_dst;
 
     data->installInfo.error = qrinstall_error;
-
-    data->installCancelEvent = 0;
 
     info_display("QR Code Install", "B: Return", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
 }

@@ -30,9 +30,9 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
             return;
         }
 
-        FS_Archive sdmcArchive = {ARCHIVE_SDMC, {PATH_BINARY, 0, (void*) ""}};
-        if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive))) {
-            if(R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(&sdmcArchive, "/fbi/securevalue/"))) {
+        FS_Archive sdmcArchive = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
+            if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/securevalue/"))) {
                 char pathBuf[64];
                 snprintf(pathBuf, 64, "/fbi/securevalue/%016llX.dat", info->titleId);
 
@@ -51,7 +51,7 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
                 }
             }
 
-            FSUSER_CloseArchive(&sdmcArchive);
+            FSUSER_CloseArchive(sdmcArchive);
         }
     }
 
