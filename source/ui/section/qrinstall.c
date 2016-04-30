@@ -5,6 +5,7 @@
 #include <3ds.h>
 
 #include "section.h"
+#include "action/action.h"
 #include "task/task.h"
 #include "../error.h"
 #include "../info.h"
@@ -28,6 +29,9 @@ typedef struct {
     u32 responseCode;
     u64 currTitleId;
     bool ticket;
+
+    bool cdn;
+    ticket_info ticketInfo;
 
     capture_cam_data captureInfo;
     data_op_data installInfo;
@@ -106,6 +110,15 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
     Result res = 0;
 
     if(qrInstallData->ticket) {
+        u8* ticket = (u8*) initialReadBlock;
+
+        static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
+        static u32 titleIdOffset = 0x9C;
+
+        u64 titleId = 0;
+        memcpy(&titleId, &ticket[dataOffsets[ticket[0x03]] + titleIdOffset], sizeof(u64));
+        qrInstallData->ticketInfo.titleId = __builtin_bswap64(titleId);
+
         res = AM_InstallTicketBegin(handle);
     } else {
         u8* cia = (u8*) initialReadBlock;
@@ -147,6 +160,15 @@ static Result qrinstall_close_dst(void* data, u32 index, bool succeeded, u32 han
 
         if(qrInstallData->ticket) {
             res = AM_InstallTicketFinish(handle);
+
+            if(R_SUCCEEDED(res) && qrInstallData->cdn) {
+                volatile bool done = false;
+                action_install_cdn_noprompt(&done, &qrInstallData->ticketInfo, false);
+
+                while(!done) {
+                    svcSleepThread(100000000);
+                }
+            }
         } else {
             if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
                 if(qrInstallData->currTitleId == 0x0004013800000002 || qrInstallData->currTitleId == 0x0004013820000002) {
@@ -223,16 +245,22 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", qrInstallData->installInfo.processed, qrInstallData->installInfo.total, qrInstallData->installInfo.currProcessed / 1024.0 / 1024.0, qrInstallData->installInfo.currTotal / 1024.0 / 1024.0);
 }
 
-static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
+static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
+    qrInstallData->cdn = response;
+
+    Result res = task_data_op(&qrInstallData->installInfo);
+    if(R_SUCCEEDED(res)) {
+        info_display("Installing From QR Code", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
+    } else {
+        error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
+    }
+}
+
+static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        Result res = task_data_op(&qrInstallData->installInfo);
-        if(R_SUCCEEDED(res)) {
-            info_display("Installing From QR Code", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
-        } else {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
-        }
+        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, NULL, qrinstall_cdn_check_onresponse);
     }
 }
 

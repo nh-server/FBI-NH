@@ -4,10 +4,12 @@
 #include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <3ds.h>
 
 #include "section.h"
+#include "action/action.h"
 #include "task/task.h"
 #include "../error.h"
 #include "../info.h"
@@ -21,6 +23,9 @@ typedef struct {
 
     u64 currTitleId;
     bool ticket;
+
+    bool cdn;
+    ticket_info ticketInfo;
 
     data_op_data installInfo;
 } network_install_data;
@@ -105,6 +110,15 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
     Result res = 0;
 
     if(networkInstallData->ticket) {
+        u8* ticket = (u8*) initialReadBlock;
+
+        static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
+        static u32 titleIdOffset = 0x9C;
+
+        u64 titleId = 0;
+        memcpy(&titleId, &ticket[dataOffsets[ticket[0x03]] + titleIdOffset], sizeof(u64));
+        networkInstallData->ticketInfo.titleId = __builtin_bswap64(titleId);
+
         res = AM_InstallTicketBegin(handle);
     } else {
         u8* cia = (u8*) initialReadBlock;
@@ -146,6 +160,15 @@ static Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u3
 
         if(networkInstallData->ticket) {
             res = AM_InstallTicketFinish(handle);
+
+            if(R_SUCCEEDED(res) && networkInstallData->cdn) {
+                volatile bool done = false;
+                action_install_cdn_noprompt(&done, &networkInstallData->ticketInfo, false);
+
+                while(!done) {
+                    svcSleepThread(100000000);
+                }
+            }
         } else {
             if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
                 if(networkInstallData->currTitleId == 0x0004013800000002 || networkInstallData->currTitleId == 0x0004013820000002) {
@@ -213,20 +236,26 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", networkInstallData->installInfo.processed, networkInstallData->installInfo.total, networkInstallData->installInfo.currProcessed / 1024.0 / 1024.0, networkInstallData->installInfo.currTotal / 1024.0 / 1024.0);
 }
 
-static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
+static void networkinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
-    if(response) {
-        Result res = task_data_op(&networkInstallData->installInfo);
-        if(R_SUCCEEDED(res)) {
-            info_display("Installing Received Files", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
-        } else {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
+    networkInstallData->cdn = response;
 
-            networkinstall_close_client(networkInstallData);
-        }
+    Result res = task_data_op(&networkInstallData->installInfo);
+    if(R_SUCCEEDED(res)) {
+        info_display("Installing Received Files", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
     } else {
+        error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
+
         networkinstall_close_client(networkInstallData);
+    }
+}
+
+static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
+    if(response) {
+        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_cdn_check_onresponse);
+    } else {
+        networkinstall_close_client((network_install_data*) data);
     }
 }
 

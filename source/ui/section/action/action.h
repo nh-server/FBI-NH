@@ -1,5 +1,6 @@
 #pragma once
 
+typedef struct ticket_info_s ticket_info;
 typedef struct linked_list_s linked_list;
 typedef struct list_item_s list_item;
 
@@ -30,6 +31,7 @@ void action_delete_all_pending_titles(linked_list* items, list_item* selected);
 
 void action_delete_ticket(linked_list* items, list_item* selected);
 void action_install_cdn(linked_list* items, list_item* selected);
+void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt);
 
 void action_delete_title(linked_list* items, list_item* selected);
 void action_launch_title(linked_list* items, list_item* selected);

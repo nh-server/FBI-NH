@@ -17,6 +17,8 @@
 
 typedef struct {
     ticket_info* ticket;
+    volatile bool* done;
+    bool finishedPrompt;
 
     u32 contentCount;
     u16 contentIndices[CONTENTS_MAX];
@@ -160,6 +162,10 @@ static void action_install_cdn_draw_top(ui_view* view, void* data, float x1, flo
 }
 
 static void action_install_cdn_free_data(install_cdn_data* data) {
+    if(data->done != NULL) {
+        *data->done = true;
+    }
+
     free(data);
 }
 
@@ -182,7 +188,9 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
         }
 
         if(R_SUCCEEDED(installData->installInfo.result) && R_SUCCEEDED(res)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->ticket, NULL, ui_draw_ticket_info, NULL);
+            if(installData->finishedPrompt) {
+                prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->ticket, NULL, ui_draw_ticket_info, NULL);
+            }
         } else {
             AM_InstallTitleAbort();
 
@@ -204,39 +212,76 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MB / %.2f MB", installData->installInfo.processed, installData->installInfo.total, installData->installInfo.currProcessed / 1024.0 / 1024.0, installData->installInfo.currTotal / 1024.0 / 1024.0);
 }
 
-static void action_install_cdn_onresponse(ui_view* view, void* data, bool response) {
-    install_cdn_data* installData = (install_cdn_data*) data;
+void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt) {
+    install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to allocate install CDN data.");
 
-    if(response) {
-        Result res = 0;
+        return;
+    }
 
-        u8 n3ds = false;
-        if(R_FAILED(APT_CheckNew3DS(&n3ds)) || n3ds || ((installData->ticket->titleId >> 28) & 0xF) != 2) {
-            FS_MediaType dest = ((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+    data->ticket = info;
+    data->done = done;
+    data->finishedPrompt = finishedPrompt;
 
-            AM_DeleteTitle(dest, installData->ticket->titleId);
-            if(dest == MEDIATYPE_SD) {
-                AM_QueryAvailableExternalTitleDatabase(NULL);
-            }
+    data->responseCode = 0;
 
-            if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, installData->ticket->titleId, false))) {
-                if(R_SUCCEEDED(res = task_data_op(&installData->installInfo))) {
-                    info_display("Installing CDN Title", "Press B to cancel.", true, data, action_install_cdn_update, action_install_cdn_draw_top);
-                } else {
-                    AM_InstallTitleAbort();
-                }
-            }
-        } else {
-            res = R_FBI_WRONG_SYSTEM;
+    data->installInfo.data = data;
+
+    data->installInfo.op = DATAOP_COPY;
+
+    data->installInfo.copyEmpty = false;
+
+    data->installInfo.total = 1;
+
+    data->installInfo.isSrcDirectory = action_install_cdn_is_src_directory;
+    data->installInfo.makeDstDirectory = action_install_cdn_make_dst_directory;
+
+    data->installInfo.openSrc = action_install_cdn_open_src;
+    data->installInfo.closeSrc = action_install_cdn_close_src;
+    data->installInfo.getSrcSize = action_install_cdn_get_src_size;
+    data->installInfo.readSrc = action_install_cdn_read_src;
+
+    data->installInfo.openDst = action_install_cdn_open_dst;
+    data->installInfo.closeDst = action_install_cdn_close_dst;
+    data->installInfo.writeDst = action_install_cdn_write_dst;
+
+    data->installInfo.error = action_install_cdn_error;
+
+    Result res = 0;
+
+    u8 n3ds = false;
+    if(R_FAILED(APT_CheckNew3DS(&n3ds)) || n3ds || ((data->ticket->titleId >> 28) & 0xF) != 2) {
+        FS_MediaType dest = ((data->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+
+        AM_DeleteTitle(dest, data->ticket->titleId);
+        if(dest == MEDIATYPE_SD) {
+            AM_QueryAvailableExternalTitleDatabase(NULL);
         }
 
-        if(R_FAILED(res)) {
-            error_display_res(NULL, installData->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
-
-            action_install_cdn_free_data(installData);
+        if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, data->ticket->titleId, false))) {
+            if(R_SUCCEEDED(res = task_data_op(&data->installInfo))) {
+                info_display("Installing CDN Title", "Press B to cancel.", true, data, action_install_cdn_update, action_install_cdn_draw_top);
+            } else {
+                AM_InstallTitleAbort();
+            }
         }
     } else {
-        action_install_cdn_free_data(installData);
+        res = R_FBI_WRONG_SYSTEM;
+    }
+
+    if(R_FAILED(res)) {
+        error_display_res(NULL, data->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
+
+        action_install_cdn_free_data(data);
+    }
+}
+
+static void action_install_cdn_onresponse(ui_view* view, void* data, bool response) {
+    ticket_info* info = (ticket_info*) data;
+
+    if(response) {
+        action_install_cdn_noprompt(NULL, info, true);
     }
 }
 
