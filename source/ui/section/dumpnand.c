@@ -79,7 +79,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
     }
 
     *progress = dumpData->currTotal != 0 ? (float) ((double) dumpData->currProcessed / (double) dumpData->currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f MB / %.2f MB", dumpData->currProcessed / 1024.0f / 1024.0f, dumpData->currTotal / 1024.0f / 1024.0f);
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f MiB / %.2f MiB", dumpData->currProcessed / 1024.0f / 1024.0f, dumpData->currTotal / 1024.0f / 1024.0f);
 }
 
 static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
