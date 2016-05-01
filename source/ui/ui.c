@@ -157,19 +157,54 @@ static void ui_draw_top(ui_view* ui) {
     float wifiY = topScreenTopBarY + (topScreenTopBarHeight - wifiHeight) / 2;
     screen_draw_texture(wifiIcon, wifiX, wifiY, wifiWidth, wifiHeight);
 
-    FS_ArchiveResource sd;
-    FSUSER_GetSdmcArchiveResource(&sd);
+    char buffer[128];
+    char* currBuffer = buffer;
+    FS_ArchiveResource resource = {0};
 
-    FS_ArchiveResource nand;
-    FSUSER_GetNandArchiveResource(&nand);
+    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_SD)) && currBuffer < buffer + sizeof(buffer)) {
+        if(currBuffer != buffer) {
+            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+            currBuffer += strlen(currBuffer);
+        }
 
-    char buffer[64];
-    snprintf(buffer, 64, "SD: %.1f MiB, NAND: %.1f MiB", ((u64) sd.freeClusters * (u64) sd.clusterSize) / 1024.0 / 1024.0, ((u64) nand.freeClusters * (u64) nand.clusterSize) / 1024.0 / 1024.0);
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "SD: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        currBuffer += strlen(currBuffer);
+    }
+
+    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_CTR_NAND)) && currBuffer < buffer + sizeof(buffer)) {
+        if(currBuffer != buffer) {
+            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+            currBuffer += strlen(currBuffer);
+        }
+
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "CTR NAND: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        currBuffer += strlen(currBuffer);
+    }
+
+    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_TWL_NAND)) && currBuffer < buffer + sizeof(buffer)) {
+        if(currBuffer != buffer) {
+            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+            currBuffer += strlen(currBuffer);
+        }
+
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL NAND: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        currBuffer += strlen(currBuffer);
+    }
+
+    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_TWL_PHOTO)) && currBuffer < buffer + sizeof(buffer)) {
+        if(currBuffer != buffer) {
+            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+            currBuffer += strlen(currBuffer);
+        }
+
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL Photo: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        currBuffer += strlen(currBuffer);
+    }
 
     float freeSpaceHeight;
-    screen_get_string_size(NULL, &freeSpaceHeight, buffer, 0.5f, 0.5f);
+    screen_get_string_size(NULL, &freeSpaceHeight, buffer, 0.35f, 0.35f);
 
-    screen_draw_string(buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
+    screen_draw_string(buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.35f, 0.35f, COLOR_TEXT, false);
 }
 
 static void ui_draw_bottom(ui_view* ui) {
@@ -344,7 +379,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
     screen_draw_string(buf, nameX, nameY, 0.5f, 0.5f, COLOR_TEXT, false);
 
     if(!info->isDirectory) {
-        snprintf(buf, 64, "Size: %.2f MB", info->size / 1024.0 / 1024.0);
+        snprintf(buf, 64, "Size: %.2f MiB", info->size / 1024.0 / 1024.0);
 
         float sizeWidth;
         float sizeHeight;
@@ -421,7 +456,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
             float versionY = titleIdY + titleIdHeight + 2;
             screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-            snprintf(buf, 64, "Installed Size: %.2f MB", info->ciaInfo.installedSize / 1024.0 / 1024.0);
+            snprintf(buf, 64, "Installed Size: %.2f MiB", info->ciaInfo.installedSize / 1024.0 / 1024.0);
 
             float installedSizeWidth;
             float installedSizeHeight;
@@ -613,7 +648,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
     float versionY = productCodeY + productCodeHeight + 2;
     screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
-    snprintf(buf, 64, "Installed Size: %.2f MB", info->installedSize / 1024.0 / 1024.0);
+    snprintf(buf, 64, "Installed Size: %.2f MiB", info->installedSize / 1024.0 / 1024.0);
 
     float installedSizeWidth;
     float installedSizeHeight;
