@@ -295,6 +295,8 @@ void action_paste_contents(linked_list* items, list_item* selected) {
 
     data->pasteInfo.error = action_paste_files_error;
 
+    data->pasteInfo.finished = true;
+
     list_item* clipboardItem = NULL;
     Result createRes = 0;
     if(R_FAILED(createRes = task_create_file_item(&clipboardItem, clipboard_get_archive(), clipboard_get_path()))) {
