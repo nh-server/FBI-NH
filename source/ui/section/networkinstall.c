@@ -204,12 +204,26 @@ static bool networkinstall_error(void* data, u32 index, Result res) {
 }
 
 static void networkinstall_close_client(network_install_data* data) {
-    u8 ack = 0;
-    sendwait(data->clientSocket, &ack, sizeof(ack), 0);
+    if(data->clientSocket != 0) {
+        u8 ack = 0;
+        sendwait(data->clientSocket, &ack, sizeof(ack), 0);
 
-    close(data->clientSocket);
+        close(data->clientSocket);
+        data->clientSocket = 0;
+    }
 
     data->currTitleId = 0;
+}
+
+static void networkinstall_free_data(network_install_data* data) {
+    networkinstall_close_client(data);
+
+    if(data->serverSocket != 0) {
+        close(data->serverSocket);
+        data->serverSocket = 0;
+    }
+
+    free(data);
 }
 
 static void networkinstall_install_update(ui_view* view, void* data, float* progress, char* text) {
@@ -266,8 +280,7 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
         ui_pop();
         info_destroy(view);
 
-        close(networkInstallData->serverSocket);
-        free(networkInstallData);
+        networkinstall_free_data(networkInstallData);
 
         return;
     }
@@ -304,41 +317,6 @@ void networkinstall_open() {
         return;
     }
 
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    if(sock < 0) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to open server socket.");
-
-        free(data);
-        return;
-    }
-
-    int bufSize = 1024 * 32;
-    setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
-
-    struct sockaddr_in server;
-    server.sin_family = AF_INET;
-    server.sin_port = htons(5000);
-    server.sin_addr.s_addr = (in_addr_t) gethostid();
-
-    if(bind(sock, (struct sockaddr*) &server, sizeof(server)) < 0) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to bind server socket.");
-
-        close(sock);
-        free(data);
-        return;
-    }
-
-    fcntl(sock, F_SETFL, fcntl(sock, F_GETFL, 0) | O_NONBLOCK);
-
-    if(listen(sock, 5) < 0) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to listen on server socket.");
-
-        close(sock);
-        free(data);
-        return;
-    }
-
-    data->serverSocket = sock;
     data->clientSocket = 0;
 
     data->currTitleId = 0;
@@ -363,6 +341,42 @@ void networkinstall_open() {
     data->installInfo.writeDst = networkinstall_write_dst;
 
     data->installInfo.error = networkinstall_error;
+
+    data->installInfo.finished = true;
+
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    if(sock < 0) {
+        error_display_errno(NULL, NULL, NULL, errno, "Failed to open server socket.");
+
+        networkinstall_free_data(data);
+        return;
+    }
+
+    data->serverSocket = sock;
+
+    int bufSize = 1024 * 32;
+    setsockopt(data->serverSocket, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
+
+    struct sockaddr_in server;
+    server.sin_family = AF_INET;
+    server.sin_port = htons(5000);
+    server.sin_addr.s_addr = (in_addr_t) gethostid();
+
+    if(bind(data->serverSocket, (struct sockaddr*) &server, sizeof(server)) < 0) {
+        error_display_errno(NULL, NULL, NULL, errno, "Failed to bind server socket.");
+
+        networkinstall_free_data(data);
+        return;
+    }
+
+    fcntl(data->serverSocket, F_SETFL, fcntl(data->serverSocket, F_GETFL, 0) | O_NONBLOCK);
+
+    if(listen(data->serverSocket, 5) < 0) {
+        error_display_errno(NULL, NULL, NULL, errno, "Failed to listen on server socket.");
+
+        networkinstall_free_data(data);
+        return;
+    }
 
     info_display("Network Install", "B: Return", false, data, networkinstall_wait_update, NULL);
 }

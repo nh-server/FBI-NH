@@ -127,5 +127,7 @@ void dumpnand_open() {
 
     data->error = dumpnand_error;
 
+    data->finished = true;
+
     prompt_display("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, true, data, NULL, NULL, dumpnand_onresponse);
 }

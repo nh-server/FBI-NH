@@ -272,6 +272,13 @@ static void qrinstall_free_data(qr_install_data* data) {
         }
     }
 
+    if(!data->captureInfo.finished) {
+        svcSignalEvent(data->captureInfo.cancelEvent);
+        while(!data->captureInfo.finished) {
+            svcSleepThread(1000000);
+        }
+    }
+
     if(data->captureInfo.buffer != NULL) {
         free(data->captureInfo.buffer);
         data->captureInfo.buffer = NULL;
@@ -390,39 +397,6 @@ void qrinstall_open() {
         return;
     }
 
-    data->qrContext = quirc_new();
-    if(data->qrContext == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create QR context.");
-
-        qrinstall_free_data(data);
-        return;
-    }
-
-    if(quirc_resize(data->qrContext, IMAGE_WIDTH, IMAGE_HEIGHT) != 0) {
-        error_display(NULL, NULL, NULL, "Failed to resize QR context.");
-
-        qrinstall_free_data(data);
-        return;
-    }
-
-    data->captureInfo.width = IMAGE_WIDTH;
-    data->captureInfo.height = IMAGE_HEIGHT;
-    data->captureInfo.buffer = (u16*) calloc(1, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
-    if(data->captureInfo.buffer == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create image buffer.");
-
-        qrinstall_free_data(data);
-        return;
-    }
-
-    Result capRes = task_capture_cam(&data->captureInfo);
-    if(R_FAILED(capRes)) {
-        error_display_res(NULL, NULL, NULL, capRes, "Failed to start camera capture.");
-
-        qrinstall_free_data(data);
-        return;
-    }
-
     data->tex = 0;
 
     data->responseCode = 0;
@@ -450,6 +424,44 @@ void qrinstall_open() {
     data->installInfo.writeDst = qrinstall_write_dst;
 
     data->installInfo.error = qrinstall_error;
+
+    data->installInfo.finished = true;
+
+    data->captureInfo.width = IMAGE_WIDTH;
+    data->captureInfo.height = IMAGE_HEIGHT;
+
+    data->captureInfo.finished = true;
+
+    data->qrContext = quirc_new();
+    if(data->qrContext == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to create QR context.");
+
+        qrinstall_free_data(data);
+        return;
+    }
+
+    if(quirc_resize(data->qrContext, IMAGE_WIDTH, IMAGE_HEIGHT) != 0) {
+        error_display(NULL, NULL, NULL, "Failed to resize QR context.");
+
+        qrinstall_free_data(data);
+        return;
+    }
+
+    data->captureInfo.buffer = (u16*) calloc(1, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+    if(data->captureInfo.buffer == NULL) {
+        error_display(NULL, NULL, NULL, "Failed to create image buffer.");
+
+        qrinstall_free_data(data);
+        return;
+    }
+
+    Result capRes = task_capture_cam(&data->captureInfo);
+    if(R_FAILED(capRes)) {
+        error_display_res(NULL, NULL, NULL, capRes, "Failed to start camera capture.");
+
+        qrinstall_free_data(data);
+        return;
+    }
 
     info_display("QR Code Install", "B: Return", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
 }

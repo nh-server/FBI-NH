@@ -248,6 +248,8 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
 
     data->installInfo.error = action_install_cdn_error;
 
+    data->installInfo.finished = true;
+
     Result res = 0;
 
     u8 n3ds = false;
@@ -286,38 +288,5 @@ static void action_install_cdn_onresponse(ui_view* view, void* data, bool respon
 }
 
 void action_install_cdn(linked_list* items, list_item* selected) {
-    install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate install CDN data.");
-
-        return;
-    }
-
-    data->ticket = (ticket_info*) selected->data;
-
-    data->responseCode = 0;
-
-    data->installInfo.data = data;
-
-    data->installInfo.op = DATAOP_COPY;
-
-    data->installInfo.copyEmpty = false;
-
-    data->installInfo.total = 1;
-
-    data->installInfo.isSrcDirectory = action_install_cdn_is_src_directory;
-    data->installInfo.makeDstDirectory = action_install_cdn_make_dst_directory;
-
-    data->installInfo.openSrc = action_install_cdn_open_src;
-    data->installInfo.closeSrc = action_install_cdn_close_src;
-    data->installInfo.getSrcSize = action_install_cdn_get_src_size;
-    data->installInfo.readSrc = action_install_cdn_read_src;
-
-    data->installInfo.openDst = action_install_cdn_open_dst;
-    data->installInfo.closeDst = action_install_cdn_close_dst;
-    data->installInfo.writeDst = action_install_cdn_write_dst;
-
-    data->installInfo.error = action_install_cdn_error;
-
-    prompt_display("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, true, data, NULL, action_install_cdn_draw_top, action_install_cdn_onresponse);
+    prompt_display("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, true, selected->data, NULL, ui_draw_ticket_info, action_install_cdn_onresponse);
 }

@@ -113,10 +113,9 @@ static void task_capture_cam_thread(void* arg) {
 }
 
 Result task_capture_cam(capture_cam_data* data) {
-    if(data == NULL || data->buffer == NULL || data->width <= 0 || data->width > 640 || data->height <= 0 || data->height > 480 || data->mutex == 0) {
+    if(data == NULL || data->buffer == NULL || data->width <= 0 || data->width > 640 || data->height <= 0 || data->height > 480) {
         return R_FBI_INVALID_ARGUMENT;
     }
-
 
     data->mutex = 0;
 
@@ -132,6 +131,8 @@ Result task_capture_cam(capture_cam_data* data) {
     }
 
     if(R_FAILED(res)) {
+        data->finished = true;
+
         if(data->cancelEvent != 0) {
             svcCloseHandle(data->cancelEvent);
             data->cancelEvent = 0;

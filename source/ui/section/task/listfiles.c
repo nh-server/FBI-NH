@@ -298,6 +298,8 @@ Result task_populate_files(populate_files_data* data) {
     }
 
     if(R_FAILED(res)) {
+        data->finished = true;
+
         if(data->cancelEvent != 0) {
             svcCloseHandle(data->cancelEvent);
             data->cancelEvent = 0;

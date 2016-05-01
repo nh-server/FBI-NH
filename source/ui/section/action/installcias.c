@@ -275,6 +275,8 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
 
     data->installInfo.error = action_install_cias_error;
 
+    data->installInfo.finished = true;
+
     linked_list_init(&data->contents);
 
     populate_files_data popData;

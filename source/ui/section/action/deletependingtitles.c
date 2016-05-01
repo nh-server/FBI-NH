@@ -141,6 +141,8 @@ void action_delete_pending_titles(linked_list* items, list_item* selected, const
 
     data->deleteInfo.error = action_delete_pending_titles_error;
 
+    data->deleteInfo.finished = true;
+
     linked_list_init(&data->contents);
 
     if(all) {

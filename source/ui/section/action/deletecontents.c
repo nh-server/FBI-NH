@@ -166,6 +166,8 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
 
     data->deleteInfo.error = action_delete_contents_error;
 
+    data->deleteInfo.finished = false;
+
     linked_list_init(&data->contents);
 
     populate_files_data popData;

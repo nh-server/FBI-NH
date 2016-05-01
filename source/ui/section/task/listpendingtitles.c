@@ -142,6 +142,8 @@ Result task_populate_pending_titles(populate_pending_titles_data* data) {
     }
 
     if(R_FAILED(res)) {
+        data->finished = true;
+
         if(data->cancelEvent != 0) {
             svcCloseHandle(data->cancelEvent);
             data->cancelEvent = 0;
