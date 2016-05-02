@@ -267,9 +267,9 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        listData->populateData.result = 0;
-
         error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate file list.");
+
+        listData->populateData.result = 0;
     }
 }
 

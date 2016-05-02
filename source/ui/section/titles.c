@@ -140,9 +140,9 @@ static void titles_update(ui_view* view, void* data, linked_list* items, list_it
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        listData->populateData.result = 0;
-
         error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate title list.");
+
+        listData->populateData.result = 0;
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
