@@ -235,3 +235,45 @@ void util_get_parent_path(char* out, const char* path, u32 size) {
     strncpy(out, path, terminatorPos);
     out[terminatorPos] = '\0';
 }
+
+static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
+    u32 *cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = 0x087a0180;
+    cmdbuf[1] = (u32) (titleId & 0xFFFFFFFF);
+    cmdbuf[2] = (u32) (titleId >> 32);
+    memcpy(&cmdbuf[3], seed, 16);
+
+    Result ret = 0;
+    if(R_FAILED(ret = svcSendSyncRequest(*fsGetSessionHandle()))) return ret;
+
+    ret = cmdbuf[1];
+    return ret;
+}
+
+Result util_import_seed(u64 titleId) {
+    char pathBuf[64];
+    snprintf(pathBuf, 64, "/fbi/seed/%016llX.dat", titleId);
+
+    Result res = 0;
+
+    FS_Path* fsPath = util_make_path_utf8(pathBuf);
+    if(fsPath != NULL) {
+        Handle fileHandle = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
+            u32 bytesRead = 0;
+            u8 seed[16];
+            if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, seed, sizeof(seed)))) {
+                res = FSUSER_AddSeed(titleId, seed);
+            }
+
+            FSFILE_Close(fileHandle);
+        }
+
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    return res;
+}
