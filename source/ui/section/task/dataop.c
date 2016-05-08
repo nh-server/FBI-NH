@@ -130,6 +130,8 @@ static void task_data_op_thread(void* arg) {
     svcCloseHandle(data->cancelEvent);
 
     data->finished = true;
+
+    aptSetSleepAllowed(true);
 }
 
 Result task_data_op(data_op_data* data) {
@@ -161,6 +163,8 @@ Result task_data_op(data_op_data* data) {
             data->cancelEvent = 0;
         }
     }
+
+    aptSetSleepAllowed(false);
 
     return res;
 }
