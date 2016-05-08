@@ -116,6 +116,7 @@ static Result action_install_tickets_read_src(void* data, u32 handle, u32* bytes
 }
 
 static Result action_install_tickets_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+    AM_DeleteTicket(((file_info*) ((list_item*) linked_list_get(&((install_tickets_data*) data)->contents, index))->data)->ticketInfo.titleId);
     return AM_InstallTicketBegin(handle);
 }
 
