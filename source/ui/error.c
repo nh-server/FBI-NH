@@ -644,6 +644,10 @@ void error_display_errno(volatile bool* dismissed, void* data, void (*drawTop)(u
     vsnprintf(textBuf, 1024, text, list);
     va_end(list);
 
+    if(err < 0) {
+        err = -err;
+    }
+
     snprintf(errorData->fullText, 4096, "%s\nI/O Error: %s (%d)", textBuf, strerror(err), err);
 
     prompt_display("Error", errorData->fullText, COLOR_TEXT, false, errorData, NULL, error_draw_top, error_onresponse);

@@ -305,7 +305,18 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
         networkInstallData->clientSocket = sock;
         prompt_display("Confirmation", "Install the received file(s)?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_confirm_onresponse);
     } else if(errno != EAGAIN) {
+        if(errno == 22 || errno == 115) {
+            ui_pop();
+            info_destroy(view);
+        }
+
         error_display_errno(NULL, NULL, NULL, errno, "Failed to open socket.");
+
+        if(errno == 22 || errno == 115) {
+            networkinstall_free_data(networkInstallData);
+
+            return;
+        }
     }
 
     struct in_addr addr = {(in_addr_t) gethostid()};
