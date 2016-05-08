@@ -259,18 +259,51 @@ Result util_import_seed(u64 titleId) {
 
     FS_Path* fsPath = util_make_path_utf8(pathBuf);
     if(fsPath != NULL) {
+        u8 seed[16];
+
         Handle fileHandle = 0;
         if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
             u32 bytesRead = 0;
-            u8 seed[16];
-            if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, seed, sizeof(seed)))) {
-                res = FSUSER_AddSeed(titleId, seed);
-            }
+            res = FSFILE_Read(fileHandle, &bytesRead, 0, seed, sizeof(seed));
 
             FSFILE_Close(fileHandle);
         }
 
         util_free_path_utf8(fsPath);
+
+        if(R_FAILED(res)) {
+            static const char* regionStrings[] = {"JP", "US", "GB", "GB", "HK", "KR", "TW"};
+
+            u8 region = CFG_REGION_USA;
+            CFGU_GetSystemLanguage(&region);
+
+            char url[128];
+            snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
+
+            httpcContext context;
+            if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
+                httpcSetSSLOpt(&context, SSLCOPT_DisableVerify);
+
+                u32 responseCode = 0;
+                if(R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
+                    if(responseCode == 200) {
+                        u32 pos = 0;
+                        u32 bytesRead = 0;
+                        while(pos < sizeof(seed) && (R_SUCCEEDED(res = httpcDownloadData(&context, &seed[pos], sizeof(seed) - pos, &bytesRead)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING)) {
+                            pos += bytesRead;
+                        }
+                    } else {
+                        res = R_FBI_HTTP_RESPONSE_CODE;
+                    }
+                }
+
+                httpcCloseContext(&context);
+            }
+        }
+
+        if(R_SUCCEEDED(res)) {
+            res = FSUSER_AddSeed(titleId, seed);
+        }
     } else {
         res = R_FBI_OUT_OF_MEMORY;
     }
