@@ -50,3 +50,5 @@ Result util_ensure_dir(FS_Archive archive, const char* path);
 
 void util_get_path_file(char* out, const char* path, u32 size);
 void util_get_parent_path(char* out, const char* path, u32 size);
+
+Result util_import_seed(u64 titleId);

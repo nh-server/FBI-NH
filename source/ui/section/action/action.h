@@ -36,6 +36,7 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
 void action_delete_title(linked_list* items, list_item* selected);
 void action_launch_title(linked_list* items, list_item* selected);
 void action_extract_smdh(linked_list* items, list_item* selected);
+void action_import_seed(linked_list* items, list_item* selected);
 void action_browse_title_save_data(linked_list* items, list_item* selected);
 void action_import_secure_value(linked_list* items, list_item* selected);
 void action_export_secure_value(linked_list* items, list_item* selected);

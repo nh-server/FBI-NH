@@ -16,6 +16,7 @@
 #include "../prompt.h"
 #include "../ui.h"
 #include "../../core/screen.h"
+#include "../../core/util.h"
 
 typedef struct {
     int serverSocket;
@@ -171,6 +172,8 @@ static Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u3
             }
         } else {
             if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
+                util_import_seed(networkInstallData->currTitleId);
+
                 if(networkInstallData->currTitleId == 0x0004013800000002 || networkInstallData->currTitleId == 0x0004013820000002) {
                     res = AM_InstallFirm(networkInstallData->currTitleId);
                 }
