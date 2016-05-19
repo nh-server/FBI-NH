@@ -14,7 +14,7 @@
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 
-#define CONTENTS_MAX 64
+#define CONTENTS_MAX 256
 
 typedef struct {
     ticket_info* ticket;
