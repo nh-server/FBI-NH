@@ -119,11 +119,7 @@ static Result action_install_cias_read_src(void* data, u32 handle, u32* bytesRea
 static Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
-    u8* cia = (u8*) initialReadBlock;
-
-    u32 headerSize = *(u32*) &cia[0x00];
-    u32 certSize = *(u32*) &cia[0x08];
-    u64 titleId = __builtin_bswap64(*(u64*) &cia[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + 0x1DC]);
+    u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
     FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 

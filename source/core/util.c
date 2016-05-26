@@ -277,28 +277,33 @@ Result util_import_seed(u64 titleId) {
             u8 region = CFG_REGION_USA;
             CFGU_GetSystemLanguage(&region);
 
-            char url[128];
-            snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
+            if(region <= CFG_REGION_TWN) {
+                char url[128];
+                snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
 
-            httpcContext context;
-            if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
-                httpcSetSSLOpt(&context, SSLCOPT_DisableVerify);
+                httpcContext context;
+                if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
+                    httpcSetSSLOpt(&context, SSLCOPT_DisableVerify);
 
-                u32 responseCode = 0;
-                if(R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
-                    if(responseCode == 200) {
-                        u32 pos = 0;
-                        u32 bytesRead = 0;
-                        while(pos < sizeof(seed) && (R_SUCCEEDED(res = httpcDownloadData(&context, &seed[pos], sizeof(seed) - pos, &bytesRead)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING)) {
-                            pos += bytesRead;
+                    u32 responseCode = 0;
+                    if(R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
+                        if(responseCode == 200) {
+                            u32 pos = 0;
+                            u32 bytesRead = 0;
+                            while(pos < sizeof(seed) && (R_SUCCEEDED(res = httpcDownloadData(&context, &seed[pos], sizeof(seed) - pos, &bytesRead)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING)) {
+                                pos += bytesRead;
+                            }
+                        } else {
+                            res = R_FBI_HTTP_RESPONSE_CODE;
                         }
-                    } else {
-                        res = R_FBI_HTTP_RESPONSE_CODE;
                     }
-                }
 
-                httpcCloseContext(&context);
+                    httpcCloseContext(&context);
+                }
+            } else {
+                res = R_FBI_OUT_OF_RANGE;
             }
+
         }
 
         if(R_SUCCEEDED(res)) {
@@ -309,4 +314,32 @@ Result util_import_seed(u64 titleId) {
     }
 
     return res;
+}
+
+static u32 sigSizes[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
+
+u64 util_get_cia_title_id(u8* cia) {
+    u32 headerSize = *(u32*) &cia[0x00];
+    u32 certSize = *(u32*) &cia[0x08];
+    u32 ticketSize = *(u32*) &cia[0x0C];
+
+    u8* tmd = &cia[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + ((ticketSize + 0x3F) & ~0x3F)];
+
+    return util_get_tmd_title_id(tmd);
+}
+
+u64 util_get_ticket_title_id(u8* ticket) {
+    return __builtin_bswap64(*(u64*) &ticket[sigSizes[ticket[0x03]] + 0x9C]);
+}
+
+u64 util_get_tmd_title_id(u8* tmd) {
+    return __builtin_bswap64(*(u64*) &tmd[sigSizes[tmd[0x03]] + 0x4C]);
+}
+
+u16 util_get_tmd_content_count(u8* tmd) {
+    return __builtin_bswap16(*(u16*) &tmd[sigSizes[tmd[0x03]] + 0x9E]);
+}
+
+u8* util_get_tmd_content_chunk(u8* tmd, u32 index) {
+    return &tmd[sigSizes[tmd[0x03]] + 0x9C4 + (index * 0x30)];
 }

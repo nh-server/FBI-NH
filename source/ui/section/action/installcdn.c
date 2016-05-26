@@ -99,18 +99,13 @@ static Result action_install_cdn_open_dst(void* data, u32 index, void* initialRe
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(index == 0) {
-        static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
-
-        u8* tmd = (u8*) initialReadBlock;
-        u8 sigType = tmd[0x03];
-
-        installData->contentCount = __builtin_bswap16(*(u16*) &tmd[dataOffsets[sigType] + 0x9E]);
+        installData->contentCount = util_get_tmd_content_count((u8*) initialReadBlock);
         if(installData->contentCount > CONTENTS_MAX) {
-            return MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_APPLICATION, RD_OUT_OF_RANGE);
+            return R_FBI_OUT_OF_RANGE;
         }
 
         for(u32 i = 0; i < installData->contentCount; i++) {
-            u8* contentChunk = &tmd[dataOffsets[sigType] + 0x9C4 + (i * 0x30)];
+            u8* contentChunk = util_get_tmd_content_chunk((u8*) initialReadBlock, i);
 
             installData->contentIds[i] = __builtin_bswap32(*(u32*) &contentChunk[0x00]);
             installData->contentIndices[i] = __builtin_bswap16(*(u16*) &contentChunk[0x04]);

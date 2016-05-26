@@ -111,22 +111,11 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
     Result res = 0;
 
     if(networkInstallData->ticket) {
-        u8* ticket = (u8*) initialReadBlock;
-
-        static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
-        static u32 titleIdOffset = 0x9C;
-
-        u64 titleId = 0;
-        memcpy(&titleId, &ticket[dataOffsets[ticket[0x03]] + titleIdOffset], sizeof(u64));
-        networkInstallData->ticketInfo.titleId = __builtin_bswap64(titleId);
+        networkInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
 
         res = AM_InstallTicketBegin(handle);
     } else {
-        u8* cia = (u8*) initialReadBlock;
-
-        u32 headerSize = *(u32*) &cia[0x00];
-        u32 certSize = *(u32*) &cia[0x08];
-        u64 titleId = __builtin_bswap64(*(u64*) &cia[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + 0x1DC]);
+        u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
         FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
