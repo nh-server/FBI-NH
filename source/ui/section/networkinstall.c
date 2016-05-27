@@ -113,6 +113,7 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
     if(networkInstallData->ticket) {
         networkInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
 
+        AM_DeleteTicket(networkInstallData->ticketInfo.titleId);
         res = AM_InstallTicketBegin(handle);
     } else {
         u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
