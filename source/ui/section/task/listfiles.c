@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <3ds/services/fs.h>
 
 #include "task.h"
 #include "../../list.h"
@@ -192,25 +193,27 @@ static void task_populate_files_thread(void* arg) {
                                     char name[FILE_NAME_MAX] = {'\0'};
                                     utf16_to_utf8((uint8_t*) name, entries[i].name, FILE_NAME_MAX - 1);
 
-                                    char path[FILE_PATH_MAX] = {'\0'};
-                                    snprintf(path, FILE_PATH_MAX, "%s%s", curr->path, name);
+                                    if(data->filter == NULL || data->filter(data->filterData, name, entries[i].attributes)) {
+                                        char path[FILE_PATH_MAX] = {'\0'};
+                                        snprintf(path, FILE_PATH_MAX, "%s%s", curr->path, name);
 
-                                    list_item* item = NULL;
-                                    if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path))) {
-                                        if(curr->isDirectory && strncmp(curr->path, data->base->path, FILE_PATH_MAX) == 0) {
-                                            file_info* info = (file_info*) item->data;
+                                        list_item* item = NULL;
+                                        if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path))) {
+                                            if(curr->isDirectory && strncmp(curr->path, data->base->path, FILE_PATH_MAX) == 0) {
+                                                file_info* info = (file_info*) item->data;
 
-                                            if(info->isCia) {
-                                                data->base->containsCias = true;
-                                            } else if(info->isTicket) {
-                                                data->base->containsTickets = true;
+                                                if(info->isCia) {
+                                                    data->base->containsCias = true;
+                                                } else if(info->isTicket) {
+                                                    data->base->containsTickets = true;
+                                                }
                                             }
-                                        }
 
-                                        if(data->recursive && ((file_info*) item->data)->isDirectory) {
-                                            linked_list_add(&queue, item);
-                                        } else {
-                                            linked_list_add(data->items, item);
+                                            if(data->recursive && ((file_info*) item->data)->isDirectory) {
+                                                linked_list_add(&queue, item);
+                                            } else {
+                                                linked_list_add(data->items, item);
+                                            }
                                         }
                                     }
                                 }

@@ -203,6 +203,10 @@ void screen_init() {
                 colorConfig[COLOR_FILE] = color;
             } else if(strcasecmp(key, "directory") == 0) {
                 colorConfig[COLOR_DIRECTORY] = color;
+            } else if(strcasecmp(key, "enabled") == 0) {
+                colorConfig[COLOR_ENABLED] = color;
+            } else if(strcasecmp(key, "disabled") == 0) {
+                colorConfig[COLOR_DISABLED] = color;
             }
         }
     }

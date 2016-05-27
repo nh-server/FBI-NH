@@ -130,6 +130,9 @@ typedef struct data_op_info_s {
 typedef struct {
     linked_list* items;
 
+    bool (*filter)(void* data, u64 extSaveDataId, FS_MediaType mediaType);
+    void* filterData;
+
     volatile bool finished;
     Result result;
     Handle cancelEvent;
@@ -143,6 +146,9 @@ typedef struct {
     bool recursive;
     bool includeBase;
     bool dirsFirst;
+
+    bool (*filter)(void* data, const char* name, u32 attributes);
+    void* filterData;
 
     volatile bool finished;
     Result result;
@@ -175,6 +181,9 @@ typedef struct {
 
 typedef struct {
     linked_list* items;
+
+    bool (*filter)(void* data, u64 titleId, FS_MediaType mediaType);
+    void* filterData;
 
     volatile bool finished;
     Result result;
