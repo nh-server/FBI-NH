@@ -273,12 +273,14 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                             break;
                         }
 
-                        bool dsiWare = ((titleIds[i] >> 32) & 0x8000) != 0;
-                        if(dsiWare != useDSiWare) {
-                            continue;
-                        }
+                        if(data->filter == NULL || data->filter(data->filterData, titleIds[i], mediaType)) {
+                            bool dsiWare = ((titleIds[i] >> 32) & 0x8000) != 0;
+                            if(dsiWare != useDSiWare) {
+                                continue;
+                            }
 
-                        res = dsiWare ? task_populate_titles_add_twl(data, mediaType, titleIds[i]) : task_populate_titles_add_ctr(data, mediaType, titleIds[i]);
+                            res = dsiWare ? task_populate_titles_add_twl(data, mediaType, titleIds[i]) : task_populate_titles_add_ctr(data, mediaType, titleIds[i]);
+                        }
                     }
                 }
 

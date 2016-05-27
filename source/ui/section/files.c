@@ -48,6 +48,11 @@ typedef struct {
     FS_Path archivePath;
     FS_Archive archive;
 
+    bool showDirectories;
+    bool showCias;
+    bool showTickets;
+    bool showMisc;
+
     char currDir[FILE_PATH_MAX];
     list_item* dirItem;
 } files_data;
@@ -152,6 +157,56 @@ static void files_action_open(linked_list* items, list_item* selected, files_dat
     list_display(((file_info*) selected->data)->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
 
+static void files_filters_add_entry(linked_list* items, const char* name, bool* val) {
+    list_item* item = (list_item*) calloc(1, sizeof(list_item));
+    if(item != NULL) {
+        snprintf(item->name, LIST_ITEM_NAME_MAX, "%s", name);
+        item->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+        item->data = val;
+
+        linked_list_add(items, item);
+    }
+}
+
+static void files_filters_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
+    files_data* listData = (files_data*) data;
+
+    if(hidKeysDown() & KEY_B) {
+        linked_list_iter iter;
+        linked_list_iterate(items, &iter);
+
+        while(linked_list_iter_has_next(&iter)) {
+            free(linked_list_iter_next(&iter));
+            linked_list_iter_remove(&iter);
+        }
+
+        ui_pop();
+        list_destroy(view);
+
+        return;
+    }
+
+    if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        bool* val = (bool*) selected->data;
+        *val = !(*val);
+
+        selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+
+        listData->populated = false;
+    }
+
+    if(linked_list_size(items) == 0) {
+        files_filters_add_entry(items, "Show directories", &listData->showDirectories);
+        files_filters_add_entry(items, "Show CIAs", &listData->showCias);
+        files_filters_add_entry(items, "Show tickets", &listData->showTickets);
+        files_filters_add_entry(items, "Show miscellaneous", &listData->showMisc);
+    }
+}
+
+static void files_filters_open(files_data* data) {
+    list_display("Filters", "A: Toggle, B: Return", data, files_filters_update, NULL);
+}
+
 static void files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
     if(selected != NULL && selected->data != NULL) {
         ui_draw_file_info(view, selected->data, x1, y1, x2, y2);
@@ -246,6 +301,11 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
         }
     }
 
+    if(hidKeysDown() & KEY_SELECT) {
+        files_filters_open(listData);
+        return;
+    }
+
     if((hidKeysDown() & KEY_Y) && listData->dirItem != NULL) {
         files_action_open(items, listData->dirItem, listData);
         return;
@@ -273,6 +333,26 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     }
 }
 
+static bool files_filter(void* data, const char* name, u32 attributes) {
+    files_data* listData = (files_data*) data;
+
+    if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
+        return listData->showDirectories;
+    } else {
+        size_t len = strlen(name);
+        if(len >= 4) {
+            const char* extension = name + len - 4;
+            if(strncmp(extension, ".cia", 4) == 0) {
+                return listData->showCias;
+            } else if(strncmp(extension, ".tik", 4) == 0) {
+                return listData->showTickets;
+            }
+        }
+    }
+
+    return listData->showMisc;
+}
+
 void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     files_data* data = (files_data*) calloc(1, sizeof(files_data));
     if(data == NULL) {
@@ -285,9 +365,17 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     data->populateData.includeBase = false;
     data->populateData.dirsFirst = true;
 
+    data->populateData.filter = files_filter;
+    data->populateData.filterData = data;
+
     data->populateData.finished = true;
 
     data->populated = false;
+
+    data->showDirectories = true;
+    data->showCias = true;
+    data->showTickets = true;
+    data->showMisc = true;
 
     data->archiveId = archiveId;
     data->archivePath.type = archivePath.type;
@@ -317,7 +405,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
         return;
     }
 
-    list_display("Files", "A: Select, B: Back, X: Refresh, Y: Directory Action", data, files_update, files_draw_top);
+    list_display("Files", "A: Select, B: Back, X: Refresh, Y: Dir, Select: Filter", data, files_update, files_draw_top);
 }
 
 void files_open_sd() {

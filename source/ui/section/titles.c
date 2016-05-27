@@ -24,6 +24,10 @@ static list_item delete_secure_value = {"Delete Secure Value", COLOR_TEXT, actio
 typedef struct {
     populate_titles_data populateData;
 
+    bool showGameCard;
+    bool showSD;
+    bool showNAND;
+
     bool populated;
 } titles_data;
 
@@ -102,6 +106,55 @@ static void titles_action_open(linked_list* items, list_item* selected) {
     list_display("Title Action", "A: Select, B: Return", data, titles_action_update, titles_action_draw_top);
 }
 
+static void titles_filters_add_entry(linked_list* items, const char* name, bool* val) {
+    list_item* item = (list_item*) calloc(1, sizeof(list_item));
+    if(item != NULL) {
+        snprintf(item->name, LIST_ITEM_NAME_MAX, "%s", name);
+        item->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+        item->data = val;
+
+        linked_list_add(items, item);
+    }
+}
+
+static void titles_filters_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
+    titles_data* listData = (titles_data*) data;
+
+    if(hidKeysDown() & KEY_B) {
+        linked_list_iter iter;
+        linked_list_iterate(items, &iter);
+
+        while(linked_list_iter_has_next(&iter)) {
+            free(linked_list_iter_next(&iter));
+            linked_list_iter_remove(&iter);
+        }
+
+        ui_pop();
+        list_destroy(view);
+
+        return;
+    }
+
+    if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        bool* val = (bool*) selected->data;
+        *val = !(*val);
+
+        selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+
+        listData->populated = false;
+    }
+
+    if(linked_list_size(items) == 0) {
+        titles_filters_add_entry(items, "Show game card", &listData->showGameCard);
+        titles_filters_add_entry(items, "Show SD", &listData->showSD);
+        titles_filters_add_entry(items, "Show NAND", &listData->showNAND);
+    }
+}
+
+static void titles_filters_open(titles_data* data) {
+    list_display("Filters", "A: Toggle, B: Return", data, titles_filters_update, NULL);
+}
+
 static void titles_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
     if(selected != NULL && selected->data != NULL) {
         ui_draw_title_info(view, selected->data, x1, y1, x2, y2);
@@ -125,6 +178,11 @@ static void titles_update(ui_view* view, void* data, linked_list* items, list_it
         list_destroy(view);
 
         free(listData);
+        return;
+    }
+
+    if(hidKeysDown() & KEY_SELECT) {
+        titles_filters_open(listData);
         return;
     }
 
@@ -157,6 +215,18 @@ static void titles_update(ui_view* view, void* data, linked_list* items, list_it
     }
 }
 
+static bool titles_filter(void* data, u64 titleId, FS_MediaType mediaType) {
+    titles_data* listData = (titles_data*) data;
+
+    if(mediaType == MEDIATYPE_GAME_CARD) {
+        return listData->showGameCard;
+    } else if(mediaType == MEDIATYPE_SD) {
+        return listData->showSD;
+    } else {
+        return listData->showNAND;
+    }
+}
+
 void titles_open() {
     titles_data* data = (titles_data*) calloc(1, sizeof(titles_data));
     if(data == NULL) {
@@ -165,7 +235,14 @@ void titles_open() {
         return;
     }
 
+    data->populateData.filter = titles_filter;
+    data->populateData.filterData = data;
+
     data->populateData.finished = true;
 
-    list_display("Titles", "A: Select, B: Return, X: Refresh", data, titles_update, titles_draw_top);
+    data->showGameCard = true;
+    data->showSD = true;
+    data->showNAND = true;
+
+    list_display("Titles", "A: Select, B: Return, X: Refresh, Select: Filter", data, titles_update, titles_draw_top);
 }
