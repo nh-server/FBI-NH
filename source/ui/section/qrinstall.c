@@ -113,6 +113,7 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
     if(qrInstallData->ticket) {
         qrInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
 
+        AM_DeleteTicket(qrInstallData->ticketInfo.titleId);
         res = AM_InstallTicketBegin(handle);
     } else {
         u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
