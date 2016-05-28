@@ -23,6 +23,7 @@ static list_item ext_save_data = {"Ext Save Data", COLOR_TEXT, extsavedata_open}
 static list_item system_save_data = {"System Save Data", COLOR_TEXT, systemsavedata_open};
 static list_item network_install = {"Network Install", COLOR_TEXT, networkinstall_open};
 static list_item qr_code_install = {"QR Code Install", COLOR_TEXT, qrinstall_open};
+static list_item update = {"Update", COLOR_TEXT, update_open};
 
 static void mainmenu_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
     u32 logoWidth;
@@ -61,6 +62,7 @@ static void mainmenu_update(ui_view* view, void* data, linked_list* items, list_
         linked_list_add(items, &system_save_data);
         linked_list_add(items, &network_install);
         linked_list_add(items, &qr_code_install);
+        linked_list_add(items, &update);
     }
 }
 

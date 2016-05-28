@@ -496,6 +496,10 @@ static const char* description_to_string(Result res) {
                     return "Invalid argument";
                 case R_FBI_THREAD_CREATE_FAILED:
                     return "Thread creation failed";
+                case R_FBI_PARSE_FAILED:
+                    return "Parse failed";
+                case R_FBI_BAD_DATA:
+                    return "Bad data";
                 default:
                     break;
             }

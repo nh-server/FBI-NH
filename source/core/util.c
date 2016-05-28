@@ -300,7 +300,6 @@ Result util_import_seed(u64 titleId) {
             } else {
                 res = R_FBI_OUT_OF_RANGE;
             }
-
         }
 
         if(R_SUCCEEDED(res)) {
