@@ -343,3 +343,21 @@ u16 util_get_tmd_content_count(u8* tmd) {
 u8* util_get_tmd_content_chunk(u8* tmd, u32 index) {
     return &tmd[sigSizes[tmd[0x03]] + 0x9C4 + (index * 0x30)];
 }
+
+bool util_filter_cias(void* data, const char* name, u32 attributes) {
+    if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
+        return false;
+    }
+
+    size_t len = strlen(name);
+    return len >= 4 && strncasecmp(name + len - 4, ".cia", 4) == 0;
+}
+
+bool util_filter_tickets(void* data, const char* name, u32 attributes) {
+    if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
+        return false;
+    }
+
+    size_t len = strlen(name);
+    return len >= 4 && strncasecmp(name + len - 4, ".tik", 4) == 0;
+}
