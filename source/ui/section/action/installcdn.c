@@ -120,11 +120,23 @@ static Result action_install_cdn_open_dst(void* data, u32 index, void* initialRe
 }
 
 static Result action_install_cdn_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
+    install_cdn_data* installData = (install_cdn_data*) data;
+
     if(succeeded) {
         if(index == 0) {
             return AM_InstallTmdFinish(handle, true);
         } else {
-            return AM_InstallContentFinish(handle);
+            Result res = 0;
+            if(R_SUCCEEDED(res = AM_InstallContentFinish(handle)) && index == 1 && ((installData->ticket->titleId >> 48) & 0x4) != 0 && ((installData->ticket->titleId >> 32) & 0x4) != 0) {
+                FS_MediaType dest = ((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+                if(R_SUCCEEDED(res = AM_InstallTitleFinish())
+                   && R_SUCCEEDED(res = AM_CommitImportTitles(dest, 1, false, &installData->ticket->titleId))
+                   && R_SUCCEEDED(res = AM_InstallTitleBegin(dest, installData->ticket->titleId, false))) {
+                    res = AM_CreateImportContentContexts(installData->contentCount - 1, &installData->contentIndices[1]);
+                }
+            }
+
+            return res;
         }
     } else {
         if(index == 0) {
