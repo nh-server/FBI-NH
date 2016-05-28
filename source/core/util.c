@@ -288,11 +288,8 @@ Result util_import_seed(u64 titleId) {
                     u32 responseCode = 0;
                     if(R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
                         if(responseCode == 200) {
-                            u32 pos = 0;
                             u32 bytesRead = 0;
-                            while(pos < sizeof(seed) && (R_SUCCEEDED(res = httpcDownloadData(&context, &seed[pos], sizeof(seed) - pos, &bytesRead)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING)) {
-                                pos += bytesRead;
-                            }
+                            res = httpcDownloadData(&context, seed, sizeof(seed), &bytesRead);
                         } else {
                             res = R_FBI_HTTP_RESPONSE_CODE;
                         }
