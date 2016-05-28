@@ -176,6 +176,8 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
     popData.recursive = recursive;
     popData.includeBase = includeBase;
     popData.dirsFirst = false;
+    popData.filter = ciasOnly ? util_filter_cias : ticketsOnly ? util_filter_tickets : NULL;
+    popData.filterData = NULL;
 
     Result listRes = task_populate_files(&popData);
     if(R_FAILED(listRes)) {
@@ -194,17 +196,6 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
 
         action_delete_contents_free_data(data);
         return;
-    }
-
-    linked_list_iter iter;
-    linked_list_iterate(&data->contents, &iter);
-
-    while(linked_list_iter_has_next(&iter)) {
-        file_info* info = (file_info*) ((list_item*) linked_list_iter_next(&iter))->data;
-
-        if((ciasOnly && (info->isDirectory || !info->isCia)) || (ticketsOnly && (info->isDirectory || !info->isTicket))) {
-            linked_list_iter_remove(&iter);
-        }
     }
 
     data->deleteInfo.total = linked_list_size(&data->contents);

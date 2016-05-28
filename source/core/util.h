@@ -58,3 +58,6 @@ u64 util_get_ticket_title_id(u8* ticket);
 u64 util_get_tmd_title_id(u8* tmd);
 u16 util_get_tmd_content_count(u8* tmd);
 u8* util_get_tmd_content_chunk(u8* tmd, u32 index);
+
+bool util_filter_cias(void* data, const char* name, u32 attributes);
+bool util_filter_tickets(void* data, const char* name, u32 attributes);

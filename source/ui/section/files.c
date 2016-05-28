@@ -342,9 +342,9 @@ static bool files_filter(void* data, const char* name, u32 attributes) {
         size_t len = strlen(name);
         if(len >= 4) {
             const char* extension = name + len - 4;
-            if(strncmp(extension, ".cia", 4) == 0) {
+            if(strncasecmp(extension, ".cia", 4) == 0) {
                 return listData->showCias;
-            } else if(strncmp(extension, ".tik", 4) == 0) {
+            } else if(strncasecmp(extension, ".tik", 4) == 0) {
                 return listData->showTickets;
             }
         }

@@ -262,6 +262,8 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     popData.recursive = false;
     popData.includeBase = !data->target->isDirectory;
     popData.dirsFirst = false;
+    popData.filter = util_filter_tickets;
+    popData.filterData = NULL;
 
     Result listRes = task_populate_files(&popData);
     if(R_FAILED(listRes)) {
@@ -280,17 +282,6 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
 
         action_install_tickets_free_data(data);
         return;
-    }
-
-    linked_list_iter iter;
-    linked_list_iterate(&data->contents, &iter);
-
-    while(linked_list_iter_has_next(&iter)) {
-        file_info* info = (file_info*) ((list_item*) linked_list_iter_next(&iter))->data;
-
-        if(!info->isTicket) {
-            linked_list_iter_remove(&iter);
-        }
     }
 
     data->installInfo.total = linked_list_size(&data->contents);
