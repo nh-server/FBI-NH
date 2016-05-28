@@ -127,7 +127,7 @@ static Result action_install_cdn_close_dst(void* data, u32 index, bool succeeded
             return AM_InstallTmdFinish(handle, true);
         } else {
             Result res = 0;
-            if(R_SUCCEEDED(res = AM_InstallContentFinish(handle)) && index == 1 && ((installData->ticket->titleId >> 48) & 0x4) != 0 && ((installData->ticket->titleId >> 32) & 0x4) != 0) {
+            if(R_SUCCEEDED(res = AM_InstallContentFinish(handle)) && index == 1 && installData->contentCount > 1 && ((installData->ticket->titleId >> 48) & 0x4) != 0 && ((installData->ticket->titleId >> 32) & 0x4) != 0) {
                 FS_MediaType dest = ((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
                 if(R_SUCCEEDED(res = AM_InstallTitleFinish())
                    && R_SUCCEEDED(res = AM_CommitImportTitles(dest, 1, false, &installData->ticket->titleId))
