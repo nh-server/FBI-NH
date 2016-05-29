@@ -249,7 +249,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                 error_display_res(NULL, NULL, NULL, res, "Failed to check for update.");
             }
         } else {
-            prompt_display("Failure", "No updates available.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "No updates available.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
         }
 
         free(data);
