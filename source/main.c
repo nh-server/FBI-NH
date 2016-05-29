@@ -43,6 +43,8 @@ int main(int argc, const char* argv[]) {
             util_panic("Failed to acquire kernel access.");
             return 1;
         }
+
+        util_set_3dsx_path(argv[0]);
     }
 
     aptOpenSession();

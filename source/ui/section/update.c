@@ -11,6 +11,7 @@
 #include "../prompt.h"
 #include "../ui.h"
 #include "../../core/screen.h"
+#include "../../core/util.h"
 #include "../../json/json.h"
 
 #define URL_MAX 1024
@@ -88,14 +89,31 @@ static Result update_read_src(void* data, u32 handle, u32* bytesRead, void* buff
 }
 
 static Result update_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
-    return AM_StartCiaInstall(MEDIATYPE_SD, handle);
+    if(util_get_3dsx_path() != NULL) {
+        FS_Path* path = util_make_path_utf8(util_get_3dsx_path());
+        if(path != NULL) {
+            Result res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+
+            util_free_path_utf8(path);
+            return res;
+        } else {
+            return R_FBI_OUT_OF_MEMORY;
+        }
+    } else {
+        return AM_StartCiaInstall(MEDIATYPE_SD, handle);
+    }
+
 }
 
 static Result update_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
-    if(succeeded) {
-        return AM_FinishCiaInstall(handle);
+    if(util_get_3dsx_path() != NULL) {
+        return FSFILE_Close(handle);
     } else {
-        return AM_CancelCIAInstall(handle);
+        if(succeeded) {
+            return AM_FinishCiaInstall(handle);
+        } else {
+            return AM_CancelCIAInstall(handle);
+        }
     }
 }
 
@@ -196,9 +214,11 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                                                         }
                                                     }
 
-                                                    if(assetName != NULL && assetUrl != NULL && strncmp(assetName->u.string.ptr, "FBI.cia", assetName->u.string.length) == 0) {
-                                                        url = assetUrl->u.string.ptr;
-                                                        break;
+                                                    if(assetName != NULL && assetUrl != NULL) {
+                                                        if(strncmp(assetName->u.string.ptr, util_get_3dsx_path() != NULL ? "FBI.3dsx" : "FBI.cia", assetName->u.string.length) == 0) {
+                                                            url = assetUrl->u.string.ptr;
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }

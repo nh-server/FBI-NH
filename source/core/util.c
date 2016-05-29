@@ -357,3 +357,13 @@ bool util_filter_tickets(void* data, const char* name, u32 attributes) {
     size_t len = strlen(name);
     return len >= 4 && strncasecmp(name + len - 4, ".tik", 4) == 0;
 }
+
+static const char* path3dsx = NULL;
+
+const char* util_get_3dsx_path() {
+    return path3dsx;
+}
+
+void util_set_3dsx_path(const char* path) {
+    path3dsx = path;
+}
