@@ -358,21 +358,34 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         if(err == 0) {
             qrInstallData->installInfo.total = 0;
 
+            size_t payloadLen = strlen((char*) qrData.payload);
+
             char* currStart = (char*) qrData.payload;
-            char* currEnd = NULL;
-            while((currEnd = strchr(currStart, '\n')) != NULL) {
-                u32 len = currEnd - currStart;
-                if(len > URL_MAX) {
-                    len = URL_MAX;
+            while(qrInstallData->installInfo.total < URLS_MAX && currStart - (char*) qrData.payload < payloadLen) {
+                char* currEnd = strchr(currStart, '\n');
+                if(currEnd == NULL) {
+                    currEnd = (char*) qrData.payload + payloadLen;
                 }
 
-                strncpy(qrInstallData->urls[qrInstallData->installInfo.total++], currStart, len);
+                u32 len = currEnd - currStart;
 
+                if((len < 7 || strncmp(currStart, "http://", 7) != 0) && (len < 8 || strncmp(currStart, "https://", 8) != 0)) {
+                    if(len > URL_MAX - 7) {
+                        len = URL_MAX - 7;
+                    }
+
+                    strncpy(qrInstallData->urls[qrInstallData->installInfo.total], "http://", 7);
+                    strncpy(&qrInstallData->urls[qrInstallData->installInfo.total][7], currStart, len);
+                } else {
+                    if(len > URL_MAX) {
+                        len = URL_MAX;
+                    }
+
+                    strncpy(qrInstallData->urls[qrInstallData->installInfo.total], currStart, len);
+                }
+
+                qrInstallData->installInfo.total++;
                 currStart = currEnd + 1;
-            }
-
-            if(*currStart != '\0') {
-                strncpy(qrInstallData->urls[qrInstallData->installInfo.total++], currStart, URL_MAX);
             }
 
             prompt_display("Confirmation", "Install from the scanned URL(s)?", COLOR_TEXT, true, data, NULL, NULL, qrinstall_confirm_onresponse);
