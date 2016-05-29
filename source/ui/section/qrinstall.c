@@ -195,16 +195,16 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
 
         volatile bool dismissed = false;
         if(res == R_FBI_HTTP_RESPONSE_CODE) {
-            if(strlen(url) > 48) {
-                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.45s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+            if(strlen(url) > 38) {
+                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.35s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             } else {
-                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.48s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.38s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             }
         } else {
-            if(strlen(url) > 48) {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.45s...", url);
+            if(strlen(url) > 38) {
+                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.35s...", url);
             } else {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.48s", url);
+                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.38s", url);
             }
         }
 
