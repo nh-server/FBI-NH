@@ -29,7 +29,7 @@ static void action_delete_contents_draw_top(ui_view* view, void* data, float x1,
 
     u32 curr = deleteData->deleteInfo.processed;
     if(curr < deleteData->deleteInfo.total) {
-        ui_draw_file_info(view, ((list_item*) linked_list_get(&deleteData->contents, curr))->data, x1, y1, x2, y2);
+        ui_draw_file_info(view, ((list_item*) linked_list_get(&deleteData->contents, linked_list_size(&deleteData->contents) - curr - 1))->data, x1, y1, x2, y2);
     } else if(deleteData->target != NULL) {
         ui_draw_file_info(view, deleteData->target, x1, y1, x2, y2);
     }
@@ -40,7 +40,7 @@ static Result action_delete_contents_delete(void* data, u32 index) {
 
     Result res = 0;
 
-    file_info* info = (file_info*) ((list_item*) linked_list_get(&deleteData->contents, index))->data;
+    file_info* info = (file_info*) ((list_item*) linked_list_get(&deleteData->contents, linked_list_size(&deleteData->contents) - index - 1))->data;
 
     FS_Path* fsPath = util_make_path_utf8(info->path);
     if(fsPath != NULL) {
@@ -114,7 +114,7 @@ static void action_delete_contents_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(deleteData->deleteInfo.result)) {
-            prompt_display("Success", "Contents deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "Deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
         }
 
         action_delete_contents_free_data(deleteData);
@@ -136,7 +136,7 @@ static void action_delete_contents_onresponse(ui_view* view, void* data, bool re
     if(response) {
         Result res = task_data_op(&deleteData->deleteInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Deleting Contents", "Press B to cancel.", true, data, action_delete_contents_update, action_delete_contents_draw_top);
+            info_display("Deleting", "Press B to cancel.", true, data, action_delete_contents_update, action_delete_contents_draw_top);
         } else {
             error_display_res(NULL, deleteData->target, ui_draw_file_info, res, "Failed to initiate delete operation.");
 
@@ -150,7 +150,7 @@ static void action_delete_contents_onresponse(ui_view* view, void* data, bool re
 static void action_delete_contents_internal(linked_list* items, list_item* selected, const char* message, bool recursive, bool includeBase, bool ciasOnly, bool ticketsOnly) {
     delete_contents_data* data = (delete_contents_data*) calloc(1, sizeof(delete_contents_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate delete contents data.");
+        error_display(NULL, NULL, NULL, "Failed to allocate delete data.");
 
         return;
     }
@@ -175,7 +175,6 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
     popData.base = data->target;
     popData.recursive = recursive;
     popData.includeBase = includeBase;
-    popData.dirsFirst = false;
     popData.filter = ciasOnly ? util_filter_cias : ticketsOnly ? util_filter_tickets : NULL;
     popData.filterData = NULL;
 

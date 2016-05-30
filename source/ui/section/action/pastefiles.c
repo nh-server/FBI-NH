@@ -313,7 +313,6 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     popData.base = (file_info*) clipboardItem->data;
     popData.recursive = true;
     popData.includeBase = !clipboard_is_contents_only() || !util_is_dir(clipboard_get_archive(), clipboard_get_path());
-    popData.dirsFirst = true;
     popData.filter = NULL;
     popData.filterData = NULL;
 
