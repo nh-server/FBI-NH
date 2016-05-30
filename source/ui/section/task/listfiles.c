@@ -164,7 +164,7 @@ static void task_populate_files_thread(void* arg) {
             file_info* curr = (file_info*) currItem->data;
             linked_list_remove_at(&queue, tail);
 
-            if(data->dirsFirst && (data->includeBase || currItem != baseItem)) {
+            if(data->includeBase || currItem != baseItem) {
                 linked_list_add(data->items, currItem);
             }
 
@@ -186,10 +186,6 @@ static void task_populate_files_thread(void* arg) {
                                         break;
                                     }
 
-                                    if(entries[i].attributes & FS_ATTRIBUTE_HIDDEN) {
-                                        continue;
-                                    }
-
                                     char name[FILE_NAME_MAX] = {'\0'};
                                     utf16_to_utf8((uint8_t*) name, entries[i].name, FILE_NAME_MAX - 1);
 
@@ -199,7 +195,7 @@ static void task_populate_files_thread(void* arg) {
 
                                         list_item* item = NULL;
                                         if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path))) {
-                                            if(curr->isDirectory && strncmp(curr->path, data->base->path, FILE_PATH_MAX) == 0) {
+                                            if(currItem == baseItem) {
                                                 file_info* info = (file_info*) item->data;
 
                                                 if(info->isCia) {
@@ -231,10 +227,6 @@ static void task_populate_files_thread(void* arg) {
                 } else {
                     res = R_FBI_OUT_OF_MEMORY;
                 }
-            }
-
-            if(!data->dirsFirst && (data->includeBase || currItem != baseItem)) {
-                linked_list_add(data->items, currItem);
             }
         }
 

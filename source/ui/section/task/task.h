@@ -145,7 +145,6 @@ typedef struct {
 
     bool recursive;
     bool includeBase;
-    bool dirsFirst;
 
     bool (*filter)(void* data, const char* name, u32 attributes);
     void* filterData;

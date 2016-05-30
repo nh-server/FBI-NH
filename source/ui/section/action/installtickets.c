@@ -261,7 +261,6 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     popData.base = data->target;
     popData.recursive = false;
     popData.includeBase = !data->target->isDirectory;
-    popData.dirsFirst = false;
     popData.filter = util_filter_tickets;
     popData.filterData = NULL;
 

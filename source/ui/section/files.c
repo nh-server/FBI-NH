@@ -48,10 +48,11 @@ typedef struct {
     FS_Path archivePath;
     FS_Archive archive;
 
+    bool showHidden;
     bool showDirectories;
+    bool showFiles;
     bool showCias;
     bool showTickets;
-    bool showMisc;
 
     char currDir[FILE_PATH_MAX];
     list_item* dirItem;
@@ -196,10 +197,11 @@ static void files_filters_update(ui_view* view, void* data, linked_list* items, 
     }
 
     if(linked_list_size(items) == 0) {
+        files_filters_add_entry(items, "Show hidden", &listData->showHidden);
         files_filters_add_entry(items, "Show directories", &listData->showDirectories);
+        files_filters_add_entry(items, "Show files", &listData->showFiles);
         files_filters_add_entry(items, "Show CIAs", &listData->showCias);
         files_filters_add_entry(items, "Show tickets", &listData->showTickets);
-        files_filters_add_entry(items, "Show miscellaneous", &listData->showMisc);
     }
 }
 
@@ -336,21 +338,23 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
 static bool files_filter(void* data, const char* name, u32 attributes) {
     files_data* listData = (files_data*) data;
 
+    if((attributes & FS_ATTRIBUTE_HIDDEN) != 0 && !listData->showHidden) {
+        return false;
+    }
+
     if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
         return listData->showDirectories;
     } else {
         size_t len = strlen(name);
         if(len >= 4) {
             const char* extension = name + len - 4;
-            if(strncasecmp(extension, ".cia", 4) == 0) {
-                return listData->showCias;
-            } else if(strncasecmp(extension, ".tik", 4) == 0) {
-                return listData->showTickets;
+            if((strncasecmp(extension, ".cia", 4) == 0 && !listData->showCias) || (strncasecmp(extension, ".tik", 4) == 0 && !listData->showTickets)) {
+                return false;
             }
         }
-    }
 
-    return listData->showMisc;
+        return listData->showFiles;
+    }
 }
 
 void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
@@ -363,7 +367,6 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
 
     data->populateData.recursive = false;
     data->populateData.includeBase = false;
-    data->populateData.dirsFirst = true;
 
     data->populateData.filter = files_filter;
     data->populateData.filterData = data;
@@ -372,10 +375,11 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
 
     data->populated = false;
 
+    data->showHidden = false;
     data->showDirectories = true;
+    data->showFiles = true;
     data->showCias = true;
     data->showTickets = true;
-    data->showMisc = true;
 
     data->archiveId = archiveId;
     data->archivePath.type = archivePath.type;

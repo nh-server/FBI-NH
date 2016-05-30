@@ -282,7 +282,6 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     popData.base = data->target;
     popData.recursive = false;
     popData.includeBase = !data->target->isDirectory;
-    popData.dirsFirst = false;
     popData.filter = util_filter_cias;
     popData.filterData = NULL;
 
