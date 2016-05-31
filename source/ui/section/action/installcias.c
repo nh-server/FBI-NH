@@ -159,6 +159,8 @@ static Result action_install_cias_close_dst(void* data, u32 index, bool succeede
             }
         }
 
+        installData->currTitleId = 0;
+
         return res;
     } else {
         return AM_CancelCIAInstall(handle);
@@ -167,6 +169,22 @@ static Result action_install_cias_close_dst(void* data, u32 index, bool succeede
 
 static Result action_install_cias_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
+}
+
+static Result action_install_cias_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result action_install_cias_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result action_install_cias_suspend(void* data, u32 index) {
+    return 0;
+}
+
+static Result action_install_cias_restore(void* data, u32 index) {
+    return 0;
 }
 
 bool action_install_cias_error(void* data, u32 index, Result res) {
@@ -270,6 +288,12 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     data->installInfo.openDst = action_install_cias_open_dst;
     data->installInfo.closeDst = action_install_cias_close_dst;
     data->installInfo.writeDst = action_install_cias_write_dst;
+
+    data->installInfo.suspendCopy = action_install_cias_suspend_copy;
+    data->installInfo.restoreCopy = action_install_cias_restore_copy;
+
+    data->installInfo.suspend = action_install_cias_suspend;
+    data->installInfo.restore = action_install_cias_restore;
 
     data->installInfo.error = action_install_cias_error;
 

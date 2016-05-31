@@ -170,6 +170,8 @@ static Result qrinstall_close_dst(void* data, u32 index, bool succeeded, u32 han
             }
         }
 
+        qrInstallData->currTitleId = 0;
+
         return res;
     } else {
         if(qrInstallData->ticket) {
@@ -182,6 +184,22 @@ static Result qrinstall_close_dst(void* data, u32 index, bool succeeded, u32 han
 
 static Result qrinstall_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
+}
+
+static Result qrinstall_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result qrinstall_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result qrinstall_suspend(void* data, u32 index) {
+    return 0;
+}
+
+static Result qrinstall_restore(void* data, u32 index) {
+    return 0;
 }
 
 static bool qrinstall_error(void* data, u32 index, Result res) {
@@ -428,6 +446,12 @@ void qrinstall_open() {
     data->installInfo.openDst = qrinstall_open_dst;
     data->installInfo.closeDst = qrinstall_close_dst;
     data->installInfo.writeDst = qrinstall_write_dst;
+
+    data->installInfo.suspendCopy = qrinstall_suspend_copy;
+    data->installInfo.restoreCopy = qrinstall_restore_copy;
+
+    data->installInfo.suspend = qrinstall_suspend;
+    data->installInfo.restore = qrinstall_restore;
 
     data->installInfo.error = qrinstall_error;
 

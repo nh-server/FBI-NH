@@ -115,8 +115,15 @@ typedef struct data_op_info_s {
 
     Result (*writeDst)(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size);
 
+    Result (*suspendCopy)(void* data, u32 index, u32* srcHandle, u32* dstHandle);
+    Result (*restoreCopy)(void* data, u32 index, u32* srcHandle, u32* dstHandle);
+
     // Delete
     Result (*delete)(void* data, u32 index);
+
+    // Suspend
+    Result (*suspend)(void* data, u32 index);
+    Result (*restore)(void* data, u32 index);
 
     // Errors
     bool (*error)(void* data, u32 index, Result res);
@@ -193,6 +200,7 @@ void task_init();
 void task_exit();
 bool task_is_quit_all();
 Handle task_get_pause_event();
+Handle task_get_suspend_event();
 
 Result task_capture_cam(capture_cam_data* data);
 

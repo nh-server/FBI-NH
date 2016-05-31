@@ -170,6 +170,8 @@ static Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u3
             }
         }
 
+        networkInstallData->currTitleId = 0;
+
         return res;
     } else {
         if(networkInstallData->ticket) {
@@ -182,6 +184,22 @@ static Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u3
 
 static Result networkinstall_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
+}
+
+static Result networkinstall_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result networkinstall_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result networkinstall_suspend(void* data, u32 index) {
+    return 0;
+}
+
+static Result networkinstall_restore(void* data, u32 index) {
+    return 0;
 }
 
 static bool networkinstall_error(void* data, u32 index, Result res) {
@@ -343,6 +361,12 @@ void networkinstall_open() {
     data->installInfo.openDst = networkinstall_open_dst;
     data->installInfo.closeDst = networkinstall_close_dst;
     data->installInfo.writeDst = networkinstall_write_dst;
+
+    data->installInfo.suspendCopy = networkinstall_suspend_copy;
+    data->installInfo.restoreCopy = networkinstall_restore_copy;
+
+    data->installInfo.suspend = networkinstall_suspend;
+    data->installInfo.restore = networkinstall_restore;
 
     data->installInfo.error = networkinstall_error;
 

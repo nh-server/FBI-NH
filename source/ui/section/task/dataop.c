@@ -7,7 +7,40 @@
 #include "../../list.h"
 #include "../../error.h"
 
-static bool task_data_op_copy(data_op_data* data, u32 index) {
+static Result task_data_op_check_running(data_op_data* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    Result res = 0;
+
+    if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
+        res = R_FBI_CANCELLED;
+    } else {
+        bool suspended = svcWaitSynchronization(task_get_suspend_event(), 0) != 0;
+        if(suspended) {
+            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->suspendCopy != NULL && R_SUCCEEDED(res)) {
+                res = data->suspendCopy(data->data, index, srcHandle, dstHandle);
+            }
+
+            if(data->suspend != NULL && R_SUCCEEDED(res)) {
+                res = data->suspend(data->data, index);
+            }
+        }
+
+        svcWaitSynchronization(task_get_pause_event(), U64_MAX);
+
+        if(suspended) {
+            if(data->restore != NULL && R_SUCCEEDED(res)) {
+                res = data->restore(data->data, index);
+            }
+
+            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->restoreCopy != NULL && R_SUCCEEDED(res)) {
+                res = data->restoreCopy(data->data, index, srcHandle, dstHandle);
+            }
+        }
+    }
+
+    return res;
+}
+
+static Result task_data_op_copy(data_op_data* data, u32 index) {
     data->currProcessed = 0;
     data->currTotal = 0;
 
@@ -35,9 +68,7 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
 
                         bool firstRun = true;
                         while(data->currProcessed < data->currTotal) {
-                            svcWaitSynchronization(task_get_pause_event(), U64_MAX);
-                            if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
-                                res = R_FBI_CANCELLED;
+                            if(R_FAILED(res = task_data_op_check_running(data, data->processed, &srcHandle, &dstHandle))) {
                                 break;
                             }
 
@@ -88,41 +119,34 @@ static bool task_data_op_copy(data_op_data* data, u32 index) {
         }
     }
 
-    if(R_FAILED(res)) {
-        data->result = res;
-        return data->error(data->data, index, res);
-    }
-
-    return true;
+    return res;
 }
 
-static bool task_data_op_delete(data_op_data* data, u32 index) {
-    Result res = 0;
-    if(R_FAILED(res = data->delete(data->data, index))) {
-        return data->error(data->data, index, res);
-    }
-
-    return true;
+static Result task_data_op_delete(data_op_data* data, u32 index) {
+    return data->delete(data->data, index);
 }
 
 static void task_data_op_thread(void* arg) {
     data_op_data* data = (data_op_data*) arg;
 
     for(data->processed = 0; data->processed < data->total; data->processed++) {
-        bool cont = false;
+        Result res = 0;
 
-        switch(data->op) {
-            case DATAOP_COPY:
-                cont = task_data_op_copy(data, data->processed);
-                break;
-            case DATAOP_DELETE:
-                cont = task_data_op_delete(data, data->processed);
-                break;
-            default:
-                break;
+        if(R_SUCCEEDED(res = task_data_op_check_running(data, data->processed, NULL, NULL))) {
+            switch(data->op) {
+                case DATAOP_COPY:
+                    res = task_data_op_copy(data, data->processed);
+                    break;
+                case DATAOP_DELETE:
+                    res = task_data_op_delete(data, data->processed);
+                    break;
+                default:
+                    break;
+            }
         }
 
-        if(!cont) {
+        if(R_FAILED(res) && !data->error(data->data, data->processed, res)) {
+            data->result = res;
             break;
         }
     }

@@ -175,6 +175,22 @@ static Result action_paste_files_write_dst(void* data, u32 handle, u32* bytesWri
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
+static Result action_paste_files_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result action_paste_files_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result action_paste_files_suspend(void* data, u32 index) {
+    return 0;
+}
+
+static Result action_paste_files_restore(void* data, u32 index) {
+    return 0;
+}
+
 static bool action_paste_files_error(void* data, u32 index, Result res) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
@@ -292,6 +308,12 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     data->pasteInfo.openDst = action_paste_files_open_dst;
     data->pasteInfo.closeDst = action_paste_files_close_dst;
     data->pasteInfo.writeDst = action_paste_files_write_dst;
+
+    data->pasteInfo.suspendCopy = action_paste_files_suspend_copy;
+    data->pasteInfo.restoreCopy = action_paste_files_restore_copy;
+
+    data->pasteInfo.suspend = action_paste_files_suspend;
+    data->pasteInfo.restore = action_paste_files_restore;
 
     data->pasteInfo.error = action_paste_files_error;
 

@@ -80,6 +80,14 @@ static Result action_delete_contents_delete(void* data, u32 index) {
     return res;
 }
 
+static Result action_delete_contents_suspend(void* data, u32 index) {
+    return 0;
+}
+
+static Result action_delete_contents_restore(void* data, u32 index) {
+    return 0;
+}
+
 static bool action_delete_contents_error(void* data, u32 index, Result res) {
     delete_contents_data* deleteData = (delete_contents_data*) data;
 
@@ -163,6 +171,9 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
     data->deleteInfo.op = DATAOP_DELETE;
 
     data->deleteInfo.delete = action_delete_contents_delete;
+
+    data->deleteInfo.suspend = action_delete_contents_suspend;
+    data->deleteInfo.restore = action_delete_contents_restore;
 
     data->deleteInfo.error = action_delete_contents_error;
 

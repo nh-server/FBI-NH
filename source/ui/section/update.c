@@ -121,6 +121,22 @@ static Result update_write_dst(void* data, u32 handle, u32* bytesWritten, void* 
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
+static Result update_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result update_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+    return 0;
+}
+
+static Result update_suspend(void* data, u32 index) {
+    return 0;
+}
+
+static Result update_restore(void* data, u32 index) {
+    return 0;
+}
+
 static bool update_error(void* data, u32 index, Result res) {
     update_data* updateData = (update_data*) data;
 
@@ -313,6 +329,12 @@ void update_open() {
     data->installInfo.openDst = update_open_dst;
     data->installInfo.closeDst = update_close_dst;
     data->installInfo.writeDst = update_write_dst;
+
+    data->installInfo.suspendCopy = update_suspend_copy;
+    data->installInfo.restoreCopy = update_restore_copy;
+
+    data->installInfo.suspend = update_suspend;
+    data->installInfo.restore = update_restore;
 
     data->installInfo.error = update_error;
 
