@@ -275,7 +275,7 @@ Result util_import_seed(u64 titleId) {
             static const char* regionStrings[] = {"JP", "US", "GB", "GB", "HK", "KR", "TW"};
 
             u8 region = CFG_REGION_USA;
-            CFGU_GetSystemLanguage(&region);
+            CFGU_SecureInfoGetRegion(&region);
 
             if(region <= CFG_REGION_TWN) {
                 char url[128];
