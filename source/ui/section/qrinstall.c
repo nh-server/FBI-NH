@@ -390,7 +390,7 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
     }
 
     if(hidKeysDown() & KEY_X) {
-        kbd_display("Enter URL(s)", data, NULL, qrinstall_process_urls, NULL);
+        kbd_display("Enter URL(s)", NULL, data, NULL, qrinstall_process_urls, NULL);
 
         return;
     }

@@ -215,29 +215,13 @@ static void action_paste_files_free_data(paste_files_data* data) {
     free(data);
 }
 
-static int action_paste_files_compare(const void** p1, const void** p2) {
-    list_item* info1 = *(list_item**) p1;
-    list_item* info2 = *(list_item**) p2;
-
-    file_info* f1 = (file_info*) info1->data;
-    file_info* f2 = (file_info*) info2->data;
-
-    if(f1->isDirectory && !f2->isDirectory) {
-        return -1;
-    } else if(!f1->isDirectory && f2->isDirectory) {
-        return 1;
-    } else {
-        return strcasecmp(f1->name, f2->name);
-    }
-}
-
 static void action_paste_files_update(ui_view* view, void* data, float* progress, char* text) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     if(pasteData->pasteInfo.finished) {
         FSUSER_ControlArchive(pasteData->target->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
 
-        linked_list_sort(pasteData->items, action_paste_files_compare);
+        linked_list_sort(pasteData->items, util_compare_file_infos);
 
         ui_pop();
         info_destroy(view);
