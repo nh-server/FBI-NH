@@ -59,7 +59,7 @@ static void kbd_cancel(ui_view* view, kbd_data* data) {
     ui_pop();
 
     if(data->canceled != NULL) {
-        data->canceled(view->data);
+        data->canceled(data->data);
     }
 
     free(data);
@@ -70,7 +70,7 @@ static void kbd_finish(ui_view* view, kbd_data* data) {
     ui_pop();
 
     if(data->finished != NULL) {
-        data->finished(view->data, data->input);
+        data->finished(data->data, data->input);
     }
 
     free(data);
