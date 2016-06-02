@@ -77,9 +77,6 @@ static Result action_install_tickets_close_src(void* data, u32 index, bool succe
         FS_Path* fsPath = util_make_path_utf8(info->path);
         if(fsPath != NULL) {
             if(R_SUCCEEDED(FSUSER_DeleteFile(info->archive, *fsPath))) {
-                installData->target->containsCias = false;
-                installData->target->containsTickets = false;
-
                 linked_list_iter iter;
                 linked_list_iterate(installData->items, &iter);
 
@@ -90,10 +87,6 @@ static Result action_install_tickets_close_src(void* data, u32 index, bool succe
                     if(strncmp(currInfo->path, info->path, FILE_PATH_MAX) == 0) {
                         linked_list_iter_remove(&iter);
                         task_free_file(item);
-                    } else if(currInfo->isCia) {
-                        installData->target->containsCias = true;
-                    } else if(currInfo->isTicket) {
-                        installData->target->containsTickets = true;
                     }
                 }
             }
@@ -280,7 +273,8 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
 
     populate_files_data popData;
     popData.items = &data->contents;
-    popData.base = data->target;
+    popData.archive = data->target->archive;
+    strncpy(popData.path, data->target->path, FILE_PATH_MAX);
     popData.recursive = false;
     popData.includeBase = !data->target->isDirectory;
     popData.filter = util_filter_tickets;

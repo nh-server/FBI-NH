@@ -22,10 +22,10 @@ typedef struct {
     linked_list contents;
 
     data_op_data deleteInfo;
-} delete_contents_data;
+} delete_data;
 
-static void action_delete_contents_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    delete_contents_data* deleteData = (delete_contents_data*) data;
+static void action_delete_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    delete_data* deleteData = (delete_data*) data;
 
     u32 curr = deleteData->deleteInfo.processed;
     if(curr < deleteData->deleteInfo.total) {
@@ -35,8 +35,8 @@ static void action_delete_contents_draw_top(ui_view* view, void* data, float x1,
     }
 }
 
-static Result action_delete_contents_delete(void* data, u32 index) {
-    delete_contents_data* deleteData = (delete_contents_data*) data;
+static Result action_delete_delete(void* data, u32 index) {
+    delete_data* deleteData = (delete_data*) data;
 
     Result res = 0;
 
@@ -56,9 +56,6 @@ static Result action_delete_contents_delete(void* data, u32 index) {
     }
 
     if(R_SUCCEEDED(res)) {
-        deleteData->target->containsCias = false;
-        deleteData->target->containsTickets = false;
-
         linked_list_iter iter;
         linked_list_iterate(deleteData->items, &iter);
 
@@ -69,10 +66,6 @@ static Result action_delete_contents_delete(void* data, u32 index) {
             if(strncmp(currInfo->path, info->path, FILE_PATH_MAX) == 0) {
                 linked_list_iter_remove(&iter);
                 task_free_file(item);
-            } else if(currInfo->isCia) {
-                deleteData->target->containsCias = true;
-            } else if(currInfo->isTicket) {
-                deleteData->target->containsTickets = true;
             }
         }
     }
@@ -80,23 +73,23 @@ static Result action_delete_contents_delete(void* data, u32 index) {
     return res;
 }
 
-static Result action_delete_contents_suspend(void* data, u32 index) {
+static Result action_delete_suspend(void* data, u32 index) {
     return 0;
 }
 
-static Result action_delete_contents_restore(void* data, u32 index) {
+static Result action_delete_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_delete_contents_error(void* data, u32 index, Result res) {
-    delete_contents_data* deleteData = (delete_contents_data*) data;
+static bool action_delete_error(void* data, u32 index, Result res) {
+    delete_data* deleteData = (delete_data*) data;
 
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
         volatile bool dismissed = false;
-        error_display_res(&dismissed, data, action_delete_contents_draw_top, res, "Failed to delete content.");
+        error_display_res(&dismissed, data, action_delete_draw_top, res, "Failed to delete content.");
 
         while(!dismissed) {
             svcSleepThread(1000000);
@@ -106,14 +99,14 @@ static bool action_delete_contents_error(void* data, u32 index, Result res) {
     return index < deleteData->deleteInfo.total - 1;
 }
 
-static void action_delete_contents_free_data(delete_contents_data* data) {
+static void action_delete_free_data(delete_data* data) {
     task_clear_files(&data->contents);
     linked_list_destroy(&data->contents);
     free(data);
 }
 
-static void action_delete_contents_update(ui_view* view, void* data, float* progress, char* text) {
-    delete_contents_data* deleteData = (delete_contents_data*) data;
+static void action_delete_update(ui_view* view, void* data, float* progress, char* text) {
+    delete_data* deleteData = (delete_data*) data;
 
     if(deleteData->deleteInfo.finished) {
         FSUSER_ControlArchive(deleteData->target->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
@@ -125,7 +118,7 @@ static void action_delete_contents_update(ui_view* view, void* data, float* prog
             prompt_display("Success", "Deleted.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
-        action_delete_contents_free_data(deleteData);
+        action_delete_free_data(deleteData);
 
         return;
     }
@@ -138,25 +131,25 @@ static void action_delete_contents_update(ui_view* view, void* data, float* prog
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu", deleteData->deleteInfo.processed, deleteData->deleteInfo.total);
 }
 
-static void action_delete_contents_onresponse(ui_view* view, void* data, bool response) {
-    delete_contents_data* deleteData = (delete_contents_data*) data;
+static void action_delete_onresponse(ui_view* view, void* data, bool response) {
+    delete_data* deleteData = (delete_data*) data;
 
     if(response) {
         Result res = task_data_op(&deleteData->deleteInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Deleting", "Press B to cancel.", true, data, action_delete_contents_update, action_delete_contents_draw_top);
+            info_display("Deleting", "Press B to cancel.", true, data, action_delete_update, action_delete_draw_top);
         } else {
             error_display_res(NULL, deleteData->target, ui_draw_file_info, res, "Failed to initiate delete operation.");
 
-            action_delete_contents_free_data(deleteData);
+            action_delete_free_data(deleteData);
         }
     } else {
-        action_delete_contents_free_data(deleteData);
+        action_delete_free_data(deleteData);
     }
 }
 
-static void action_delete_contents_internal(linked_list* items, list_item* selected, const char* message, bool recursive, bool includeBase, bool ciasOnly, bool ticketsOnly) {
-    delete_contents_data* data = (delete_contents_data*) calloc(1, sizeof(delete_contents_data));
+static void action_delete_internal(linked_list* items, list_item* selected, const char* message, bool recursive, bool includeBase, bool ciasOnly, bool ticketsOnly) {
+    delete_data* data = (delete_data*) calloc(1, sizeof(delete_data));
     if(data == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate delete data.");
 
@@ -170,12 +163,12 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
 
     data->deleteInfo.op = DATAOP_DELETE;
 
-    data->deleteInfo.delete = action_delete_contents_delete;
+    data->deleteInfo.delete = action_delete_delete;
 
-    data->deleteInfo.suspend = action_delete_contents_suspend;
-    data->deleteInfo.restore = action_delete_contents_restore;
+    data->deleteInfo.suspend = action_delete_suspend;
+    data->deleteInfo.restore = action_delete_restore;
 
-    data->deleteInfo.error = action_delete_contents_error;
+    data->deleteInfo.error = action_delete_error;
 
     data->deleteInfo.finished = false;
 
@@ -183,7 +176,8 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
 
     populate_files_data popData;
     popData.items = &data->contents;
-    popData.base = data->target;
+    popData.archive = data->target->archive;
+    strncpy(popData.path, data->target->path, FILE_PATH_MAX);
     popData.recursive = recursive;
     popData.includeBase = includeBase;
     popData.filter = ciasOnly ? util_filter_cias : ticketsOnly ? util_filter_tickets : NULL;
@@ -193,7 +187,7 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
     if(R_FAILED(listRes)) {
         error_display_res(NULL, NULL, NULL, listRes, "Failed to initiate content list population.");
 
-        action_delete_contents_free_data(data);
+        action_delete_free_data(data);
         return;
     }
 
@@ -204,32 +198,32 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
     if(R_FAILED(popData.result)) {
         error_display_res(NULL, NULL, NULL, popData.result, "Failed to populate content list.");
 
-        action_delete_contents_free_data(data);
+        action_delete_free_data(data);
         return;
     }
 
     data->deleteInfo.total = linked_list_size(&data->contents);
     data->deleteInfo.processed = data->deleteInfo.total;
 
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_delete_contents_draw_top, action_delete_contents_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_delete_draw_top, action_delete_onresponse);
 }
 
 void action_delete_file(linked_list* items, list_item* selected) {
-    action_delete_contents_internal(items, selected, "Delete the selected file?", false, true, false, false);
+    action_delete_internal(items, selected, "Delete the selected file?", false, true, false, false);
 }
 
 void action_delete_dir(linked_list* items, list_item* selected) {
-    action_delete_contents_internal(items, selected, "Delete the current directory?", true, true, false, false);
+    action_delete_internal(items, selected, "Delete the current directory?", true, true, false, false);
 }
 
 void action_delete_dir_contents(linked_list* items, list_item* selected) {
-    action_delete_contents_internal(items, selected, "Delete all contents of the current directory?", true, false, false, false);
+    action_delete_internal(items, selected, "Delete all contents of the current directory?", true, false, false, false);
 }
 
 void action_delete_dir_cias(linked_list* items, list_item* selected) {
-    action_delete_contents_internal(items, selected, "Delete all CIAs in the current directory?", false, false, true, false);
+    action_delete_internal(items, selected, "Delete all CIAs in the current directory?", false, false, true, false);
 }
 
 void action_delete_dir_tickets(linked_list* items, list_item* selected) {
-    action_delete_contents_internal(items, selected, "Delete all tickets in the current directory?", false, false, false, true);
+    action_delete_internal(items, selected, "Delete all tickets in the current directory?", false, false, false, true);
 }

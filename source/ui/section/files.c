@@ -6,12 +6,12 @@
 
 #include "section.h"
 #include "action/action.h"
-#include "action/clipboard.h"
 #include "task/task.h"
 #include "../error.h"
 #include "../list.h"
 #include "../prompt.h"
 #include "../ui.h"
+#include "../../core/clipboard.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
@@ -28,10 +28,10 @@ static list_item install_and_delete_cia = {"Install and delete CIA", COLOR_TEXT,
 static list_item install_ticket = {"Install ticket", COLOR_TEXT, action_install_ticket};
 static list_item install_and_delete_ticket = {"Install and delete ticket", COLOR_TEXT, action_install_ticket_delete};
 
-static list_item new_folder = {"New folder", COLOR_TEXT, action_new_folder};
 static list_item delete_dir = {"Delete", COLOR_TEXT, action_delete_dir};
 static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
 static list_item copy_all_contents = {"Copy all contents", COLOR_TEXT, NULL};
+static list_item new_folder = {"New folder", COLOR_TEXT, action_new_folder};
 
 static list_item install_all_cias = {"Install all CIAs", COLOR_TEXT, action_install_cias};
 static list_item install_and_delete_all_cias = {"Install and delete all CIAs", COLOR_TEXT, action_install_cias_delete};
@@ -57,13 +57,15 @@ typedef struct {
     bool showTickets;
 
     char currDir[FILE_PATH_MAX];
-    list_item* dirItem;
 } files_data;
 
 typedef struct {
     linked_list* items;
     list_item* selected;
     files_data* parent;
+
+    bool containsCias;
+    bool containsTickets;
 } files_action_data;
 
 static void files_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -92,7 +94,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
             file_info* info = (file_info*) actionData->selected->data;
 
             Result res = 0;
-            if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archiveId, &actionData->parent->archivePath, info->path, selected == &copy_all_contents))) {
+            if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archive, info->path, selected == &copy_all_contents))) {
                 prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : info->isDirectory ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, ui_draw_file_info, NULL);
             } else {
                 error_display_res(NULL, info, ui_draw_file_info, res, "Failed to copy to clipboard.");
@@ -110,24 +112,24 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
         file_info* info = (file_info*) actionData->selected->data;
 
         if(info->isDirectory) {
-            if(info->containsCias) {
+            if(actionData->containsCias) {
                 linked_list_add(items, &install_all_cias);
                 linked_list_add(items, &install_and_delete_all_cias);
                 linked_list_add(items, &delete_all_cias);
             }
 
-            if(info->containsTickets) {
+            if(actionData->containsTickets) {
                 linked_list_add(items, &install_all_tickets);
                 linked_list_add(items, &install_and_delete_all_tickets);
                 linked_list_add(items, &delete_all_tickets);
             }
 
-            linked_list_add(items, &new_folder);
-
             linked_list_add(items, &delete_all_contents);
             linked_list_add(items, &copy_all_contents);
 
             linked_list_add(items, &delete_dir);
+
+            linked_list_add(items, &new_folder);
         } else {
             if(info->isCia) {
                 linked_list_add(items, &install_cia);
@@ -159,6 +161,22 @@ static void files_action_open(linked_list* items, list_item* selected, files_dat
     data->items = items;
     data->selected = selected;
     data->parent = parent;
+
+    data->containsCias = false;
+    data->containsTickets = false;
+
+    linked_list_iter iter;
+    linked_list_iterate(data->items, &iter);
+
+    while(linked_list_iter_has_next(&iter)) {
+        file_info* info = (file_info*) ((list_item*) linked_list_iter_next(&iter))->data;
+
+        if(info->isCia) {
+            data->containsCias = true;
+        } else if(info->isTicket) {
+            data->containsTickets = true;
+        }
+    }
 
     list_display(((file_info*) selected->data)->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
@@ -228,19 +246,11 @@ static void files_repopulate(files_data* listData, linked_list* items) {
         }
     }
 
-    if(listData->dirItem != NULL) {
-        task_free_file(listData->dirItem);
-        listData->dirItem = NULL;
-    }
+    listData->populateData.items = items;
+    listData->populateData.archive = listData->archive;
+    strncpy(listData->populateData.path, listData->currDir, FILE_PATH_MAX);
 
-    Result res = 0;
-    if(R_SUCCEEDED(res = task_create_file_item(&listData->dirItem, listData->archive, listData->currDir))) {
-        listData->populateData.items = items;
-        listData->populateData.base = (file_info*) listData->dirItem->data;
-
-        res = task_populate_files(&listData->populateData);
-    }
-
+    Result res = task_populate_files(&listData->populateData);
     if(R_FAILED(res)) {
         error_display_res(NULL, NULL, NULL, res, "Failed to initiate file list population.");
     }
@@ -262,13 +272,8 @@ static void files_free_data(files_data* data) {
         }
     }
 
-    if(data->dirItem != NULL) {
-        task_free_file(data->dirItem);
-        data->dirItem = NULL;
-    }
-
     if(data->archive != 0) {
-        FSUSER_CloseArchive(data->archive);
+        util_close_archive(data->archive);
         data->archive = 0;
     }
 
@@ -283,9 +288,12 @@ static void files_free_data(files_data* data) {
 static void files_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     files_data* listData = (files_data*) data;
 
-    // Detect whether the current directory was renamed by an action.
-    if(listData->populated && listData->dirItem != NULL && strncmp(listData->currDir, ((file_info*) listData->dirItem->data)->path, FILE_PATH_MAX) != 0) {
-        strncpy(listData->currDir, ((file_info*) listData->dirItem->data)->path, FILE_PATH_MAX);
+    if(listData->populated) {
+        // Detect whether the current directory was renamed by an action.
+        list_item* currDirItem = linked_list_get(items, 0);
+        if(currDirItem != NULL && strncmp(listData->currDir, ((file_info*) currDirItem->data)->path, FILE_PATH_MAX) != 0) {
+            strncpy(listData->currDir, ((file_info*) currDirItem->data)->path, FILE_PATH_MAX);
+        }
     }
 
     while(!util_is_dir(listData->archive, listData->currDir)) {
@@ -318,15 +326,10 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
         return;
     }
 
-    if((hidKeysDown() & KEY_Y) && listData->dirItem != NULL) {
-        files_action_open(items, listData->dirItem, listData);
-        return;
-    }
-
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         file_info* fileInfo = (file_info*) selected->data;
 
-        if(fileInfo->isDirectory) {
+        if(fileInfo->isDirectory && strncmp(selected->name, "<current directory>", LIST_ITEM_NAME_MAX) != 0) {
             files_navigate(listData, items, fileInfo->path);
         } else {
             files_action_open(items, selected, listData);
@@ -376,7 +379,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     }
 
     data->populateData.recursive = false;
-    data->populateData.includeBase = false;
+    data->populateData.includeBase = true;
 
     data->populateData.filter = files_filter;
     data->populateData.filterData = data;
@@ -409,17 +412,16 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     }
 
     snprintf(data->currDir, FILE_PATH_MAX, "/");
-    data->dirItem = NULL;
 
     Result res = 0;
-    if(R_FAILED(res = FSUSER_OpenArchive(&data->archive, archiveId, archivePath))) {
+    if(R_FAILED(res = util_open_archive(&data->archive, archiveId, archivePath))) {
         error_display_res(NULL, NULL, NULL, res, "Failed to open file listing archive.");
 
         files_free_data(data);
         return;
     }
 
-    list_display("Files", "A: Select, B: Back, X: Refresh, Y: Dir, Select: Filter", data, files_update, files_draw_top);
+    list_display("Files", "A: Select, B: Back, X: Refresh, Select: Filters", data, files_update, files_draw_top);
 }
 
 void files_open_sd() {

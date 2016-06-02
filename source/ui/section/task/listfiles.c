@@ -147,11 +147,15 @@ static void task_populate_files_thread(void* arg) {
 
     Result res = 0;
 
-    data->base->containsCias = false;
-    data->base->containsTickets = false;
-
     list_item* baseItem = NULL;
-    if(R_SUCCEEDED(res = task_create_file_item(&baseItem, data->base->archive, data->base->path))) {
+    if(R_SUCCEEDED(res = task_create_file_item(&baseItem, data->archive, data->path))) {
+        file_info* baseInfo = (file_info*) baseItem->data;
+        if(baseInfo->isDirectory) {
+            strncpy(baseItem->name, "<current directory>", LIST_ITEM_NAME_MAX);
+        } else {
+            strncpy(baseItem->name, "<current file>", LIST_ITEM_NAME_MAX);
+        }
+
         linked_list queue;
         linked_list_init(&queue);
 
@@ -195,16 +199,6 @@ static void task_populate_files_thread(void* arg) {
 
                                         list_item* item = NULL;
                                         if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path))) {
-                                            if(currItem == baseItem) {
-                                                file_info* info = (file_info*) item->data;
-
-                                                if(info->isCia) {
-                                                    data->base->containsCias = true;
-                                                } else if(info->isTicket) {
-                                                    data->base->containsTickets = true;
-                                                }
-                                            }
-
                                             if(data->recursive && ((file_info*) item->data)->isDirectory) {
                                                 linked_list_add(&queue, item);
                                             } else {
@@ -275,7 +269,7 @@ void task_clear_files(linked_list* items) {
 }
 
 Result task_populate_files(populate_files_data* data) {
-    if(data == NULL || data->base == NULL || data->items == NULL) {
+    if(data == NULL || data->items == NULL) {
         return R_FBI_INVALID_ARGUMENT;
     }
 

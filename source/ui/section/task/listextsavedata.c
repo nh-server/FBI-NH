@@ -153,8 +153,9 @@ void task_clear_ext_save_data(linked_list* items) {
 
     while(linked_list_iter_has_next(&iter)) {
         list_item* item = (list_item*) linked_list_iter_next(&iter);
-        task_free_ext_save_data(item);
+
         linked_list_iter_remove(&iter);
+        task_free_ext_save_data(item);
     }
 }
 

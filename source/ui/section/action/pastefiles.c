@@ -5,13 +5,13 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "clipboard.h"
 #include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
 #include "../../list.h"
 #include "../../prompt.h"
 #include "../../ui.h"
+#include "../../../core/clipboard.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -74,7 +74,14 @@ static Result action_paste_files_make_dst_directory(void* data, u32 index) {
         char parentPath[FILE_PATH_MAX];
         util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
 
-        if(strncmp(parentPath, pasteData->target->path, FILE_PATH_MAX) == 0) {
+        char baseDstPath[FILE_PATH_MAX];
+        if(pasteData->target->isDirectory) {
+            strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+        } else {
+            util_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+        }
+
+        if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
             list_item* dstItem = NULL;
             if(R_SUCCEEDED(res) && R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath))) {
                 linked_list_add(pasteData->items, dstItem);
@@ -152,18 +159,17 @@ static Result action_paste_files_close_dst(void* data, u32 index, bool succeeded
         char parentPath[FILE_PATH_MAX];
         util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
 
-        if(strncmp(parentPath, pasteData->target->path, FILE_PATH_MAX) == 0) {
+        char baseDstPath[FILE_PATH_MAX];
+        if(pasteData->target->isDirectory) {
+            strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+        } else {
+            util_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+        }
+
+        if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
             list_item* dstItem = NULL;
             if(R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath))) {
                 linked_list_add(pasteData->items, dstItem);
-
-                file_info* dstInfo = (file_info*) dstItem->data;
-
-                if(dstInfo->isCia) {
-                    pasteData->target->containsCias = true;
-                } else if(dstInfo->isTicket) {
-                    pasteData->target->containsTickets = true;
-                }
             }
         }
     }
@@ -316,7 +322,8 @@ void action_paste_contents(linked_list* items, list_item* selected) {
 
     populate_files_data popData;
     popData.items = &data->contents;
-    popData.base = (file_info*) clipboardItem->data;
+    popData.archive = ((file_info*) clipboardItem->data)->archive;
+    strncpy(popData.path, ((file_info*) clipboardItem->data)->path, FILE_PATH_MAX);
     popData.recursive = true;
     popData.includeBase = !clipboard_is_contents_only() || !util_is_dir(clipboard_get_archive(), clipboard_get_path());
     popData.filter = NULL;
