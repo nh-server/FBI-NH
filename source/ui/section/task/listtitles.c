@@ -342,8 +342,9 @@ void task_clear_titles(linked_list* items) {
 
     while(linked_list_iter_has_next(&iter)) {
         list_item* item = (list_item*) linked_list_iter_next(&iter);
-        task_free_title(item);
+
         linked_list_iter_remove(&iter);
+        task_free_title(item);
     }
 }
 

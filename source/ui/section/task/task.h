@@ -60,14 +60,12 @@ typedef struct file_info_s {
     char path[FILE_PATH_MAX];
     bool isDirectory;
 
+    // Files only
     u64 size;
     bool isCia;
     cia_info ciaInfo;
     bool isTicket;
     ticket_info ticketInfo;
-
-    bool containsCias;
-    bool containsTickets;
 } file_info;
 
 typedef struct {
@@ -148,7 +146,8 @@ typedef struct {
 typedef struct {
     linked_list* items;
 
-    file_info* base;
+    FS_Archive archive;
+    char path[FILE_PATH_MAX];
 
     bool recursive;
     bool includeBase;

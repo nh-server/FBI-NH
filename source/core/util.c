@@ -9,6 +9,7 @@
 #include "../ui/error.h"
 #include "../ui/list.h"
 #include "../ui/section/task/task.h"
+#include "linkedlist.h"
 
 extern void cleanup();
 
@@ -361,24 +362,111 @@ int util_compare_file_infos(const void** p1, const void** p2) {
     list_item* info1 = *(list_item**) p1;
     list_item* info2 = *(list_item**) p2;
 
-    file_info* f1 = (file_info*) info1->data;
-    file_info* f2 = (file_info*) info2->data;
+    bool info1Base = strncmp(info1->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info1->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;
+    bool info2Base = strncmp(info2->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info2->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;
 
-    if(f1->isDirectory && !f2->isDirectory) {
+    if(info1Base && !info2Base) {
         return -1;
-    } else if(!f1->isDirectory && f2->isDirectory) {
+    } else if(!info1Base && info2Base) {
         return 1;
     } else {
-        return strcasecmp(f1->name, f2->name);
+        file_info* f1 = (file_info*) info1->data;
+        file_info* f2 = (file_info*) info2->data;
+
+        if(f1->isDirectory && !f2->isDirectory) {
+            return -1;
+        } else if(!f1->isDirectory && f2->isDirectory) {
+            return 1;
+        } else {
+            return strncasecmp(f1->name, f2->name, FILE_NAME_MAX);
+        }
     }
 }
 
-static const char* path3dsx = NULL;
+static const char* path_3dsx = NULL;
 
 const char* util_get_3dsx_path() {
-    return path3dsx;
+    return path_3dsx;
 }
 
 void util_set_3dsx_path(const char* path) {
-    path3dsx = path;
+    path_3dsx = path;
+}
+
+typedef struct {
+    FS_Archive archive;
+    u32 refs;
+} archive_ref;
+
+static linked_list opened_archives;
+
+static Result util_add_archive_ref(FS_Archive archive) {
+    Result res = 0;
+
+    archive_ref* ref = (archive_ref*) calloc(1, sizeof(archive_ref));
+    if(ref != NULL) {
+        ref->archive = archive;
+        ref->refs = 1;
+
+        linked_list_add(&opened_archives, ref);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    return res;
+}
+
+Result util_open_archive(FS_Archive* archive, FS_ArchiveID id, FS_Path path) {
+    if(archive == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    Result res = 0;
+
+    FS_Archive arch = 0;
+    if(R_SUCCEEDED(res = FSUSER_OpenArchive(&arch, id, path))) {
+        if(R_SUCCEEDED(res = util_add_archive_ref(arch))) {
+            *archive = arch;
+        } else {
+            FSUSER_CloseArchive(arch);
+        }
+    }
+
+    return res;
+}
+
+Result util_ref_archive(FS_Archive archive) {
+    linked_list_iter iter;
+    linked_list_iterate(&opened_archives, &iter);
+
+    while(linked_list_iter_has_next(&iter)) {
+        archive_ref* ref = (archive_ref*) linked_list_iter_next(&iter);
+        if(ref->archive == archive) {
+            ref->refs++;
+            return 0;
+        }
+    }
+
+    return util_add_archive_ref(archive);
+}
+
+Result util_close_archive(FS_Archive archive) {
+    linked_list_iter iter;
+    linked_list_iterate(&opened_archives, &iter);
+
+    while(linked_list_iter_has_next(&iter)) {
+        archive_ref* ref = (archive_ref*) linked_list_iter_next(&iter);
+        if(ref->archive == archive) {
+            ref->refs--;
+
+            if(ref->refs == 0) {
+                linked_list_iter_remove(&iter);
+                free(ref);
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    return FSUSER_CloseArchive(archive);
 }

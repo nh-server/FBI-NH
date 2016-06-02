@@ -2,12 +2,12 @@
 
 #include <3ds.h>
 
+#include "core/clipboard.h"
 #include "core/screen.h"
 #include "core/util.h"
 #include "svchax/svchax.h"
 #include "ui/mainmenu.h"
 #include "ui/ui.h"
-#include "ui/section/action/clipboard.h"
 #include "ui/section/task/task.h"
 
 static void* soc_buffer;

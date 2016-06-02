@@ -4,7 +4,8 @@
 #include <3ds.h>
 
 #include "clipboard.h"
-#include "../task/task.h"
+#include "util.h"
+#include "../ui/section/task/task.h"
 
 static bool clipboard_has = false;
 static bool clipboard_contents_only;
@@ -28,30 +29,29 @@ bool clipboard_is_contents_only() {
     return clipboard_contents_only;
 }
 
-Result clipboard_set_contents(FS_ArchiveID archiveId, FS_Path* archivePath, const char* path, bool contentsOnly) {
+Result clipboard_set_contents(FS_Archive archive, const char* path, bool contentsOnly) {
     clipboard_clear();
 
-    clipboard_has = true;
-    clipboard_contents_only = contentsOnly;
-
-    strncpy(clipboard_path, path, FILE_PATH_MAX);
-
     Result res = 0;
-    if(R_FAILED(res = FSUSER_OpenArchive(&clipboard_archive, archiveId, *archivePath))) {
-        clipboard_clear();
+    if(R_SUCCEEDED(res = util_ref_archive(archive))) {
+        clipboard_has = true;
+        clipboard_contents_only = contentsOnly;
+
+        clipboard_archive = archive;
+        strncpy(clipboard_path, path, FILE_PATH_MAX);
     }
 
     return res;
 }
 
 void clipboard_clear() {
+    if(clipboard_archive != 0) {
+        util_close_archive(clipboard_archive);
+    }
+
     clipboard_has = false;
     clipboard_contents_only = false;
 
+    clipboard_archive = 0;
     memset(clipboard_path, '\0', FILE_PATH_MAX);
-
-    if(clipboard_archive != 0) {
-        FSUSER_CloseArchive(clipboard_archive);
-        clipboard_archive = 0;
-    }
 }

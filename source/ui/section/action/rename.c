@@ -59,7 +59,10 @@ static void action_rename_kbd_finished(void* data, char* input) {
     }
 
     if(R_SUCCEEDED(res)) {
-        strncpy(renameData->target->name, input, LIST_ITEM_NAME_MAX);
+        if(strncmp(renameData->target->name, "<current directory>", LIST_ITEM_NAME_MAX) != 0 && strncmp(renameData->target->name, "<current file>", LIST_ITEM_NAME_MAX) != 0) {
+            strncpy(renameData->target->name, input, LIST_ITEM_NAME_MAX);
+        }
+
         strncpy(targetInfo->name, input, FILE_NAME_MAX);
         strncpy(targetInfo->path, dstPath, FILE_PATH_MAX);
 
@@ -88,5 +91,5 @@ void action_rename(linked_list* items, list_item* selected) {
     data->items = items;
     data->target = selected;
 
-    kbd_display("Enter New Name", data->target->name, data, NULL, action_rename_kbd_finished, action_rename_kbd_canceled);
+    kbd_display("Enter New Name", ((file_info*) selected->data)->name, data, NULL, action_rename_kbd_finished, action_rename_kbd_canceled);
 }

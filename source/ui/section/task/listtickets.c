@@ -92,8 +92,9 @@ void task_clear_tickets(linked_list* items) {
 
     while(linked_list_iter_has_next(&iter)) {
         list_item* item = (list_item*) linked_list_iter_next(&iter);
-        task_free_ticket(item);
+
         linked_list_iter_remove(&iter);
+        task_free_ticket(item);
     }
 }
 

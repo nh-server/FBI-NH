@@ -46,10 +46,11 @@ static Result action_delete_pending_titles_delete(void* data, u32 index) {
 
         while(linked_list_iter_has_next(&iter)) {
             list_item* currItem = (list_item*) linked_list_iter_next(&iter);
+            pending_title_info* currInfo = (pending_title_info*) currItem->data;
 
-            if(strncmp(currItem->name, item->name, LIST_ITEM_NAME_MAX) == 0) {
+            if(currInfo->titleId == info->titleId && currInfo->mediaType == info->mediaType) {
                 linked_list_iter_remove(&iter);
-                task_free_file(currItem);
+                task_free_pending_title(currItem);
             }
         }
     }
