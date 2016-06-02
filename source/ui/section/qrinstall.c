@@ -9,6 +9,7 @@
 #include "task/task.h"
 #include "../error.h"
 #include "../info.h"
+#include "../kbd.h"
 #include "../prompt.h"
 #include "../ui.h"
 #include "../../core/screen.h"
@@ -55,11 +56,11 @@ static Result qrinstall_open_src(void* data, u32 index, u32* handle) {
     httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
     if(context != NULL) {
         if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, qrInstallData->urls[index], 1))) {
-            httpcSetSSLOpt(context, SSLCOPT_DisableVerify);
-            if(R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &qrInstallData->responseCode, 0))) {
+            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &qrInstallData->responseCode, 0))) {
                 if(qrInstallData->responseCode == 200) {
                     *handle = (u32) context;
                 } else if(qrInstallData->responseCode == 301 || qrInstallData->responseCode == 302 || qrInstallData->responseCode == 303) {
+                    memset(qrInstallData->urls[index], '\0', URL_MAX);
                     if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", qrInstallData->urls[index], URL_MAX))) {
                         httpcCloseContext(context);
                         free(context);
@@ -106,16 +107,15 @@ static Result qrinstall_read_src(void* data, u32 handle, u32* bytesRead, void* b
 static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
-    qrInstallData->ticket = *(u16*) initialReadBlock == 0x0100;
-
     Result res = 0;
 
-    if(qrInstallData->ticket) {
+    if(*(u16*) initialReadBlock == 0x0100) {
+        qrInstallData->ticket = true;
         qrInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
 
         AM_DeleteTicket(qrInstallData->ticketInfo.titleId);
         res = AM_InstallTicketBegin(handle);
-    } else {
+    } else if(*(u16*) initialReadBlock == 0x2020) {
         u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
         FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
@@ -138,6 +138,8 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
         if(R_SUCCEEDED(res = AM_StartCiaInstall(dest, handle))) {
             qrInstallData->currTitleId = titleId;
         }
+    } else {
+        res = R_FBI_BAD_DATA;
     }
 
     return res;
@@ -214,15 +216,15 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
         volatile bool dismissed = false;
         if(res == R_FBI_HTTP_RESPONSE_CODE) {
             if(strlen(url) > 38) {
-                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.35s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+                error_display(&dismissed, NULL, NULL, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             } else {
-                error_display(&dismissed, NULL, NULL, "Failed to install from QR code.\n%.38s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+                error_display(&dismissed, NULL, NULL, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             }
         } else {
             if(strlen(url) > 38) {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.35s...", url);
+                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from URL.\n%.35s...", url);
             } else {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from QR code.\n%.38s", url);
+                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from URL.\n%.38s", url);
             }
         }
 
@@ -245,6 +247,10 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
             prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
+        for(u32 i = 0; i < qrInstallData->installInfo.total; i++) {
+            memset(qrInstallData->urls[i], '\0', URL_MAX);
+        }
+
         return;
     }
 
@@ -263,7 +269,7 @@ static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool respo
 
     Result res = task_data_op(&qrInstallData->installInfo);
     if(R_SUCCEEDED(res)) {
-        info_display("Installing From QR Code", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
+        info_display("Installing From URL(s)", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
     } else {
         error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
     }
@@ -316,6 +322,48 @@ static void qrinstall_wait_draw_top(ui_view* view, void* data, float x1, float y
     }
 }
 
+static void qrinstall_process_urls(void* data, char* input) {
+    qr_install_data* qrInstallData = (qr_install_data*) data;
+
+    qrInstallData->installInfo.total = 0;
+
+    size_t payloadLen = strlen(input);
+
+    if(payloadLen > 0) {
+        char* currStart = input;
+        while(qrInstallData->installInfo.total < URLS_MAX && currStart - input < payloadLen) {
+            char* currEnd = strchr(currStart, '\n');
+            if(currEnd == NULL) {
+                currEnd = input + payloadLen;
+            }
+
+            u32 len = currEnd - currStart;
+
+            if((len < 7 || strncmp(currStart, "http://", 7) != 0) && (len < 8 || strncmp(currStart, "https://", 8) != 0)) {
+                if(len > URL_MAX - 7) {
+                    len = URL_MAX - 7;
+                }
+
+                strncpy(qrInstallData->urls[qrInstallData->installInfo.total], "http://", 7);
+                strncpy(&qrInstallData->urls[qrInstallData->installInfo.total][7], currStart, len);
+            } else {
+                if(len > URL_MAX) {
+                    len = URL_MAX;
+                }
+
+                strncpy(qrInstallData->urls[qrInstallData->installInfo.total], currStart, len);
+            }
+
+            qrInstallData->installInfo.total++;
+            currStart = currEnd + 1;
+        }
+
+        if(qrInstallData->installInfo.total > 0) {
+            prompt_display("Confirmation", "Install from the provided URL(s)?", COLOR_TEXT, true, data, NULL, qrinstall_confirm_onresponse);
+        }
+    }
+}
+
 static void qrinstall_wait_update(ui_view* view, void* data, float* progress, char* text) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
@@ -337,6 +385,12 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         }
 
         qrinstall_free_data(qrInstallData);
+
+        return;
+    }
+
+    if(hidKeysDown() & KEY_X) {
+        kbd_display("Enter URL(s)", data, NULL, qrinstall_process_urls, NULL);
 
         return;
     }
@@ -374,39 +428,8 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         quirc_decode_error_t err = quirc_decode(&qrCode, &qrData);
 
         if(err == 0) {
-            qrInstallData->installInfo.total = 0;
-
-            size_t payloadLen = strlen((char*) qrData.payload);
-
-            char* currStart = (char*) qrData.payload;
-            while(qrInstallData->installInfo.total < URLS_MAX && currStart - (char*) qrData.payload < payloadLen) {
-                char* currEnd = strchr(currStart, '\n');
-                if(currEnd == NULL) {
-                    currEnd = (char*) qrData.payload + payloadLen;
-                }
-
-                u32 len = currEnd - currStart;
-
-                if((len < 7 || strncmp(currStart, "http://", 7) != 0) && (len < 8 || strncmp(currStart, "https://", 8) != 0)) {
-                    if(len > URL_MAX - 7) {
-                        len = URL_MAX - 7;
-                    }
-
-                    strncpy(qrInstallData->urls[qrInstallData->installInfo.total], "http://", 7);
-                    strncpy(&qrInstallData->urls[qrInstallData->installInfo.total][7], currStart, len);
-                } else {
-                    if(len > URL_MAX) {
-                        len = URL_MAX;
-                    }
-
-                    strncpy(qrInstallData->urls[qrInstallData->installInfo.total], currStart, len);
-                }
-
-                qrInstallData->installInfo.total++;
-                currStart = currEnd + 1;
-            }
-
-            prompt_display("Confirmation", "Install from the scanned URL(s)?", COLOR_TEXT, true, data, NULL, qrinstall_confirm_onresponse);
+            qrinstall_process_urls(data, (char*) qrData.payload);
+            return;
         }
     }
 
@@ -493,5 +516,5 @@ void qrinstall_open() {
         return;
     }
 
-    info_display("QR Code Install", "B: Return", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
+    info_display("QR Code Install", "B: Return, X: Enter URL(s)", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
 }

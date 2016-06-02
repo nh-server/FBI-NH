@@ -54,8 +54,7 @@ static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
         }
 
         if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, url, 1))) {
-            httpcSetSSLOpt(context, SSLCOPT_DisableVerify);
-            if(R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &installData->responseCode, 0))) {
+            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &installData->responseCode, 0))) {
                 if(installData->responseCode == 200) {
                     *handle = (u32) context;
                 } else {

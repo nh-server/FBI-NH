@@ -283,10 +283,8 @@ Result util_import_seed(u64 titleId) {
 
                 httpcContext context;
                 if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
-                    httpcSetSSLOpt(&context, SSLCOPT_DisableVerify);
-
                     u32 responseCode = 0;
-                    if(R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
+                    if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
                         if(responseCode == 200) {
                             u32 bytesRead = 0;
                             res = httpcDownloadData(&context, seed, sizeof(seed), &bytesRead);

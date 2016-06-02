@@ -106,16 +106,15 @@ static Result networkinstall_read_src(void* data, u32 handle, u32* bytesRead, vo
 static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
-    networkInstallData->ticket = *(u16*) initialReadBlock == 0x0100;
-
     Result res = 0;
 
-    if(networkInstallData->ticket) {
+    if(*(u16*) initialReadBlock == 0x0100) {
+        networkInstallData->ticket = true;
         networkInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
 
         AM_DeleteTicket(networkInstallData->ticketInfo.titleId);
         res = AM_InstallTicketBegin(handle);
-    } else {
+    } else if(*(u16*) initialReadBlock == 0x2020) {
         u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
         FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
@@ -138,6 +137,8 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
         if(R_SUCCEEDED(res = AM_StartCiaInstall(dest, handle))) {
             networkInstallData->currTitleId = titleId;
         }
+    } else {
+        res = R_FBI_BAD_DATA;
     }
 
     return res;

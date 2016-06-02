@@ -4,7 +4,6 @@
 #include <3ds.h>
 
 #include "task.h"
-#include "../../list.h"
 #include "../../error.h"
 
 static Result task_data_op_check_running(data_op_data* data, u32 index, u32* srcHandle, u32* dstHandle) {
@@ -59,6 +58,8 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                         if(R_SUCCEEDED(res = data->openDst(data->data, index, NULL, &dstHandle))) {
                             res = data->closeDst(data->data, index, true, dstHandle);
                         }
+                    } else {
+                        res = R_FBI_BAD_DATA;
                     }
                 } else {
                     u32 bufferSize = 1024 * 256;
@@ -145,8 +146,9 @@ static void task_data_op_thread(void* arg) {
             }
         }
 
+        data->result = res;
+
         if(R_FAILED(res) && !data->error(data->data, data->processed, res)) {
-            data->result = res;
             break;
         }
     }
