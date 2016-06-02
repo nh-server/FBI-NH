@@ -204,7 +204,7 @@ static Result networkinstall_restore(void* data, u32 index) {
 
 static bool networkinstall_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else if(res == R_FBI_ERRNO) {
         error_display_errno(NULL, NULL, NULL, errno, "Failed to install over the network.");
     } else {
@@ -247,7 +247,7 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(networkInstallData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, data, NULL, NULL, NULL);
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         return;
@@ -278,7 +278,7 @@ static void networkinstall_cdn_check_onresponse(ui_view* view, void* data, bool 
 
 static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_cdn_check_onresponse);
+        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, networkinstall_cdn_check_onresponse);
     } else {
         networkinstall_close_client((network_install_data*) data);
     }
@@ -311,7 +311,7 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
         networkInstallData->installInfo.total = ntohl(networkInstallData->installInfo.total);
 
         networkInstallData->clientSocket = sock;
-        prompt_display("Confirmation", "Install the received file(s)?", COLOR_TEXT, true, data, NULL, NULL, networkinstall_confirm_onresponse);
+        prompt_display("Confirmation", "Install the received file(s)?", COLOR_TEXT, true, data, NULL, networkinstall_confirm_onresponse);
     } else if(errno != EAGAIN) {
         if(errno == 22 || errno == 115) {
             ui_pop();

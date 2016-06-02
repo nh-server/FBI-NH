@@ -164,7 +164,7 @@ static bool action_install_tickets_error(void* data, u32 index, Result res) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
         volatile bool dismissed = false;
@@ -196,7 +196,7 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         action_install_tickets_free_data(installData);
@@ -229,7 +229,7 @@ static void action_install_tickets_cdn_check_onresponse(ui_view* view, void* dat
 
 static void action_install_tickets_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, action_install_tickets_draw_top, action_install_tickets_cdn_check_onresponse);
+        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, action_install_tickets_draw_top, action_install_tickets_cdn_check_onresponse);
     } else {
         action_install_tickets_free_data((install_tickets_data*) data);
     }
@@ -308,7 +308,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     data->installInfo.total = linked_list_size(&data->contents);
     data->installInfo.processed = data->installInfo.total;
 
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_install_tickets_draw_top, action_install_tickets_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_install_tickets_draw_top, action_install_tickets_onresponse);
 }
 
 void action_install_ticket(linked_list* items, list_item* selected) {

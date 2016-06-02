@@ -69,7 +69,7 @@ static bool action_delete_pending_titles_error(void* data, u32 index, Result res
     delete_pending_titles_data* deleteData = (delete_pending_titles_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
         volatile bool dismissed = false;
@@ -97,7 +97,7 @@ static void action_delete_pending_titles_update(ui_view* view, void* data, float
         info_destroy(view);
 
         if(R_SUCCEEDED(deleteData->deleteInfo.result)) {
-            prompt_display("Success", "Pending title(s) deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "Pending title(s) deleted.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         action_delete_pending_titles_free_data(deleteData);
@@ -185,7 +185,7 @@ void action_delete_pending_titles(linked_list* items, list_item* selected, const
     data->deleteInfo.total = linked_list_size(&data->contents);
     data->deleteInfo.processed = data->deleteInfo.total;
 
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, !all ? action_delete_pending_titles_draw_top : NULL, action_delete_pending_titles_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, !all ? action_delete_pending_titles_draw_top : NULL, action_delete_pending_titles_onresponse);
 }
 
 void action_delete_pending_title(linked_list* items, list_item* selected) {

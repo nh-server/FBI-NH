@@ -112,15 +112,16 @@ static void ui_draw_top(ui_view* ui) {
     float verWidth;
     float verHeight;
     screen_get_string_size(&verWidth, &verHeight, verText, 0.5f, 0.5f);
-    screen_draw_string(verText, topScreenTopBarX + 2, topScreenTopBarY + (topScreenTopBarHeight - verHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
+    screen_draw_string(verText, topScreenTopBarX + 2, topScreenTopBarY + (topScreenTopBarHeight - verHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
 
     time_t t = time(NULL);
     char* timeText = ctime(&t);
+    timeText[strlen(timeText) - 1] = '\0';
 
     float timeTextWidth;
     float timeTextHeight;
     screen_get_string_size(&timeTextWidth, &timeTextHeight, timeText, 0.5f, 0.5f);
-    screen_draw_string(timeText, topScreenTopBarX + (topScreenTopBarWidth - timeTextWidth) / 2, topScreenTopBarY + (topScreenTopBarHeight - timeTextHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
+    screen_draw_string(timeText, topScreenTopBarX + (topScreenTopBarWidth - timeTextWidth) / 2, topScreenTopBarY + (topScreenTopBarHeight - timeTextHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
 
     u32 batteryIcon = 0;
     u8 batteryChargeState = 0;
@@ -204,7 +205,7 @@ static void ui_draw_top(ui_view* ui) {
     float freeSpaceHeight;
     screen_get_string_size(NULL, &freeSpaceHeight, buffer, 0.35f, 0.35f);
 
-    screen_draw_string(buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.35f, 0.35f, COLOR_TEXT, false);
+    screen_draw_string(buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.35f, 0.35f, COLOR_TEXT, true);
 }
 
 static void ui_draw_bottom(ui_view* ui) {
@@ -249,14 +250,14 @@ static void ui_draw_bottom(ui_view* ui) {
         float nameWidth;
         float nameHeight;
         screen_get_string_size(&nameWidth, &nameHeight, ui->name, 0.5f, 0.5f);
-        screen_draw_string(ui->name, (BOTTOM_SCREEN_WIDTH - nameWidth) / 2, (bottomScreenTopBarHeight - nameHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(ui->name, (BOTTOM_SCREEN_WIDTH - nameWidth) / 2, (bottomScreenTopBarHeight - nameHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
     }
 
     if(ui->info != NULL) {
         float infoWidth;
         float infoHeight;
         screen_get_string_size(&infoWidth, &infoHeight, ui->info, 0.5f, 0.5f);
-        screen_draw_string(ui->info, (BOTTOM_SCREEN_WIDTH - infoWidth) / 2, BOTTOM_SCREEN_HEIGHT - (bottomScreenBottomBarHeight + infoHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(ui->info, (BOTTOM_SCREEN_WIDTH - infoWidth) / 2, BOTTOM_SCREEN_HEIGHT - (bottomScreenBottomBarHeight + infoHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
     }
 }
 
@@ -289,8 +290,6 @@ bool ui_update() {
 
 void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     ext_save_data_info* info = (ext_save_data_info*) data;
-
-    char buf[64];
 
     if(info->hasMeta) {
         u32 metaInfoBoxShadowWidth;
@@ -329,65 +328,45 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
         float metaTextX = metaInfoBoxX + 64;
 
         float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
 
         float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
 
         float publisherY = longDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, true);
     }
 
-    snprintf(buf, 64, "Ext Save Data ID: %016llX", info->extSaveDataId);
+    char infoText[512];
 
-    float saveDataIdWidth;
-    float saveDataIdHeight;
-    screen_get_string_size(&saveDataIdWidth, &saveDataIdHeight, buf, 0.5f, 0.5f);
+    snprintf(infoText, sizeof(infoText),
+             "Ext Save Data ID: %016llX\n"
+             "Shared: %s",
+             info->extSaveDataId,
+             info->shared ? "Yes" : "No");
 
-    float saveDataIdX = x1 + (x2 - x1 - saveDataIdWidth) / 2;
-    float saveDataIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, saveDataIdX, saveDataIdY, 0.5f, 0.5f, COLOR_TEXT, false);
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
 
-    snprintf(buf, 64, "Shared: %s", info->shared ? "Yes" : "No");
-
-    float sharedWidth;
-    float sharedHeight;
-    screen_get_string_size(&sharedWidth, &sharedHeight, buf, 0.5f, 0.5f);
-
-    float sharedX = x1 + (x2 - x1 - sharedWidth) / 2;
-    float sharedY = saveDataIdY + saveDataIdHeight + 2;
-    screen_draw_string(buf, sharedX, sharedY, 0.5f, 0.5f, COLOR_TEXT, false);
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
 }
 
 void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     file_info* info = (file_info*) data;
 
-    char buf[64];
+    char infoText[512];
+    size_t infoTextPos = 0;
 
     if(strlen(info->name) > 48) {
-        snprintf(buf, 64, "Name: %.45s...", info->name);
+        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Name: %.45s...\n", info->name);
     } else {
-        snprintf(buf, 64, "Name: %.48s", info->name);
+        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Name: %.48s\n", info->name);
     }
 
-    float nameWidth;
-    float nameHeight;
-    screen_get_string_size(&nameWidth, &nameHeight, buf, 0.5f, 0.5f);
-
-    float nameX = x1 + (x2 - x1 - nameWidth) / 2;
-    float nameY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, nameX, nameY, 0.5f, 0.5f, COLOR_TEXT, false);
-
     if(!info->isDirectory) {
-        snprintf(buf, 64, "Size: %.2f MiB", info->size / 1024.0 / 1024.0);
-
-        float sizeWidth;
-        float sizeHeight;
-        screen_get_string_size(&sizeWidth, &sizeHeight, buf, 0.5f, 0.5f);
-
-        float sizeX = x1 + (x2 - x1 - sizeWidth) / 2;
-        float sizeY = nameY + nameHeight + 2;
-        screen_draw_string(buf, sizeX, sizeY, 0.5f, 0.5f, COLOR_TEXT, false);
+        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f MiB\n", info->size / 1024.0 / 1024.0);
 
         if(info->isCia) {
             if(info->ciaInfo.hasMeta) {
@@ -427,140 +406,90 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
                 float metaTextX = metaInfoBoxX + 64;
 
                 float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-                screen_draw_string(info->ciaInfo.meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+                screen_draw_string(info->ciaInfo.meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
 
                 float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+                screen_draw_string(info->ciaInfo.meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
 
                 float publisherY = longDescriptionY + longDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+                screen_draw_string(info->ciaInfo.meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, true);
             }
 
-            snprintf(buf, 64, "Title ID: %016llX", info->ciaInfo.titleId);
-
-            float titleIdWidth;
-            float titleIdHeight;
-            screen_get_string_size(&titleIdWidth, &titleIdHeight, buf, 0.5f, 0.5f);
-
-            float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
-            float titleIdY = sizeY + sizeHeight + 2;
-            screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-            snprintf(buf, 64, "Version: %hu", info->ciaInfo.version);
-
-            float versionWidth;
-            float versionHeight;
-            screen_get_string_size(&versionWidth, &versionHeight, buf, 0.5f, 0.5f);
-
-            float versionX = x1 + (x2 - x1 - versionWidth) / 2;
-            float versionY = titleIdY + titleIdHeight + 2;
-            screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-            snprintf(buf, 64, "Installed Size: %.2f MiB", info->ciaInfo.installedSize / 1024.0 / 1024.0);
-
-            float installedSizeWidth;
-            float installedSizeHeight;
-            screen_get_string_size(&installedSizeWidth, &installedSizeHeight, buf, 0.5f, 0.5f);
-
-            float installedSizeX = x1 + (x2 - x1 - installedSizeWidth) / 2;
-            float installedSizeY = versionY + versionHeight + 2;
-            screen_draw_string(buf, installedSizeX, installedSizeY, 0.5f, 0.5f, COLOR_TEXT, false);
+            infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos,
+                     "Title ID: %016llX\n"
+                     "Version: %hu\n"
+                     "Installed Size: %.2f MiB",
+                     info->ciaInfo.titleId,
+                     info->ciaInfo.version,
+                     info->ciaInfo.installedSize / 1024.0 / 1024.0);
         } else if(info->isTicket) {
-            snprintf(buf, 64, "Ticket ID: %016llX", info->ticketInfo.titleId);
-
-            float ticketIdWidth;
-            float ticketIdHeight;
-            screen_get_string_size(&ticketIdWidth, &ticketIdHeight, buf, 0.5f, 0.5f);
-
-            float ticketIdX = x1 + (x2 - x1 - ticketIdWidth) / 2;
-            float ticketIdY = sizeY + sizeHeight + 2;
-            screen_draw_string(buf, ticketIdX, ticketIdY, 0.5f, 0.5f, COLOR_TEXT, false);
+            infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Ticket ID: %016llX", info->ticketInfo.titleId);
         }
     } else {
-        snprintf(buf, 64, "Directory");
-
-        float directoryWidth;
-        float directoryHeight;
-        screen_get_string_size(&directoryWidth, &directoryHeight, buf, 0.5f, 0.5f);
-
-        float directoryX = x1 + (x2 - x1 - directoryWidth) / 2;
-        float directoryY = nameY + nameHeight + 2;
-        screen_draw_string(buf, directoryX, directoryY, 0.5f, 0.5f, COLOR_TEXT, false);
+        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Directory");
     }
+
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
+
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
 }
 
 void ui_draw_pending_title_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     pending_title_info* info = (pending_title_info*) data;
 
-    char buf[64];
+    char infoText[512];
 
-    snprintf(buf, 64, "Pending Title ID: %016llX", info->titleId);
+    snprintf(infoText, sizeof(infoText),
+             "Pending Title ID: %016llX\n"
+             "Media Type: %s\n"
+             "Version: %hu",
+             info->titleId,
+             info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card",
+             info->version);
 
-    float titleIdWidth;
-    float titleIdHeight;
-    screen_get_string_size(&titleIdWidth, &titleIdHeight, buf, 0.5f, 0.5f);
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
 
-    float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
-    float titleIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-    snprintf(buf, 64, "Media Type: %s", info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card");
-
-    float mediaTypeWidth;
-    float mediaTypeHeight;
-    screen_get_string_size(&mediaTypeWidth, &mediaTypeHeight, buf, 0.5f, 0.5f);
-
-    float mediaTypeX = x1 + (x2 - x1 - mediaTypeWidth) / 2;
-    float mediaTypeY = titleIdY + titleIdHeight + 2;
-    screen_draw_string(buf, mediaTypeX, mediaTypeY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-    snprintf(buf, 64, "Version: %hu", info->version);
-
-    float versionWidth;
-    float versionHeight;
-    screen_get_string_size(&versionWidth, &versionHeight, buf, 0.5f, 0.5f);
-
-    float versionX = x1 + (x2 - x1 - versionWidth) / 2;
-    float versionY = mediaTypeY + mediaTypeHeight + 2;
-    screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
 }
 
 void ui_draw_system_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     system_save_data_info* info = (system_save_data_info*) data;
 
-    char buf[64];
+    char infoText[512];
 
-    snprintf(buf, 64, "System Save Data ID: %08lX", info->systemSaveDataId);
+    snprintf(infoText, sizeof(infoText), "System Save Data ID: %08lX", info->systemSaveDataId);
 
-    float saveDataIdWidth;
-    float saveDataIdHeight;
-    screen_get_string_size(&saveDataIdWidth, &saveDataIdHeight, buf, 0.5f, 0.5f);
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
 
-    float saveDataIdX = x1 + (x2 - x1 - saveDataIdWidth) / 2;
-    float saveDataIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, saveDataIdX, saveDataIdY, 0.5f, 0.5f, COLOR_TEXT, false);
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
 }
 
 void ui_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     ticket_info* info = (ticket_info*) data;
 
-    char buf[64];
+    char infoText[512];
 
-    snprintf(buf, 64, "Title ID: %016llX", info->titleId);
+    snprintf(infoText, sizeof(infoText), "Title ID: %016llX", info->titleId);
 
-    float titleIdWidth;
-    float titleIdHeight;
-    screen_get_string_size(&titleIdWidth, &titleIdHeight, buf, 0.5f, 0.5f);
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
 
-    float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
-    float titleIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
 }
 
 void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     title_info* info = (title_info*) data;
-
-    char buf[64];
 
     if(info->hasMeta) {
         u32 metaInfoBoxShadowWidth;
@@ -599,62 +528,33 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
         float metaTextX = metaInfoBoxX + 64;
 
         float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
 
         float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
 
         float publisherY = longDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, true);
     }
 
-    snprintf(buf, 64, "Title ID: %016llX", info->titleId);
+    char infoText[512];
 
-    float titleIdWidth;
-    float titleIdHeight;
-    screen_get_string_size(&titleIdWidth, &titleIdHeight, buf, 0.5f, 0.5f);
+    snprintf(infoText, sizeof(infoText),
+             "Title ID: %016llX\n"
+             "Media Type: %s\n"
+             "Version: %hu\n"
+             "Product Code: %s\n"
+             "Installed Size: %.2f MiB",
+             info->titleId,
+             info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card",
+             info->version,
+             info->productCode,
+             info->installedSize / 1024.0 / 1024.0);
 
-    float titleIdX = x1 + (x2 - x1 - titleIdWidth) / 2;
-    float titleIdY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(buf, titleIdX, titleIdY, 0.5f, 0.5f, COLOR_TEXT, false);
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
 
-    snprintf(buf, 64, "Media Type: %s", info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card");
-
-    float mediaTypeWidth;
-    float mediaTypeHeight;
-    screen_get_string_size(&mediaTypeWidth, &mediaTypeHeight, buf, 0.5f, 0.5f);
-
-    float mediaTypeX = x1 + (x2 - x1 - mediaTypeWidth) / 2;
-    float mediaTypeY = titleIdY + titleIdHeight + 2;
-    screen_draw_string(buf, mediaTypeX, mediaTypeY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-    snprintf(buf, 64, "Product Code: %s", info->productCode);
-
-    float productCodeWidth;
-    float productCodeHeight;
-    screen_get_string_size(&productCodeWidth, &productCodeHeight, buf, 0.5f, 0.5f);
-
-    float productCodeX = x1 + (x2 - x1 - productCodeWidth) / 2;
-    float productCodeY = mediaTypeY + mediaTypeHeight + 2;
-    screen_draw_string(buf, productCodeX, productCodeY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-    snprintf(buf, 64, "Version: %hu", info->version);
-
-    float versionWidth;
-    float versionHeight;
-    screen_get_string_size(&versionWidth, &versionHeight, buf, 0.5f, 0.5f);
-
-    float versionX = x1 + (x2 - x1 - versionWidth) / 2;
-    float versionY = productCodeY + productCodeHeight + 2;
-    screen_draw_string(buf, versionX, versionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-    snprintf(buf, 64, "Installed Size: %.2f MiB", info->installedSize / 1024.0 / 1024.0);
-
-    float installedSizeWidth;
-    float installedSizeHeight;
-    screen_get_string_size(&installedSizeWidth, &installedSizeHeight, buf, 0.5f, 0.5f);
-
-    float installedSizeX = x1 + (x2 - x1 - installedSizeWidth) / 2;
-    float installedSizeY = versionY + versionHeight + 2;
-    screen_draw_string(buf, installedSizeX, installedSizeY, 0.5f, 0.5f, COLOR_TEXT, false);
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
 }

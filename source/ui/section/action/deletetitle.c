@@ -37,7 +37,7 @@ static void action_delete_title_update(ui_view* view, void* data, float* progres
         linked_list_remove(deleteData->items, deleteData->selected);
         task_free_title(deleteData->selected);
 
-        prompt_display("Success", "Title deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Success", "Title deleted.", COLOR_TEXT, false, NULL, NULL, NULL);
     }
 
     free(data);
@@ -62,5 +62,5 @@ void action_delete_title(linked_list* items, list_item* selected) {
     data->items = items;
     data->selected = selected;
 
-    prompt_display("Confirmation", "Delete the selected title?", COLOR_TEXT, true, data, NULL, action_delete_title_draw_top, action_delete_title_onresponse);
+    prompt_display("Confirmation", "Delete the selected title?", COLOR_TEXT, true, data, action_delete_title_draw_top, action_delete_title_onresponse);
 }

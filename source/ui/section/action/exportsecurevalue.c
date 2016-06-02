@@ -25,7 +25,7 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
             ui_pop();
             info_destroy(view);
 
-            prompt_display("Failure", "Secure value not set.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, NULL);
+            prompt_display("Failure", "Secure value not set.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
 
             return;
         }
@@ -59,7 +59,7 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
     info_destroy(view);
 
     if(R_SUCCEEDED(res)) {
-        prompt_display("Success", "Secure value exported.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, NULL);
+        prompt_display("Success", "Secure value exported.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
     } else {
         error_display_res(NULL, info, ui_draw_title_info, res, "Failed to export secure value.");
     }
@@ -72,5 +72,5 @@ static void action_export_secure_value_onresponse(ui_view* view, void* data, boo
 }
 
 void action_export_secure_value(linked_list* items, list_item* selected) {
-    prompt_display("Confirmation", "Export the secure value of the selected title?", COLOR_TEXT, true, selected->data, NULL, ui_draw_title_info, action_export_secure_value_onresponse);
+    prompt_display("Confirmation", "Export the secure value of the selected title?", COLOR_TEXT, true, selected->data, ui_draw_title_info, action_export_secure_value_onresponse);
 }

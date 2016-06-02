@@ -38,7 +38,7 @@ static void action_delete_system_save_data_update(ui_view* view, void* data, flo
         linked_list_remove(deleteData->items, deleteData->selected);
         task_free_system_save_data(deleteData->selected);
 
-        prompt_display("Success", "System save data deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Success", "System save data deleted.", COLOR_TEXT, false, NULL, NULL, NULL);
     }
 
     free(data);
@@ -63,5 +63,5 @@ void action_delete_system_save_data(linked_list* items, list_item* selected) {
     data->items = items;
     data->selected = selected;
 
-    prompt_display("Confirmation", "Delete the selected system save data?", COLOR_TEXT, true, data, NULL, action_delete_system_save_data_draw_top, action_delete_system_save_data_onresponse);
+    prompt_display("Confirmation", "Delete the selected system save data?", COLOR_TEXT, true, data, action_delete_system_save_data_draw_top, action_delete_system_save_data_onresponse);
 }

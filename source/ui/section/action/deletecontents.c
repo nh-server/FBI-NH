@@ -92,7 +92,7 @@ static bool action_delete_contents_error(void* data, u32 index, Result res) {
     delete_contents_data* deleteData = (delete_contents_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
         volatile bool dismissed = false;
@@ -122,7 +122,7 @@ static void action_delete_contents_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(deleteData->deleteInfo.result)) {
-            prompt_display("Success", "Deleted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "Deleted.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         action_delete_contents_free_data(deleteData);
@@ -211,7 +211,7 @@ static void action_delete_contents_internal(linked_list* items, list_item* selec
     data->deleteInfo.total = linked_list_size(&data->contents);
     data->deleteInfo.processed = data->deleteInfo.total;
 
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_delete_contents_draw_top, action_delete_contents_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_delete_contents_draw_top, action_delete_contents_onresponse);
 }
 
 void action_delete_file(linked_list* items, list_item* selected) {

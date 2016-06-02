@@ -39,7 +39,12 @@
 #define TEXTURE_WIFI_1 28
 #define TEXTURE_WIFI_2 29
 #define TEXTURE_WIFI_3 30
-#define TEXTURE_AUTO_START 31
+#define TEXTURE_KBD_LAYOUT 31
+#define TEXTURE_KBD_PRESS_OVERLAY 32
+#define TEXTURE_KBD_TEXT_BG 33
+#define TEXTURE_KBD_TEXT_FG 34
+
+#define TEXTURE_AUTO_START 33
 
 #define NUM_COLORS 9
 
@@ -66,7 +71,10 @@ void screen_get_texture_size(u32* width, u32* height, u32 id);
 void screen_begin_frame();
 void screen_end_frame();
 void screen_select(gfxScreen_t screen);
+void screen_set_scissor(bool enabled, u32 x, u32 y, u32 width, u32 height);
 void screen_draw_texture(u32 id, float x, float y, float width, float height);
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height);
 void screen_get_string_size(float* width, float* height, const char* text, float scaleX, float scaleY);
-void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool baseline);
+void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapX);
+void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines);
+void screen_draw_string_wrap(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, float wrapX);

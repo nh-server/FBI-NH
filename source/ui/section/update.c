@@ -141,7 +141,7 @@ static bool update_error(void* data, u32 index, Result res) {
     update_data* updateData = (update_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
         error_display(NULL, NULL, NULL, "Failed to update FBI.\nHTTP server returned response code %d", updateData->responseCode);
     } else {
@@ -159,7 +159,7 @@ static void update_install_update(ui_view* view, void* data, float* progress, ch
         info_destroy(view);
 
         if(R_SUCCEEDED(updateData->installInfo.result)) {
-            prompt_display("Success", "Update complete.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "Update complete.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         free(updateData);
@@ -285,7 +285,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                 error_display_res(NULL, NULL, NULL, res, "Failed to check for update.");
             }
         } else {
-            prompt_display("Success", "No updates available.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "No updates available.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         free(data);
@@ -340,5 +340,5 @@ void update_open() {
 
     data->installInfo.finished = true;
 
-    prompt_display("Confirmation", "Check for FBI updates?", COLOR_TEXT, true, data, NULL, NULL, update_onresponse);
+    prompt_display("Confirmation", "Check for FBI updates?", COLOR_TEXT, true, data, NULL, update_onresponse);
 }
