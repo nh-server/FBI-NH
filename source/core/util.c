@@ -7,6 +7,7 @@
 
 #include "util.h"
 #include "../ui/error.h"
+#include "../ui/list.h"
 #include "../ui/section/task/task.h"
 
 extern void cleanup();
@@ -354,6 +355,22 @@ bool util_filter_tickets(void* data, const char* name, u32 attributes) {
 
     size_t len = strlen(name);
     return len >= 4 && strncasecmp(name + len - 4, ".tik", 4) == 0;
+}
+
+int util_compare_file_infos(const void** p1, const void** p2) {
+    list_item* info1 = *(list_item**) p1;
+    list_item* info2 = *(list_item**) p2;
+
+    file_info* f1 = (file_info*) info1->data;
+    file_info* f2 = (file_info*) info2->data;
+
+    if(f1->isDirectory && !f2->isDirectory) {
+        return -1;
+    } else if(!f1->isDirectory && f2->isDirectory) {
+        return 1;
+    } else {
+        return strcasecmp(f1->name, f2->name);
+    }
 }
 
 static const char* path3dsx = NULL;

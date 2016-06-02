@@ -16,6 +16,7 @@
 #include "../../core/screen.h"
 #include "../../core/util.h"
 
+static list_item rename_opt = {"Rename", COLOR_TEXT, action_rename};
 static list_item copy = {"Copy", COLOR_TEXT, NULL};
 static list_item paste = {"Paste", COLOR_TEXT, action_paste_contents};
 
@@ -27,6 +28,7 @@ static list_item install_and_delete_cia = {"Install and delete CIA", COLOR_TEXT,
 static list_item install_ticket = {"Install ticket", COLOR_TEXT, action_install_ticket};
 static list_item install_and_delete_ticket = {"Install and delete ticket", COLOR_TEXT, action_install_ticket_delete};
 
+static list_item new_folder = {"New folder", COLOR_TEXT, action_new_folder};
 static list_item delete_dir = {"Delete", COLOR_TEXT, action_delete_dir};
 static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
 static list_item copy_all_contents = {"Copy all contents", COLOR_TEXT, NULL};
@@ -120,6 +122,8 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
                 linked_list_add(items, &delete_all_tickets);
             }
 
+            linked_list_add(items, &new_folder);
+
             linked_list_add(items, &delete_all_contents);
             linked_list_add(items, &copy_all_contents);
 
@@ -138,6 +142,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
             linked_list_add(items, &delete_file);
         }
 
+        linked_list_add(items, &rename_opt);
         linked_list_add(items, &copy);
         linked_list_add(items, &paste);
     }
@@ -277,6 +282,11 @@ static void files_free_data(files_data* data) {
 
 static void files_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     files_data* listData = (files_data*) data;
+
+    // Detect whether the current directory was renamed by an action.
+    if(listData->populated && listData->dirItem != NULL && strncmp(listData->currDir, ((file_info*) listData->dirItem->data)->path, FILE_PATH_MAX) != 0) {
+        strncpy(listData->currDir, ((file_info*) listData->dirItem->data)->path, FILE_PATH_MAX);
+    }
 
     while(!util_is_dir(listData->archive, listData->currDir)) {
         char parentDir[FILE_PATH_MAX] = {'\0'};

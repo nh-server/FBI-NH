@@ -332,9 +332,9 @@ static void kbd_draw_bottom(ui_view* view, void* data, float x1, float y1, float
     }
 }
 
-void kbd_display(const char* name, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
-                                               void (*finished)(void* data, char* input),
-                                               void (*canceled)(void* data)) {
+void kbd_display(const char* name, const char* initialInput, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
+                                                                         void (*finished)(void* data, char* input),
+                                                                         void (*canceled)(void* data)) {
     kbd_data* kbdData = (kbd_data*) calloc(1, sizeof(kbd_data));
     if(kbdData == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate info data.");
@@ -343,6 +343,11 @@ void kbd_display(const char* name, void* data, void (*drawTop)(ui_view* view, vo
 
     memset(kbdData->input, '\0', MAX_INPUT_SIZE);
     kbdData->inputPos = 0;
+
+    if(initialInput != NULL) {
+        strncpy(kbdData->input, initialInput, MAX_INPUT_SIZE);
+        kbdData->inputPos = strlen(kbdData->input);
+    }
 
     kbdData->shift = false;
     kbdData->capsLock = false;

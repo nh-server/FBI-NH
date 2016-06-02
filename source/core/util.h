@@ -62,5 +62,7 @@ u8* util_get_tmd_content_chunk(u8* tmd, u32 index);
 bool util_filter_cias(void* data, const char* name, u32 attributes);
 bool util_filter_tickets(void* data, const char* name, u32 attributes);
 
+int util_compare_file_infos(const void** p1, const void** p2);
+
 const char* util_get_3dsx_path();
 void util_set_3dsx_path(const char* path);
