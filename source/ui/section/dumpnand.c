@@ -66,7 +66,7 @@ static Result dumpnand_restore(void* data, u32 index) {
 
 static bool dumpnand_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Dump cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Dump cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else {
         error_display_res(NULL, NULL, NULL, res, "Failed to dump NAND.");
     }
@@ -82,7 +82,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
         info_destroy(view);
 
         if(R_SUCCEEDED(dumpData->result)) {
-            prompt_display("Success", "NAND dumped.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "NAND dumped.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         free(dumpData);
@@ -151,5 +151,5 @@ void dumpnand_open() {
 
     data->finished = true;
 
-    prompt_display("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, true, data, NULL, NULL, dumpnand_onresponse);
+    prompt_display("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, true, data, NULL, dumpnand_onresponse);
 }

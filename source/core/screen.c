@@ -244,6 +244,10 @@ void screen_init() {
     screen_load_texture_file(TEXTURE_WIFI_1, "wifi1.png", true);
     screen_load_texture_file(TEXTURE_WIFI_2, "wifi2.png", true);
     screen_load_texture_file(TEXTURE_WIFI_3, "wifi3.png", true);
+    screen_load_texture_file(TEXTURE_KBD_LAYOUT, "kbd_layout.png", true);
+    screen_load_texture_file(TEXTURE_KBD_PRESS_OVERLAY, "kbd_press_overlay.png", true);
+    screen_load_texture_file(TEXTURE_KBD_TEXT_BG, "kbd_text_bg.png", true);
+    screen_load_texture_file(TEXTURE_KBD_TEXT_FG, "kbd_text_fg.png", true);
 }
 
 void screen_exit() {
@@ -540,7 +544,11 @@ void screen_select(gfxScreen_t screen) {
     C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, shaderInstanceGetUniformLocation(program.vertexShader, "projection"), screen == GFX_TOP ? &projection_top : &projection_bottom);
 }
 
-void screen_draw_quad(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2) {
+void screen_set_scissor(bool enabled, u32 x, u32 y, u32 width, u32 height) {
+    C3D_SetScissor(enabled ? GPU_SCISSOR_NORMAL : GPU_SCISSOR_DISABLE, 240 - (y + height), x, 240 - y, x + width);
+}
+
+static void screen_draw_quad(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2) {
     C3D_ImmDrawBegin(GPU_TRIANGLES);
 
     C3D_ImmSendAttrib(x1, y1, 0.5f, 0.0f);
@@ -584,7 +592,7 @@ void screen_draw_texture_crop(u32 id, float x, float y, float width, float heigh
     screen_draw_quad(x, y, x + width, y + height, 0, 0, width / (float) textures[id].pow2Width, height / (float) textures[id].pow2Height);
 }
 
-static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine) {
+static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine, bool wrap, float wrapX) {
     float w = 0;
     float h = 0;
     float lineWidth = 0;
@@ -593,27 +601,38 @@ static void screen_get_string_size_internal(float* width, float* height, const c
         h = scaleY * fontGetInfo()->lineFeed;
 
         const uint8_t* p = (const uint8_t*) text;
-        uint32_t code = 0;
+        const uint8_t* lastAlign = p;
+        u32 code = 0;
         ssize_t units = -1;
         while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
             p += units;
 
-            if(code == '\n') {
-                if(*p) {
-                    if(lineWidth > w) {
-                        w = lineWidth;
-                    }
+            if(code == '\n' || (wrap && lineWidth + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapX)) {
+                lastAlign = p;
 
-                    lineWidth = 0;
-
-                    if(oneLine) {
-                        break;
-                    }
-
-                    h += scaleY * fontGetInfo()->lineFeed;
+                if(lineWidth > w) {
+                    w = lineWidth;
                 }
-            } else {
-                lineWidth += scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth;
+
+                lineWidth = 0;
+
+                if(oneLine) {
+                    break;
+                }
+
+                h += scaleY * fontGetInfo()->lineFeed;
+            }
+
+            if(code != '\n') {
+                u32 num = 1;
+                if(code == '\t') {
+                    code = ' ';
+                    num = 4 - (p - units - lastAlign) % 4;
+
+                    lastAlign = p;
+                }
+
+                lineWidth += (scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth) * num;
             }
         }
     }
@@ -628,10 +647,14 @@ static void screen_get_string_size_internal(float* width, float* height, const c
 }
 
 void screen_get_string_size(float* width, float* height, const char* text, float scaleX, float scaleY) {
-    screen_get_string_size_internal(width, height, text, scaleX, scaleY, false);
+    screen_get_string_size_internal(width, height, text, scaleX, scaleY, false, false, 0);
 }
 
-void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool baseline) {
+void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapX) {
+    screen_get_string_size_internal(width, height, text, scaleX, scaleY, false, true, wrapX);
+}
+
+static void screen_draw_string_internal(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, bool wrap, float wrapX) {
     if(text == NULL) {
         return;
     }
@@ -650,40 +673,60 @@ void screen_draw_string(const char* text, float x, float y, float scaleX, float 
     C3D_TexEnvColor(env, colorConfig[colorId]);
 
     float stringWidth;
-    screen_get_string_size_internal(&stringWidth, NULL, text, scaleX, scaleY, false);
+    screen_get_string_size_internal(&stringWidth, NULL, text, scaleX, scaleY, false, wrap, wrapX);
 
     float lineWidth;
-    screen_get_string_size_internal(&lineWidth, NULL, text, scaleX, scaleY, true);
+    screen_get_string_size_internal(&lineWidth, NULL, text, scaleX, scaleY, true, wrap, wrapX);
 
-    float currX = x + (stringWidth - lineWidth) / 2;
+    float currX = x;
+    if(centerLines) {
+        currX += (stringWidth - lineWidth) / 2;
+    }
 
-    u32 flags = GLYPH_POS_CALC_VTXCOORD | (baseline ? GLYPH_POS_AT_BASELINE : 0);
     int lastSheet = -1;
 
     const uint8_t* p = (const uint8_t*) text;
-    uint32_t code = 0;
+    const uint8_t* lastAlign = p;
+    u32 code = 0;
     ssize_t units = -1;
     while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
         p += units;
 
-        if(code == '\n') {
-            if(*p) {
-                screen_get_string_size_internal(&lineWidth, NULL, (const char*) p, scaleX, scaleY, true);
-                currX = x + (stringWidth - lineWidth) / 2;
-                y += scaleY * fontGetInfo()->lineFeed;
+        if(code == '\n' || (wrap && currX + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapX)) {
+            lastAlign = p;
+
+            screen_get_string_size_internal(&lineWidth, NULL, (const char*) p, scaleX, scaleY, true, wrap, wrapX);
+
+            currX = x;
+            if(centerLines) {
+                currX += (stringWidth - lineWidth) / 2;
             }
-        } else {
+
+            y += scaleY * fontGetInfo()->lineFeed;
+        }
+
+        if(code != '\n') {
+            u32 num = 1;
+            if(code == '\t') {
+                code = ' ';
+                num = 4 - (p - units - lastAlign) % 4;
+
+                lastAlign = p;
+            }
+
             fontGlyphPos_s data;
-            fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), flags, scaleX, scaleY);
+            fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), GLYPH_POS_CALC_VTXCOORD, scaleX, scaleY);
 
             if(data.sheetIndex != lastSheet) {
                 lastSheet = data.sheetIndex;
                 C3D_TexBind(0, &glyphSheets[lastSheet]);
             }
 
-            screen_draw_quad(currX + data.vtxcoord.left, y + data.vtxcoord.top, currX + data.vtxcoord.right, y + data.vtxcoord.bottom, data.texcoord.left, data.texcoord.top, data.texcoord.right, data.texcoord.bottom);
+            for(u32 i = 0; i < num; i++) {
+                screen_draw_quad(currX + data.vtxcoord.left, y + data.vtxcoord.top, currX + data.vtxcoord.right, y + data.vtxcoord.bottom, data.texcoord.left, data.texcoord.top, data.texcoord.right, data.texcoord.bottom);
 
-            currX += data.xAdvance;
+                currX += data.xAdvance;
+            }
         }
     }
 
@@ -696,4 +739,12 @@ void screen_draw_string(const char* text, float x, float y, float scaleX, float 
     C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, 0, 0);
     C3D_TexEnvOp(env, C3D_Both, 0, 0, 0);
     C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
+}
+
+void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines) {
+    screen_draw_string_internal(text, x, y, scaleX, scaleY, colorId, centerLines, false, 0);
+}
+
+void screen_draw_string_wrap(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, float wrapX) {
+    screen_draw_string_internal(text, x, y, scaleX, scaleY, colorId, centerLines, true, wrapX);
 }

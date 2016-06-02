@@ -195,7 +195,7 @@ static bool action_paste_files_error(void* data, u32 index, Result res) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Paste cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Paste cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
         volatile bool dismissed = false;
@@ -243,7 +243,7 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
         info_destroy(view);
 
         if(R_SUCCEEDED(pasteData->pasteInfo.result)) {
-            prompt_display("Success", "Contents pasted.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "Contents pasted.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         action_paste_files_free_data(pasteData);
@@ -277,7 +277,7 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
 
 void action_paste_contents(linked_list* items, list_item* selected) {
     if(!clipboard_has_contents()) {
-        prompt_display("Failure", "Clipboard empty.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Clipboard empty.", COLOR_TEXT, false, NULL, NULL, NULL);
         return;
     }
 
@@ -363,5 +363,5 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     data->pasteInfo.total = linked_list_size(&data->contents);
     data->pasteInfo.processed = data->pasteInfo.total;
 
-    prompt_display("Confirmation", "Paste clipboard contents to the current directory?", COLOR_TEXT, true, data, NULL, action_paste_files_draw_top, action_paste_files_onresponse);
+    prompt_display("Confirmation", "Paste clipboard contents to the current directory?", COLOR_TEXT, true, data, action_paste_files_draw_top, action_paste_files_onresponse);
 }

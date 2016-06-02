@@ -191,7 +191,7 @@ bool action_install_cias_error(void* data, u32 index, Result res) {
     install_cias_data* installData = (install_cias_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
         volatile bool dismissed = false;
@@ -223,7 +223,7 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
         info_destroy(view);
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         action_install_cias_free_data(installData);
@@ -331,7 +331,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     data->installInfo.total = linked_list_size(&data->contents);
     data->installInfo.processed = data->installInfo.total;
 
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, NULL, action_install_cias_draw_top, action_install_cias_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_install_cias_draw_top, action_install_cias_onresponse);
 }
 
 void action_install_cia(linked_list* items, list_item* selected) {

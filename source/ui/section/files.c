@@ -91,7 +91,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
 
             Result res = 0;
             if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archiveId, &actionData->parent->archivePath, info->path, selected == &copy_all_contents))) {
-                prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : info->isDirectory ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, NULL, ui_draw_file_info, NULL);
+                prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : info->isDirectory ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, ui_draw_file_info, NULL);
             } else {
                 error_display_res(NULL, info, ui_draw_file_info, res, "Failed to copy to clipboard.");
             }

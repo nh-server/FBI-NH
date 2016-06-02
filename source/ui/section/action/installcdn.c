@@ -183,7 +183,7 @@ bool action_install_cdn_error(void* data, u32 index, Result res) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, installData->ticket, NULL, ui_draw_ticket_info, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, installData->ticket, ui_draw_ticket_info, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
         error_display(NULL, installData->ticket, ui_draw_ticket_info, "Failed to install CDN title.\nHTTP server returned response code %d", installData->responseCode);
     } else {
@@ -227,7 +227,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 
         if(R_SUCCEEDED(installData->installInfo.result) && R_SUCCEEDED(res)) {
             if(installData->finishedPrompt) {
-                prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->ticket, NULL, ui_draw_ticket_info, NULL);
+                prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->ticket, ui_draw_ticket_info, NULL);
             }
         } else {
             AM_InstallTitleAbort();
@@ -332,5 +332,5 @@ static void action_install_cdn_onresponse(ui_view* view, void* data, bool respon
 }
 
 void action_install_cdn(linked_list* items, list_item* selected) {
-    prompt_display("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, true, selected->data, NULL, ui_draw_ticket_info, action_install_cdn_onresponse);
+    prompt_display("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, true, selected->data, ui_draw_ticket_info, action_install_cdn_onresponse);
 }

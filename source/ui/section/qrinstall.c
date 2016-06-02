@@ -206,7 +206,7 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL, NULL);
+        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
         char* url = qrInstallData->urls[index];
@@ -242,7 +242,7 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
         info_destroy(view);
 
         if(R_SUCCEEDED(qrInstallData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, data, NULL, NULL, NULL);
+            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
         return;
@@ -271,7 +271,7 @@ static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool respo
 
 static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, NULL, qrinstall_cdn_check_onresponse);
+        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, qrinstall_cdn_check_onresponse);
     }
 }
 
@@ -406,7 +406,7 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
                 currStart = currEnd + 1;
             }
 
-            prompt_display("Confirmation", "Install from the scanned URL(s)?", COLOR_TEXT, true, data, NULL, NULL, qrinstall_confirm_onresponse);
+            prompt_display("Confirmation", "Install from the scanned URL(s)?", COLOR_TEXT, true, data, NULL, qrinstall_confirm_onresponse);
         }
     }
 

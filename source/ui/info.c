@@ -64,7 +64,7 @@ static void info_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
         textY = progressBarBgY + progressBarBgHeight + 10;
     }
 
-    screen_draw_string(infoData->text, textX, textY, 0.5f, 0.5f, COLOR_TEXT, false);
+    screen_draw_string(infoData->text, textX, textY, 0.5f, 0.5f, COLOR_TEXT, true);
 }
 
 void info_display(const char* name, const char* info, bool bar, void* data, void (*update)(ui_view* view, void* data, float* progress, char* text),

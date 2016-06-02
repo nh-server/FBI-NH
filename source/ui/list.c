@@ -229,7 +229,7 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
                 x -= listData->selectionScroll;
             }
 
-            screen_draw_string(item->name, x, y, 0.5f, 0.5f, item->color, false);
+            screen_draw_string(item->name, x, y, 0.5f, 0.5f, item->color, true);
 
             if(i == listData->selectedIndex) {
                 u32 selectionOverlayWidth = 0;

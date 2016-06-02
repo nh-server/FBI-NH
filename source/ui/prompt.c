@@ -9,10 +9,9 @@
 
 typedef struct {
     const char* text;
-    u32 rgba;
+    u32 color;
     bool option;
     void* data;
-    void (*update)(ui_view* view, void* data);
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2);
     void (*onResponse)(ui_view* view, void* data, bool response);
 } prompt_data;
@@ -76,10 +75,6 @@ static void prompt_update(ui_view* view, void* data, float bx1, float by1, float
             }
         }
     }
-
-    if(promptData->update != NULL) {
-        promptData->update(view, promptData->data);
-    }
 }
 
 static void prompt_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -112,12 +107,12 @@ static void prompt_draw_bottom(ui_view* view, void* data, float x1, float y1, fl
         float yesWidth;
         float yesHeight;
         screen_get_string_size(&yesWidth, &yesHeight, yes, 0.5f, 0.5f);
-        screen_draw_string(yes, yesButtonX + (buttonWidth - yesWidth) / 2, yesButtonY + (buttonHeight - yesHeight) / 2, 0.5f, 0.5f, promptData->rgba, false);
+        screen_draw_string(yes, yesButtonX + (buttonWidth - yesWidth) / 2, yesButtonY + (buttonHeight - yesHeight) / 2, 0.5f, 0.5f, promptData->color, true);
 
         float noWidth;
         float noHeight;
         screen_get_string_size(&noWidth, &noHeight, no, 0.5f, 0.5f);
-        screen_draw_string(no, noButtonX + (buttonWidth - noWidth) / 2, noButtonY + (buttonHeight - noHeight) / 2, 0.5f, 0.5f, promptData->rgba, false);
+        screen_draw_string(no, noButtonX + (buttonWidth - noWidth) / 2, noButtonY + (buttonHeight - noHeight) / 2, 0.5f, 0.5f, promptData->color, true);
     } else {
         screen_get_texture_size(&buttonWidth, &buttonHeight, TEXTURE_BUTTON_LARGE);
 
@@ -130,18 +125,17 @@ static void prompt_draw_bottom(ui_view* view, void* data, float x1, float y1, fl
         float okayWidth;
         float okayHeight;
         screen_get_string_size(&okayWidth, &okayHeight, okay, 0.5f, 0.5f);
-        screen_draw_string(okay, okayButtonX + (buttonWidth - okayWidth) / 2, okayButtonY + (buttonHeight - okayHeight) / 2, 0.5f, 0.5f, promptData->rgba, false);
+        screen_draw_string(okay, okayButtonX + (buttonWidth - okayWidth) / 2, okayButtonY + (buttonHeight - okayHeight) / 2, 0.5f, 0.5f, promptData->color, true);
     }
 
     float textWidth;
     float textHeight;
     screen_get_string_size(&textWidth, &textHeight, promptData->text, 0.5f, 0.5f);
-    screen_draw_string(promptData->text, x1 + (x2 - x1 - textWidth) / 2, y1 + (y2 - 5 - buttonHeight - y1 - textHeight) / 2, 0.5f, 0.5f, promptData->rgba, false);
+    screen_draw_string(promptData->text, x1 + (x2 - x1 - textWidth) / 2, y1 + (y2 - 5 - buttonHeight - y1 - textHeight) / 2, 0.5f, 0.5f, promptData->color, true);
 }
 
-void prompt_display(const char* name, const char* text, u32 rgba, bool option, void* data, void (*update)(ui_view* view, void* data),
-                                                                                           void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
-                                                                                           void (*onResponse)(ui_view* view, void* data, bool response)) {
+void prompt_display(const char* name, const char* text, u32 color, bool option, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
+                                                                                            void (*onResponse)(ui_view* view, void* data, bool response)) {
     prompt_data* promptData = (prompt_data*) calloc(1, sizeof(prompt_data));
     if(promptData == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate prompt data.");
@@ -150,10 +144,9 @@ void prompt_display(const char* name, const char* text, u32 rgba, bool option, v
     }
 
     promptData->text = text;
-    promptData->rgba = rgba;
+    promptData->color = color;
     promptData->option = option;
     promptData->data = data;
-    promptData->update = update;
     promptData->drawTop = drawTop;
     promptData->onResponse = onResponse;
 

@@ -22,7 +22,7 @@ static void action_import_seed_update(ui_view* view, void* data, float* progress
     info_destroy(view);
 
     if(R_SUCCEEDED(res)) {
-        prompt_display("Success", "Seed imported.", COLOR_TEXT, false, info, NULL, ui_draw_title_info, NULL);
+        prompt_display("Success", "Seed imported.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
     } else {
         error_display_res(NULL, info, ui_draw_title_info, res, "Failed to import seed.");
     }
@@ -35,5 +35,5 @@ static void action_import_seed_onresponse(ui_view* view, void* data, bool respon
 }
 
 void action_import_seed(linked_list* items, list_item* selected) {
-    prompt_display("Confirmation", "Import the seed of the selected title?", COLOR_TEXT, true, selected->data, NULL, ui_draw_title_info, action_import_seed_onresponse);
+    prompt_display("Confirmation", "Import the seed of the selected title?", COLOR_TEXT, true, selected->data, ui_draw_title_info, action_import_seed_onresponse);
 }
