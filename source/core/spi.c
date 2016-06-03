@@ -325,7 +325,6 @@ static Result spi_write_data(SaveChip chip, u32* bytesWritten, void* data, u32 o
                         break;
                     case CHIP_FLASH_8MB:
                     case CHIP_FLASH_8MB_INFRARED:
-                        // TODO
                     default:
                         res = R_FBI_UNSUPPORTED_OPERATION;
                         break;
