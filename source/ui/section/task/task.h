@@ -91,6 +91,7 @@ typedef struct data_op_info_s {
     data_op op;
 
     // Copy
+    u32 copyBufferSize;
     bool copyEmpty;
 
     u32 processed;

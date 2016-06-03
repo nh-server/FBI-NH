@@ -454,6 +454,7 @@ void qrinstall_open() {
 
     data->installInfo.op = DATAOP_COPY;
 
+    data->installInfo.copyBufferSize = 256 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.total = 0;

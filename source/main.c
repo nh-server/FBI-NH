@@ -27,6 +27,7 @@ void cleanup() {
 
     amExit();
     httpcExit();
+    pxiDevExit();
     ptmuExit();
     acExit();
     cfguExit();
@@ -60,6 +61,7 @@ int main(int argc, const char* argv[]) {
     cfguInit();
     acInit();
     ptmuInit();
+    pxiDevInit();
     httpcInit(0);
 
     amInit();

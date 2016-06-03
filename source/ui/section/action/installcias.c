@@ -268,6 +268,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
 
     data->installInfo.op = DATAOP_COPY;
 
+    data->installInfo.copyBufferSize = 256 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.isSrcDirectory = action_install_cias_is_src_directory;

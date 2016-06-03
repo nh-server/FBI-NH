@@ -107,6 +107,7 @@ static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
             info_display("Dumping NAND", "Press B to cancel.", true, data, dumpnand_update, NULL);
         } else {
             error_display_res(NULL, NULL, NULL, res, "Failed to initiate NAND dump.");
+            free(data);
         }
     } else {
         free(data);
@@ -125,6 +126,7 @@ void dumpnand_open() {
 
     data->op = DATAOP_COPY;
 
+    data->copyBufferSize = 256 * 1024;
     data->copyEmpty = true;
 
     data->total = 1;

@@ -267,6 +267,7 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
 
     data->installInfo.op = DATAOP_COPY;
 
+    data->installInfo.copyBufferSize = 256 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.total = 1;
