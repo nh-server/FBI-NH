@@ -62,8 +62,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                         res = R_FBI_BAD_DATA;
                     }
                 } else {
-                    u32 bufferSize = 1024 * 256;
-                    u8* buffer = (u8*) calloc(1, bufferSize);
+                    u8* buffer = (u8*) calloc(1, data->copyBufferSize);
                     if(buffer != NULL) {
                         u32 dstHandle = 0;
 
@@ -73,7 +72,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                                 break;
                             }
 
-                            u32 currSize = bufferSize;
+                            u32 currSize = data->copyBufferSize;
                             if((u64) currSize > data->currTotal - data->currProcessed) {
                                 currSize = (u32) (data->currTotal - data->currProcessed);
                             }
