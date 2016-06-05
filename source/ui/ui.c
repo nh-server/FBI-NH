@@ -328,13 +328,13 @@ void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, f
         float metaTextX = metaInfoBoxX + 64;
 
         float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
+        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
+        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float publisherY = longDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, true);
+        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 
     char infoText[512];
@@ -406,13 +406,13 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
                 float metaTextX = metaInfoBoxX + 64;
 
                 float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-                screen_draw_string(info->ciaInfo.meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
+                screen_draw_string(info->ciaInfo.meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
                 float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
+                screen_draw_string(info->ciaInfo.meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
                 float publisherY = longDescriptionY + longDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, true);
+                screen_draw_string(info->ciaInfo.meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
             }
 
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos,
@@ -528,13 +528,13 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
         float metaTextX = metaInfoBoxX + 64;
 
         float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
+        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, true);
+        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
 
         float publisherY = longDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, true);
+        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
     }
 
     char infoText[512];
