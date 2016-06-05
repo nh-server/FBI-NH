@@ -366,6 +366,8 @@ void kbd_display(const char* name, const char* initialInput, void* data, void (*
     ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
     if(view == NULL) {
         error_display(NULL, NULL, NULL, "Failed to allocate UI view.");
+
+        free(kbdData);
         return;
     }
 
