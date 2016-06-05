@@ -87,7 +87,7 @@ static Result update_read_src(void* data, u32 handle, u32* bytesRead, void* buff
     return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
 }
 
-static Result update_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result update_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     if(util_get_3dsx_path() != NULL) {
         FS_Path* path = util_make_path_utf8(util_get_3dsx_path());
         if(path != NULL) {

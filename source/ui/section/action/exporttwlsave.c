@@ -57,7 +57,7 @@ static Result action_export_twl_save_read_src(void* data, u32 handle, u32* bytes
     return spi_read_save(bytesRead, buffer, (u32) offset, size);
 }
 
-static Result action_export_twl_save_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_export_twl_save_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     export_twl_save_data* exportData = (export_twl_save_data*) data;
 
     Result res = 0;

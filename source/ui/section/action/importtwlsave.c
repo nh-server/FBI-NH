@@ -66,7 +66,7 @@ static Result action_import_twl_save_read_src(void* data, u32 handle, u32* bytes
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-static Result action_import_twl_save_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_import_twl_save_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     return spi_init_card();
 }
 

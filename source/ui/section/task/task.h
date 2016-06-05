@@ -109,7 +109,7 @@ typedef struct data_op_info_s {
     Result (*getSrcSize)(void* data, u32 handle, u64* size);
     Result (*readSrc)(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size);
 
-    Result (*openDst)(void* data, u32 index, void* initialReadBlock, u32* handle);
+    Result (*openDst)(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle);
     Result (*closeDst)(void* data, u32 index, bool succeeded, u32 handle);
 
     Result (*writeDst)(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size);

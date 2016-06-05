@@ -94,7 +94,7 @@ static Result action_install_cdn_read_src(void* data, u32 handle, u32* bytesRead
     return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
 }
 
-static Result action_install_cdn_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_install_cdn_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(index == 0) {

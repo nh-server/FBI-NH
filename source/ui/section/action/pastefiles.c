@@ -121,7 +121,7 @@ static Result action_paste_files_read_src(void* data, u32 handle, u32* bytesRead
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-static Result action_paste_files_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_paste_files_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
     Result res = 0;
@@ -135,9 +135,13 @@ static Result action_paste_files_open_dst(void* data, u32 index, void* initialRe
         pasteData->currExists = R_SUCCEEDED(FSUSER_OpenFile(&currHandle, pasteData->target->archive, *fsPath, FS_OPEN_READ, 0));
         if(pasteData->currExists) {
             FSFILE_Close(currHandle);
+        } else {
+            res = FSUSER_CreateFile(pasteData->target->archive, *fsPath, 0, size);
         }
 
-        res = FSUSER_OpenFile(handle, pasteData->target->archive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+        if(R_SUCCEEDED(res)) {
+            res = FSUSER_OpenFile(handle, pasteData->target->archive, *fsPath, FS_OPEN_WRITE, 0);
+        }
 
         util_free_path_utf8(fsPath);
     } else {

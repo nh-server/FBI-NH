@@ -55,7 +55,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                 if(data->currTotal == 0) {
                     if(data->copyEmpty) {
                         u32 dstHandle = 0;
-                        if(R_SUCCEEDED(res = data->openDst(data->data, index, NULL, &dstHandle))) {
+                        if(R_SUCCEEDED(res = data->openDst(data->data, index, NULL, data->currTotal, &dstHandle))) {
                             res = data->closeDst(data->data, index, true, dstHandle);
                         }
                     } else {
@@ -86,7 +86,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                             if(firstRun) {
                                 firstRun = false;
 
-                                if(R_FAILED(res = data->openDst(data->data, index, buffer, &dstHandle))) {
+                                if(R_FAILED(res = data->openDst(data->data, index, buffer, data->currTotal, &dstHandle))) {
                                     break;
                                 }
                             }
