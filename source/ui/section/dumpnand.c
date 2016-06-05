@@ -36,7 +36,7 @@ static Result dumpnand_read_src(void* data, u32 handle, u32* bytesRead, void* bu
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-static Result dumpnand_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result dumpnand_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     return FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_UTF16, u"/NAND.bin"), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 }
 

@@ -241,11 +241,20 @@ static Result spi_read_data(SaveChip chip, u32* bytesRead, void* data, u32 offse
                     break;
                 case CHIP_EEPROM_8KB:
                 case CHIP_EEPROM_64KB:
-                case CHIP_EEPROM_128KB:
                     cmdSize = 3;
                     cmd[0] = SPI_EEPROM_CMD_READ;
                     cmd[1] = (u8) (pos >> 8);
                     cmd[2] = (u8) pos;
+                    res = spi_execute_command(chip, cmd, cmdSize, data, size, NULL, 0);
+
+                    pos += size;
+                    break;
+                case CHIP_EEPROM_128KB:
+                    cmdSize = 4;
+                    cmd[0] = SPI_EEPROM_CMD_READ;
+                    cmd[1] = (u8) (pos >> 16);
+                    cmd[2] = (u8) (pos >> 8);
+                    cmd[3] = (u8) pos;
                     res = spi_execute_command(chip, cmd, cmdSize, data, size, NULL, 0);
 
                     pos += size;
@@ -305,11 +314,17 @@ static Result spi_write_data(SaveChip chip, u32* bytesWritten, void* data, u32 o
                         break;
                     case CHIP_EEPROM_8KB:
                     case CHIP_EEPROM_64KB:
-                    case CHIP_EEPROM_128KB:
                         cmdSize = 3;
                         cmd[0] = SPI_EEPROM_CMD_WRITE;
                         cmd[1] = (u8) (pos >> 8);
                         cmd[2] = (u8) pos;
+                        break;
+                    case CHIP_EEPROM_128KB:
+                        cmdSize = 4;
+                        cmd[0] = SPI_EEPROM_CMD_WRITE;
+                        cmd[1] = (u8) (pos >> 16);
+                        cmd[2] = (u8) (pos >> 8);
+                        cmd[3] = (u8) pos;
                         break;
                     case CHIP_FLASH_256KB:
                     case CHIP_FLASH_512KB:

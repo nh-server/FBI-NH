@@ -103,7 +103,7 @@ static Result networkinstall_read_src(void* data, u32 handle, u32* bytesRead, vo
     return 0;
 }
 
-static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
     Result res = 0;

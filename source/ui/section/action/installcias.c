@@ -109,7 +109,7 @@ static Result action_install_cias_read_src(void* data, u32 handle, u32* bytesRea
     return FSFILE_Read(handle, bytesRead, offset, buffer, size);
 }
 
-static Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
     u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);

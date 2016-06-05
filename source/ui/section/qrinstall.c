@@ -104,7 +104,7 @@ static Result qrinstall_read_src(void* data, u32 handle, u32* bytesRead, void* b
     return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
 }
 
-static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, u32* handle) {
+static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
     Result res = 0;
