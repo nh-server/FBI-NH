@@ -259,7 +259,7 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
     }
 
     *progress = networkInstallData->installInfo.currTotal != 0 ? (float) ((double) networkInstallData->installInfo.currProcessed / (double) networkInstallData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MiB / %.2f MiB", networkInstallData->installInfo.processed, networkInstallData->installInfo.total, networkInstallData->installInfo.currProcessed / 1024.0 / 1024.0, networkInstallData->installInfo.currTotal / 1024.0 / 1024.0);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", networkInstallData->installInfo.processed, networkInstallData->installInfo.total, util_get_display_size(networkInstallData->installInfo.currProcessed), util_get_display_size_units(networkInstallData->installInfo.currProcessed), util_get_display_size(networkInstallData->installInfo.currTotal), util_get_display_size_units(networkInstallData->installInfo.currTotal));
 }
 
 static void networkinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {

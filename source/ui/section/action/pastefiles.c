@@ -250,7 +250,7 @@ static void action_paste_files_update(ui_view* view, void* data, float* progress
     }
 
     *progress = pasteData->pasteInfo.currTotal != 0 ? (float) ((double) pasteData->pasteInfo.currProcessed / (double) pasteData->pasteInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MiB / %.2f MiB", pasteData->pasteInfo.processed, pasteData->pasteInfo.total, pasteData->pasteInfo.currProcessed / 1024.0 / 1024.0, pasteData->pasteInfo.currTotal / 1024.0 / 1024.0);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", pasteData->pasteInfo.processed, pasteData->pasteInfo.total, util_get_display_size(pasteData->pasteInfo.currProcessed), util_get_display_size_units(pasteData->pasteInfo.currProcessed), util_get_display_size(pasteData->pasteInfo.currTotal), util_get_display_size_units(pasteData->pasteInfo.currTotal));
 }
 
 static void action_paste_files_onresponse(ui_view* view, void* data, bool response) {

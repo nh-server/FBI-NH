@@ -141,7 +141,7 @@ static void action_export_twl_save_update(ui_view* view, void* data, float* prog
     }
 
     *progress = exportData->exportInfo.currTotal != 0 ? (float) ((double) exportData->exportInfo.currProcessed / (double) exportData->exportInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f MiB / %.2f MiB", exportData->exportInfo.currProcessed / 1024.0f / 1024.0f, exportData->exportInfo.currTotal / 1024.0f / 1024.0f);
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s", util_get_display_size(exportData->exportInfo.currProcessed), util_get_display_size_units(exportData->exportInfo.currProcessed), util_get_display_size(exportData->exportInfo.currTotal), util_get_display_size_units(exportData->exportInfo.currTotal));
 }
 
 static void action_export_twl_save_onresponse(ui_view* view, void* data, bool response) {

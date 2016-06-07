@@ -10,6 +10,7 @@
 #include "../prompt.h"
 #include "../ui.h"
 #include "../../core/screen.h"
+#include "../../core/util.h"
 
 static Result dumpnand_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
@@ -95,7 +96,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
     }
 
     *progress = dumpData->currTotal != 0 ? (float) ((double) dumpData->currProcessed / (double) dumpData->currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f MiB / %.2f MiB", dumpData->currProcessed / 1024.0f / 1024.0f, dumpData->currTotal / 1024.0f / 1024.0f);
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s", util_get_display_size(dumpData->currProcessed), util_get_display_size_units(dumpData->currProcessed), util_get_display_size(dumpData->currTotal), util_get_display_size_units(dumpData->currTotal));
 }
 
 static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
