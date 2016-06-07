@@ -7,6 +7,7 @@
 #include "ui.h"
 #include "section/task/task.h"
 #include "../core/screen.h"
+#include "../core/util.h"
 
 #define MAX_UI_VIEWS 16
 
@@ -168,7 +169,8 @@ static void ui_draw_top(ui_view* ui) {
             currBuffer += strlen(currBuffer);
         }
 
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "SD: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "SD: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
         currBuffer += strlen(currBuffer);
     }
 
@@ -178,7 +180,8 @@ static void ui_draw_top(ui_view* ui) {
             currBuffer += strlen(currBuffer);
         }
 
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "CTR NAND: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "CTR NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
         currBuffer += strlen(currBuffer);
     }
 
@@ -188,7 +191,8 @@ static void ui_draw_top(ui_view* ui) {
             currBuffer += strlen(currBuffer);
         }
 
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL NAND: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
         currBuffer += strlen(currBuffer);
     }
 
@@ -198,7 +202,8 @@ static void ui_draw_top(ui_view* ui) {
             currBuffer += strlen(currBuffer);
         }
 
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL Photo: %.1f MiB", ((u64) resource.freeClusters * (u64) resource.clusterSize) / 1024.0 / 1024.0);
+        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL Photo: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
         currBuffer += strlen(currBuffer);
     }
 
@@ -366,7 +371,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
     }
 
     if(!info->isDirectory) {
-        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f MiB\n", info->size / 1024.0 / 1024.0);
+        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f %s\n", util_get_display_size(info->size), util_get_display_size_units(info->size));
 
         if(info->isCia) {
             if(info->ciaInfo.hasMeta) {
@@ -418,10 +423,10 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos,
                      "Title ID: %016llX\n"
                      "Version: %hu\n"
-                     "Installed Size: %.2f MiB",
+                     "Installed Size: %.2f %s",
                      info->ciaInfo.titleId,
                      info->ciaInfo.version,
-                     info->ciaInfo.installedSize / 1024.0 / 1024.0);
+                     util_get_display_size(info->ciaInfo.installedSize), util_get_display_size_units(info->ciaInfo.installedSize));
         } else if(info->isTicket) {
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Ticket ID: %016llX", info->ticketInfo.titleId);
         }
@@ -544,12 +549,12 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
              "Media Type: %s\n"
              "Version: %hu\n"
              "Product Code: %s\n"
-             "Installed Size: %.2f MiB",
+             "Installed Size: %.2f %s",
              info->titleId,
              info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card",
              info->version,
              info->productCode,
-             info->installedSize / 1024.0 / 1024.0);
+             util_get_display_size(info->installedSize), util_get_display_size_units(info->installedSize));
 
     float infoWidth;
     screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);

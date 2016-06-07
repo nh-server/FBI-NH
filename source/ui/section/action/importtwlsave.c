@@ -127,7 +127,7 @@ static void action_import_twl_save_update(ui_view* view, void* data, float* prog
     }
 
     *progress = importData->importInfo.currTotal != 0 ? (float) ((double) importData->importInfo.currProcessed / (double) importData->importInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f MiB / %.2f MiB", importData->importInfo.currProcessed / 1024.0f / 1024.0f, importData->importInfo.currTotal / 1024.0f / 1024.0f);
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s", util_get_display_size(importData->importInfo.currProcessed), util_get_display_size_units(importData->importInfo.currProcessed), util_get_display_size(importData->importInfo.currTotal), util_get_display_size_units(importData->importInfo.currTotal));
 }
 
 static void action_import_twl_save_onresponse(ui_view* view, void* data, bool response) {

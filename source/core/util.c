@@ -470,3 +470,36 @@ Result util_close_archive(FS_Archive archive) {
 
     return FSUSER_CloseArchive(archive);
 }
+
+double util_get_display_size(u64 size) {
+    double s = size;
+    if(s > 1024) {
+        s /= 1024;
+    }
+
+    if(s > 1024) {
+        s /= 1024;
+    }
+
+    if(s > 1024) {
+        s /= 1024;
+    }
+
+    return s;
+}
+
+const char* util_get_display_size_units(u64 size) {
+    if(size > 1024 * 1024 * 1024) {
+        return "GiB";
+    }
+
+    if(size > 1024 * 1024) {
+        return "MiB";
+    }
+
+    if(size > 1024) {
+        return "KiB";
+    }
+
+    return "B";
+}

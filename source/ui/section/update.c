@@ -171,7 +171,7 @@ static void update_install_update(ui_view* view, void* data, float* progress, ch
     }
 
     *progress = updateData->installInfo.currTotal != 0 ? (float) ((double) updateData->installInfo.currProcessed / (double) updateData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f MiB / %.2f MiB", updateData->installInfo.currProcessed / 1024.0f / 1024.0f, updateData->installInfo.currTotal / 1024.0f / 1024.0f);
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s", util_get_display_size(updateData->installInfo.currProcessed), util_get_display_size_units(updateData->installInfo.currProcessed), util_get_display_size(updateData->installInfo.currTotal), util_get_display_size_units(updateData->installInfo.currTotal));
 }
 
 static void update_check_update(ui_view* view, void* data, float* progress, char* text) {

@@ -259,7 +259,7 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
     }
 
     *progress = qrInstallData->installInfo.currTotal != 0 ? (float) ((double) qrInstallData->installInfo.currProcessed / (double) qrInstallData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f MiB / %.2f MiB", qrInstallData->installInfo.processed, qrInstallData->installInfo.total, qrInstallData->installInfo.currProcessed / 1024.0 / 1024.0, qrInstallData->installInfo.currTotal / 1024.0 / 1024.0);
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", qrInstallData->installInfo.processed, qrInstallData->installInfo.total, util_get_display_size(qrInstallData->installInfo.currProcessed), util_get_display_size_units(qrInstallData->installInfo.currProcessed), util_get_display_size(qrInstallData->installInfo.currTotal), util_get_display_size_units(qrInstallData->installInfo.currTotal));
 }
 
 static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
