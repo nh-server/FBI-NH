@@ -383,14 +383,18 @@ int util_compare_file_infos(const void** p1, const void** p2) {
     }
 }
 
-static const char* path_3dsx = NULL;
+static char path_3dsx[FILE_PATH_MAX];
 
 const char* util_get_3dsx_path() {
     return path_3dsx;
 }
 
 void util_set_3dsx_path(const char* path) {
-    path_3dsx = path;
+    if(strlen(path) >= 5 && strncmp(path, "sdmc:", 5) == 0) {
+        strncpy(path_3dsx, path + 5, FILE_PATH_MAX);
+    } else {
+        strncpy(path_3dsx, path, FILE_PATH_MAX);
+    }
 }
 
 typedef struct {
