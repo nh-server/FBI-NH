@@ -406,7 +406,7 @@ static Result spi_is_data_mirrored(SaveChip chip, u32 size, bool* mirrored) {
     return res;
 }
 
-static Result spi_get_save_chip_internal(SaveChip* chip, SaveChip base) {
+static Result spi_get_save_chip(SaveChip* chip, SaveChip base) {
     Result res = 0;
 
     u32 jedecId = 0;
@@ -454,7 +454,7 @@ static Result spi_get_save_chip_internal(SaveChip* chip, SaveChip base) {
                     break;
                 default:
                     if(base < CHIP_FLASH_256KB_INFRARED) {
-                        res = spi_get_save_chip_internal(&c, CHIP_FLASH_256KB_INFRARED);
+                        res = spi_get_save_chip(&c, CHIP_FLASH_256KB_INFRARED);
                     } else {
                         res = R_FBI_UNSUPPORTED_OPERATION;
                     }
@@ -471,14 +471,10 @@ static Result spi_get_save_chip_internal(SaveChip* chip, SaveChip base) {
     return res;
 }
 
-static Result spi_get_save_chip(SaveChip* chip) {
-    return spi_get_save_chip_internal(chip, CHIP_EEPROM_512B);
-}
-
 static SaveChip curr_chip = CHIP_NONE;
 
 Result spi_init_card() {
-    return spi_get_save_chip(&curr_chip);
+    return spi_get_save_chip(&curr_chip, CHIP_EEPROM_512B);
 }
 
 Result spi_deinit_card() {

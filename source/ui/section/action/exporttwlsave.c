@@ -1,7 +1,7 @@
+#include <malloc.h>
 #include <stdio.h>
 
 #include <3ds.h>
-#include <malloc.h>
 
 #include "action.h"
 #include "../task/task.h"

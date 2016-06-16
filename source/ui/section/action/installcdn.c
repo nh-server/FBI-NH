@@ -296,7 +296,7 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
 
     Result res = 0;
 
-    u8 n3ds = false;
+    bool n3ds = false;
     if(R_FAILED(APT_CheckNew3DS(&n3ds)) || n3ds || ((data->ticket->titleId >> 28) & 0xF) != 2) {
         FS_MediaType dest = ((data->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 

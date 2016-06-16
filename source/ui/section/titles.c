@@ -19,6 +19,7 @@ static list_item import_seed = {"Import Seed", COLOR_TEXT, action_import_seed};
 static list_item browse_save_data = {"Browse Save Data", COLOR_TEXT, action_browse_title_save_data};
 static list_item import_save_data = {"Import Save Data", COLOR_TEXT, action_import_twl_save};
 static list_item export_save_data = {"Export Save Data", COLOR_TEXT, action_export_twl_save};
+static list_item erase_save_data = {"Erase Save Data", COLOR_TEXT, action_erase_twl_save};
 static list_item import_secure_value = {"Import Secure Value", COLOR_TEXT, action_import_secure_value};
 static list_item export_secure_value = {"Export Secure Value", COLOR_TEXT, action_export_secure_value};
 static list_item delete_secure_value = {"Delete Secure Value", COLOR_TEXT, action_delete_secure_value};
@@ -93,6 +94,7 @@ static void titles_action_update(ui_view* view, void* data, linked_list* items, 
         } else if(info->mediaType == MEDIATYPE_GAME_CARD) {
             linked_list_add(items, &import_save_data);
             linked_list_add(items, &export_save_data);
+            linked_list_add(items, &erase_save_data);
         }
     }
 }
