@@ -67,7 +67,7 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
     if(R_SUCCEEDED(res)) {
         prompt_display("Success", "SMDH extracted.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
     } else {
-        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to extract SMDH.");
+        error_display_res(info, ui_draw_title_info, res, "Failed to extract SMDH.");
     }
 }
 

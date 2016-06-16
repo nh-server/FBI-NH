@@ -22,10 +22,11 @@ typedef struct {
     int serverSocket;
     int clientSocket;
 
-    u64 currTitleId;
-    bool ticket;
-
     bool cdn;
+    bool cdnDecided;
+
+    bool ticket;
+    u64 currTitleId;
     ticket_info ticketInfo;
 
     data_op_data installInfo;
@@ -53,6 +54,13 @@ static int sendwait(int sockfd, void* buf, size_t len, int flags) {
     }
 
     return ret < 0 ? ret : (int) written;
+}
+
+static void networkinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
+    network_install_data* qrInstallData = (network_install_data*) data;
+
+    qrInstallData->cdn = response;
+    qrInstallData->cdnDecided = true;
 }
 
 static Result networkinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
@@ -108,7 +116,18 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
 
     Result res = 0;
 
+    networkInstallData->ticket = false;
+    networkInstallData->currTitleId = 0;
+    memset(&networkInstallData->ticketInfo, 0, sizeof(networkInstallData->ticketInfo));
+
     if(*(u16*) initialReadBlock == 0x0100) {
+        if(!networkInstallData->cdnDecided) {
+            ui_view* view = prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, networkinstall_cdn_check_onresponse);
+            if(view != NULL) {
+                svcWaitSynchronization(view->active, U64_MAX);
+            }
+        }
+
         networkInstallData->ticket = true;
         networkInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
 
@@ -207,9 +226,9 @@ static bool networkinstall_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else if(res == R_FBI_ERRNO) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to install over the network.");
+        error_display_errno(NULL, NULL, errno, "Failed to install over the network.");
     } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to install over the network.");
+        error_display_res(NULL, NULL, res, "Failed to install over the network.");
     }
 
     return false;
@@ -224,7 +243,12 @@ static void networkinstall_close_client(network_install_data* data) {
         data->clientSocket = 0;
     }
 
+    data->cdn = false;
+    data->cdnDecided = false;
+
+    data->ticket = false;
     data->currTitleId = 0;
+    memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
 }
 
 static void networkinstall_free_data(network_install_data* data) {
@@ -262,26 +286,20 @@ static void networkinstall_install_update(ui_view* view, void* data, float* prog
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", networkInstallData->installInfo.processed, networkInstallData->installInfo.total, util_get_display_size(networkInstallData->installInfo.currProcessed), util_get_display_size_units(networkInstallData->installInfo.currProcessed), util_get_display_size(networkInstallData->installInfo.currTotal), util_get_display_size_units(networkInstallData->installInfo.currTotal));
 }
 
-static void networkinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
+static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
     network_install_data* networkInstallData = (network_install_data*) data;
 
-    networkInstallData->cdn = response;
-
-    Result res = task_data_op(&networkInstallData->installInfo);
-    if(R_SUCCEEDED(res)) {
-        info_display("Installing Received Files", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
-    } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
-
-        networkinstall_close_client(networkInstallData);
-    }
-}
-
-static void networkinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, networkinstall_cdn_check_onresponse);
+        Result res = task_data_op(&networkInstallData->installInfo);
+        if(R_SUCCEEDED(res)) {
+            info_display("Installing Received File(s)", "Press B to cancel.", true, data, networkinstall_install_update, NULL);
+        } else {
+            error_display_res(NULL, NULL, res, "Failed to initiate installation.");
+
+            networkinstall_close_client(networkInstallData);
+        }
     } else {
-        networkinstall_close_client((network_install_data*) data);
+        networkinstall_close_client(networkInstallData);
     }
 }
 
@@ -305,7 +323,7 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
         if(recvwait(sock, &networkInstallData->installInfo.total, sizeof(networkInstallData->installInfo.total), 0) < 0) {
             close(sock);
 
-            error_display_errno(NULL, NULL, NULL, errno, "Failed to read file count.");
+            error_display_errno(NULL, NULL, errno, "Failed to read file count.");
             return;
         }
 
@@ -319,7 +337,7 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
             info_destroy(view);
         }
 
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to open socket.");
+        error_display_errno(NULL, NULL, errno, "Failed to open socket.");
 
         if(errno == 22 || errno == 115) {
             networkinstall_free_data(networkInstallData);
@@ -335,15 +353,19 @@ static void networkinstall_wait_update(ui_view* view, void* data, float* progres
 void networkinstall_open() {
     network_install_data* data = (network_install_data*) calloc(1, sizeof(network_install_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate network install data.");
+        error_display(NULL, NULL, "Failed to allocate network install data.");
 
         return;
     }
 
     data->clientSocket = 0;
 
-    data->currTitleId = 0;
+    data->cdn = false;
+    data->cdnDecided = false;
+
     data->ticket = false;
+    data->currTitleId = 0;
+    memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
 
     data->installInfo.data = data;
 
@@ -376,7 +398,7 @@ void networkinstall_open() {
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
     if(sock < 0) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to open server socket.");
+        error_display_errno(NULL, NULL, errno, "Failed to open server socket.");
 
         networkinstall_free_data(data);
         return;
@@ -393,7 +415,7 @@ void networkinstall_open() {
     server.sin_addr.s_addr = (in_addr_t) gethostid();
 
     if(bind(data->serverSocket, (struct sockaddr*) &server, sizeof(server)) < 0) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to bind server socket.");
+        error_display_errno(NULL, NULL, errno, "Failed to bind server socket.");
 
         networkinstall_free_data(data);
         return;
@@ -402,7 +424,7 @@ void networkinstall_open() {
     fcntl(data->serverSocket, F_SETFL, fcntl(data->serverSocket, F_GETFL, 0) | O_NONBLOCK);
 
     if(listen(data->serverSocket, 5) < 0) {
-        error_display_errno(NULL, NULL, NULL, errno, "Failed to listen on server socket.");
+        error_display_errno(NULL, NULL, errno, "Failed to listen on server socket.");
 
         networkinstall_free_data(data);
         return;

@@ -25,7 +25,7 @@ static void action_new_folder_kbd_finished(void* data, char* input) {
     new_folder_data* newFolderData = (new_folder_data*) data;
 
     if(strlen(input) == 0) {
-        error_display(NULL, NULL, NULL, "No name specified.");
+        error_display(NULL, NULL, "No name specified.");
     }
 
     Result res = 0;
@@ -51,7 +51,7 @@ static void action_new_folder_kbd_finished(void* data, char* input) {
 
         prompt_display("Success", "Folder created.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to create folder.");
+        error_display_res(NULL, NULL, res, "Failed to create folder.");
     }
 
     free(data);
@@ -64,7 +64,7 @@ static void action_new_folder_kbd_canceled(void* data) {
 void action_new_folder(linked_list* items, list_item* selected) {
     new_folder_data* data = (new_folder_data*) calloc(1, sizeof(new_folder_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate new folder data.");
+        error_display(NULL, NULL, "Failed to allocate new folder data.");
 
         return;
     }

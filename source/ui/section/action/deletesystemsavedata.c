@@ -33,7 +33,7 @@ static void action_delete_system_save_data_update(ui_view* view, void* data, flo
     info_destroy(view);
 
     if(R_FAILED(res)) {
-        error_display_res(NULL, info, ui_draw_system_save_data_info, res, "Failed to delete system save data.");
+        error_display_res(info, ui_draw_system_save_data_info, res, "Failed to delete system save data.");
     } else {
         linked_list_remove(deleteData->items, deleteData->selected);
         task_free_system_save_data(deleteData->selected);
@@ -55,7 +55,7 @@ static void action_delete_system_save_data_onresponse(ui_view* view, void* data,
 void action_delete_system_save_data(linked_list* items, list_item* selected) {
     delete_system_save_data_data* data = (delete_system_save_data_data*) calloc(1, sizeof(delete_system_save_data_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate delete system save data data.");
+        error_display(NULL, NULL, "Failed to allocate delete system save data data.");
 
         return;
     }

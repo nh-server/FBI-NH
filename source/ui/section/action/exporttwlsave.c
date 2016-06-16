@@ -114,7 +114,7 @@ static bool action_export_twl_save_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Export cancelled.", COLOR_TEXT, false, exportData->title, ui_draw_title_info, NULL);
     } else {
-        error_display_res(NULL, exportData->title, ui_draw_title_info, res, "Failed to export save.");
+        error_display_res(exportData->title, ui_draw_title_info, res, "Failed to export save.");
     }
 
     return false;
@@ -152,7 +152,7 @@ static void action_export_twl_save_onresponse(ui_view* view, void* data, bool re
         if(R_SUCCEEDED(res)) {
             info_display("Exporting Save", "Press B to cancel.", true, data, action_export_twl_save_update, action_export_twl_save_draw_top);
         } else {
-            error_display_res(NULL, exportData->title, ui_draw_title_info, res, "Failed to initiate save export.");
+            error_display_res(exportData->title, ui_draw_title_info, res, "Failed to initiate save export.");
             free(data);
         }
     } else {
@@ -163,7 +163,7 @@ static void action_export_twl_save_onresponse(ui_view* view, void* data, bool re
 void action_export_twl_save(linked_list* items, list_item* selected) {
     export_twl_save_data* data = (export_twl_save_data*) calloc(1, sizeof(export_twl_save_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate export TWL save data.");
+        error_display(NULL, NULL, "Failed to allocate export TWL save data.");
 
         return;
     }

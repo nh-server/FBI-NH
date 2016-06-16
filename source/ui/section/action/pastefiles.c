@@ -208,11 +208,9 @@ static bool action_paste_files_error(void* data, u32 index, Result res) {
         prompt_display("Failure", "Paste cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
-        volatile bool dismissed = false;
-        error_display_res(&dismissed, data, action_paste_files_draw_top, res, "Failed to paste content.");
-
-        while(!dismissed) {
-            svcSleepThread(1000000);
+        ui_view* view = error_display_res(data, action_paste_files_draw_top, res, "Failed to paste content.");
+        if(view != NULL) {
+            svcWaitSynchronization(view->active, U64_MAX);
         }
     }
 
@@ -260,7 +258,7 @@ static void action_paste_files_onresponse(ui_view* view, void* data, bool respon
         if(R_SUCCEEDED(res)) {
             info_display("Pasting Contents", "Press B to cancel.", true, data, action_paste_files_update, action_paste_files_draw_top);
         } else {
-            error_display_res(NULL, pasteData->target, ui_draw_file_info, res, "Failed to initiate paste operation.");
+            error_display_res(pasteData->target, ui_draw_file_info, res, "Failed to initiate paste operation.");
 
             action_paste_files_free_data(pasteData);
         }
@@ -277,7 +275,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
 
     paste_files_data* data = (paste_files_data*) calloc(1, sizeof(paste_files_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate paste files data.");
+        error_display(NULL, NULL, "Failed to allocate paste files data.");
 
         return;
     }
@@ -317,7 +315,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     list_item* clipboardItem = NULL;
     Result createRes = 0;
     if(R_FAILED(createRes = task_create_file_item(&clipboardItem, clipboard_get_archive(), clipboard_get_path()))) {
-        error_display_res(NULL, NULL, NULL, createRes, "Failed to retrieve clipboard content info.");
+        error_display_res(NULL, NULL, createRes, "Failed to retrieve clipboard content info.");
 
         action_paste_files_free_data(data);
         return;
@@ -336,7 +334,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
 
     Result listRes = task_populate_files(&popData);
     if(R_FAILED(listRes)) {
-        error_display_res(NULL, NULL, NULL, listRes, "Failed to initiate clipboard content list population.");
+        error_display_res(NULL, NULL, listRes, "Failed to initiate clipboard content list population.");
 
         task_free_file(clipboardItem);
         action_paste_files_free_data(data);
@@ -350,7 +348,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     task_free_file(clipboardItem);
 
     if(R_FAILED(popData.result)) {
-        error_display_res(NULL, NULL, NULL, popData.result, "Failed to populate clipboard content list.");
+        error_display_res(NULL, NULL, popData.result, "Failed to populate clipboard content list.");
 
         action_paste_files_free_data(data);
         return;

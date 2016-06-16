@@ -160,11 +160,9 @@ static bool action_install_tickets_error(void* data, u32 index, Result res) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
-        volatile bool dismissed = false;
-        error_display_res(&dismissed, data, action_install_tickets_draw_top, res, "Failed to install ticket.");
-
-        while(!dismissed) {
-            svcSleepThread(1000000);
+        ui_view* view = error_display_res(data, action_install_tickets_draw_top, res, "Failed to install ticket.");
+        if(view != NULL) {
+            svcWaitSynchronization(view->active, U64_MAX);
         }
     }
 
@@ -214,7 +212,7 @@ static void action_install_tickets_cdn_check_onresponse(ui_view* view, void* dat
     if(R_SUCCEEDED(res)) {
         info_display("Installing ticket(s)", "Press B to cancel.", true, data, action_install_tickets_update, action_install_tickets_draw_top);
     } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to initiate ticket installation.");
+        error_display_res(NULL, NULL, res, "Failed to initiate ticket installation.");
 
         action_install_tickets_free_data(installData);
     }
@@ -231,7 +229,7 @@ static void action_install_tickets_onresponse(ui_view* view, void* data, bool re
 static void action_install_tickets_internal(linked_list* items, list_item* selected, const char* message, bool delete) {
     install_tickets_data* data = (install_tickets_data*) calloc(1, sizeof(install_tickets_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate install tickets data.");
+        error_display(NULL, NULL, "Failed to allocate install tickets data.");
 
         return;
     }
@@ -283,7 +281,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
 
     Result listRes = task_populate_files(&popData);
     if(R_FAILED(listRes)) {
-        error_display_res(NULL, NULL, NULL, listRes, "Failed to initiate ticket file list population.");
+        error_display_res(NULL, NULL, listRes, "Failed to initiate ticket file list population.");
 
         action_install_tickets_free_data(data);
         return;
@@ -294,7 +292,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     }
 
     if(R_FAILED(popData.result)) {
-        error_display_res(NULL, NULL, NULL, popData.result, "Failed to populate ticket file list.");
+        error_display_res(NULL, NULL, popData.result, "Failed to populate ticket file list.");
 
         action_install_tickets_free_data(data);
         return;

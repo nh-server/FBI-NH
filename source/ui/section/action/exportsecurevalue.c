@@ -61,7 +61,7 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
     if(R_SUCCEEDED(res)) {
         prompt_display("Success", "Secure value exported.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
     } else {
-        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to export secure value.");
+        error_display_res(info, ui_draw_title_info, res, "Failed to export secure value.");
     }
 }
 

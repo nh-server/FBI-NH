@@ -64,7 +64,7 @@ static void systemsavedata_action_update(ui_view* view, void* data, linked_list*
 static void systemsavedata_action_open(linked_list* items, list_item* selected) {
     systemsavedata_action_data* data = (systemsavedata_action_data*) calloc(1, sizeof(systemsavedata_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate system save data action data.");
+        error_display(NULL, NULL, "Failed to allocate system save data action data.");
 
         return;
     }
@@ -112,14 +112,14 @@ static void systemsavedata_update(ui_view* view, void* data, linked_list* items,
         listData->populateData.items = items;
         Result res = task_populate_system_save_data(&listData->populateData);
         if(R_FAILED(res)) {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate system save data list population.");
+            error_display_res(NULL, NULL, res, "Failed to initiate system save data list population.");
         }
 
         listData->populated = true;
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate system save data list.");
+        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate system save data list.");
 
         listData->populateData.result = 0;
     }
@@ -133,7 +133,7 @@ static void systemsavedata_update(ui_view* view, void* data, linked_list* items,
 void systemsavedata_open() {
     systemsavedata_data* data = (systemsavedata_data*) calloc(1, sizeof(systemsavedata_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate system save data data.");
+        error_display(NULL, NULL, "Failed to allocate system save data data.");
 
         return;
     }

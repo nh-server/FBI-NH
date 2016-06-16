@@ -69,7 +69,7 @@ static bool dumpnand_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Dump cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to dump NAND.");
+        error_display_res(NULL, NULL, res, "Failed to dump NAND.");
     }
 
     return false;
@@ -107,7 +107,7 @@ static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
         if(R_SUCCEEDED(res)) {
             info_display("Dumping NAND", "Press B to cancel.", true, data, dumpnand_update, NULL);
         } else {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate NAND dump.");
+            error_display_res(NULL, NULL, res, "Failed to initiate NAND dump.");
             free(data);
         }
     } else {
@@ -118,7 +118,7 @@ static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
 void dumpnand_open() {
     data_op_data* data = (data_op_data*) calloc(1, sizeof(data_op_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate dump NAND data.");
+        error_display(NULL, NULL, "Failed to allocate dump NAND data.");
 
         return;
     }

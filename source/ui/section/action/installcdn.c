@@ -184,9 +184,9 @@ bool action_install_cdn_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, installData->ticket, ui_draw_ticket_info, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
-        error_display(NULL, installData->ticket, ui_draw_ticket_info, "Failed to install CDN title.\nHTTP server returned response code %d", installData->responseCode);
+        error_display(installData->ticket, ui_draw_ticket_info, "Failed to install CDN title.\nHTTP server returned response code %d", installData->responseCode);
     } else {
-        error_display_res(NULL, installData->ticket, ui_draw_ticket_info, res, "Failed to install CDN title.");
+        error_display_res(installData->ticket, ui_draw_ticket_info, res, "Failed to install CDN title.");
     }
 
     return false;
@@ -232,7 +232,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
             AM_InstallTitleAbort();
 
             if(R_FAILED(res)) {
-                error_display_res(NULL, installData->ticket, ui_draw_ticket_info, res, "Failed to install CDN title.");
+                error_display_res(installData->ticket, ui_draw_ticket_info, res, "Failed to install CDN title.");
             }
         }
 
@@ -252,7 +252,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt) {
     install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate install CDN data.");
+        error_display(NULL, NULL, "Failed to allocate install CDN data.");
 
         return;
     }
@@ -317,7 +317,7 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
     }
 
     if(R_FAILED(res)) {
-        error_display_res(NULL, data->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
+        error_display_res(data->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
 
         action_install_cdn_free_data(data);
     }

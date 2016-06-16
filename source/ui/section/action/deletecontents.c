@@ -88,11 +88,9 @@ static bool action_delete_error(void* data, u32 index, Result res) {
         prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
-        volatile bool dismissed = false;
-        error_display_res(&dismissed, data, action_delete_draw_top, res, "Failed to delete content.");
-
-        while(!dismissed) {
-            svcSleepThread(1000000);
+        ui_view* view = error_display_res(data, action_delete_draw_top, res, "Failed to delete content.");
+        if(view != NULL) {
+            svcWaitSynchronization(view->active, U64_MAX);
         }
     }
 
@@ -139,7 +137,7 @@ static void action_delete_onresponse(ui_view* view, void* data, bool response) {
         if(R_SUCCEEDED(res)) {
             info_display("Deleting", "Press B to cancel.", true, data, action_delete_update, action_delete_draw_top);
         } else {
-            error_display_res(NULL, deleteData->target, ui_draw_file_info, res, "Failed to initiate delete operation.");
+            error_display_res(deleteData->target, ui_draw_file_info, res, "Failed to initiate delete operation.");
 
             action_delete_free_data(deleteData);
         }
@@ -151,7 +149,7 @@ static void action_delete_onresponse(ui_view* view, void* data, bool response) {
 static void action_delete_internal(linked_list* items, list_item* selected, const char* message, bool recursive, bool includeBase, bool ciasOnly, bool ticketsOnly) {
     delete_data* data = (delete_data*) calloc(1, sizeof(delete_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate delete data.");
+        error_display(NULL, NULL, "Failed to allocate delete data.");
 
         return;
     }
@@ -185,7 +183,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
 
     Result listRes = task_populate_files(&popData);
     if(R_FAILED(listRes)) {
-        error_display_res(NULL, NULL, NULL, listRes, "Failed to initiate content list population.");
+        error_display_res(NULL, NULL, listRes, "Failed to initiate content list population.");
 
         action_delete_free_data(data);
         return;
@@ -196,7 +194,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     }
 
     if(R_FAILED(popData.result)) {
-        error_display_res(NULL, NULL, NULL, popData.result, "Failed to populate content list.");
+        error_display_res(NULL, NULL, popData.result, "Failed to populate content list.");
 
         action_delete_free_data(data);
         return;

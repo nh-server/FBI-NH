@@ -32,7 +32,7 @@ static void action_delete_ticket_update(ui_view* view, void* data, float* progre
     info_destroy(view);
 
     if(R_FAILED(res)) {
-        error_display_res(NULL, info, ui_draw_ticket_info, res, "Failed to delete ticket.");
+        error_display_res(info, ui_draw_ticket_info, res, "Failed to delete ticket.");
     } else {
         linked_list_remove(deleteData->items, deleteData->selected);
         task_free_ticket(deleteData->selected);
@@ -54,7 +54,7 @@ static void action_delete_ticket_onresponse(ui_view* view, void* data, bool resp
 void action_delete_ticket(linked_list* items, list_item* selected) {
     delete_ticket_data* data = (delete_ticket_data*) calloc(1, sizeof(delete_ticket_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate delete ticket data.");
+        error_display(NULL, NULL, "Failed to allocate delete ticket data.");
 
         return;
     }

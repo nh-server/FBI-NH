@@ -25,7 +25,7 @@ static void action_rename_kbd_finished(void* data, char* input) {
     rename_data* renameData = (rename_data*) data;
 
     if(strlen(input) == 0) {
-        error_display(NULL, NULL, NULL, "No name specified.");
+        error_display(NULL, NULL, "No name specified.");
     }
 
     file_info* targetInfo = (file_info*) renameData->target->data;
@@ -70,7 +70,7 @@ static void action_rename_kbd_finished(void* data, char* input) {
 
         prompt_display("Success", "Renamed.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to perform rename.");
+        error_display_res(NULL, NULL, res, "Failed to perform rename.");
     }
 
     free(data);
@@ -83,7 +83,7 @@ static void action_rename_kbd_canceled(void* data) {
 void action_rename(linked_list* items, list_item* selected) {
     rename_data* data = (rename_data*) calloc(1, sizeof(rename_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate rename data.");
+        error_display(NULL, NULL, "Failed to allocate rename data.");
 
         return;
     }

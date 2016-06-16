@@ -64,7 +64,7 @@ static void pendingtitles_action_update(ui_view* view, void* data, linked_list* 
 static void pendingtitles_action_open(linked_list* items, list_item* selected) {
     pendingtitles_action_data* data = (pendingtitles_action_data*) calloc(1, sizeof(pendingtitles_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate pending titles action data.");
+        error_display(NULL, NULL, "Failed to allocate pending titles action data.");
 
         return;
     }
@@ -112,14 +112,14 @@ static void pendingtitles_update(ui_view* view, void* data, linked_list* items, 
         listData->populateData.items = items;
         Result res = task_populate_pending_titles(&listData->populateData);
         if(R_FAILED(res)) {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate pending title list population.");
+            error_display_res(NULL, NULL, res, "Failed to initiate pending title list population.");
         }
 
         listData->populated = true;
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate pending title list.");
+        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate pending title list.");
 
         listData->populateData.result = 0;
     }
@@ -133,7 +133,7 @@ static void pendingtitles_update(ui_view* view, void* data, linked_list* items, 
 void pendingtitles_open() {
     pendingtitles_data* data = (pendingtitles_data*) calloc(1, sizeof(pendingtitles_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate pending titles data.");
+        error_display(NULL, NULL, "Failed to allocate pending titles data.");
 
         return;
     }
