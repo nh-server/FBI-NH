@@ -22,8 +22,6 @@ OUTPUT_DIR := output
 INCLUDE_DIRS := include
 SOURCE_DIRS := source
 
-BUILD_FILTER := source/svchax/test/test.c
-
 EXTRA_OUTPUT_FILES :=
 
 LIBRARY_DIRS := $(DEVKITPRO)/libctru

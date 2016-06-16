@@ -48,10 +48,7 @@ int main(int argc, const char* argv[]) {
         util_set_3dsx_path(argv[0]);
     }
 
-    aptOpenSession();
     Result setCpuTimeRes = APT_SetAppCpuTimeLimit(30);
-    aptCloseSession();
-
     if(R_FAILED(setCpuTimeRes)) {
         util_panic("Failed to set syscore CPU time limit: %08lX", setCpuTimeRes);
         return 1;

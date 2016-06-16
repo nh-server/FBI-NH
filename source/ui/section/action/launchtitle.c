@@ -14,16 +14,12 @@ static void action_launch_title_update(ui_view* view, void* data, float* progres
 
     Result res = 0;
 
-    aptOpenSession();
+    if(R_SUCCEEDED(res = APT_PrepareToDoApplicationJump(0, info->titleId, info->mediaType))) {
+        u8 param[0x300];
+        u8 hmac[0x20];
 
-    if(R_SUCCEEDED(res = APT_PrepareToDoAppJump(0, info->titleId, info->mediaType))) {
-        u8 buf0[0x300];
-        u8 buf1[0x20];
-
-        res = APT_DoAppJump(0x300, 0x20, buf0, buf1);
+        res = APT_DoApplicationJump(param, sizeof(param), hmac);
     }
-
-    aptCloseSession();
 
     if(R_FAILED(res)) {
         ui_pop();
