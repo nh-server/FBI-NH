@@ -140,7 +140,7 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
 
         FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
-        u8 n3ds = false;
+        bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
             return R_FBI_WRONG_SYSTEM;
         }
