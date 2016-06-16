@@ -64,7 +64,7 @@ static void tickets_action_update(ui_view* view, void* data, linked_list* items,
 static void tickets_action_open(linked_list* items, list_item* selected) {
     tickets_action_data* data = (tickets_action_data*) calloc(1, sizeof(tickets_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate tickets action data.");
+        error_display(NULL, NULL, "Failed to allocate tickets action data.");
 
         return;
     }
@@ -112,14 +112,14 @@ static void tickets_update(ui_view* view, void* data, linked_list* items, list_i
         listData->populateData.items = items;
         Result res = task_populate_tickets(&listData->populateData);
         if(R_FAILED(res)) {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate ticket list population.");
+            error_display_res(NULL, NULL, res, "Failed to initiate ticket list population.");
         }
 
         listData->populated = true;
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate ticket list.");
+        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate ticket list.");
 
         listData->populateData.result = 0;
     }
@@ -133,7 +133,7 @@ static void tickets_update(ui_view* view, void* data, linked_list* items, list_i
 void tickets_open() {
     tickets_data* data = (tickets_data*) calloc(1, sizeof(tickets_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate tickets data.");
+        error_display(NULL, NULL, "Failed to allocate tickets data.");
 
         return;
     }

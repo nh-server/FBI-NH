@@ -69,7 +69,7 @@ static void extsavedata_action_update(ui_view* view, void* data, linked_list* it
 static void extsavedata_action_open(linked_list* items, list_item* selected) {
     extsavedata_action_data* data = (extsavedata_action_data*) calloc(1, sizeof(extsavedata_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate ext save data action data.");
+        error_display(NULL, NULL, "Failed to allocate ext save data action data.");
 
         return;
     }
@@ -170,14 +170,14 @@ static void extsavedata_update(ui_view* view, void* data, linked_list* items, li
         listData->populateData.items = items;
         Result res = task_populate_ext_save_data(&listData->populateData);
         if(R_FAILED(res)) {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate ext save data list population.");
+            error_display_res(NULL, NULL, res, "Failed to initiate ext save data list population.");
         }
 
         listData->populated = true;
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate ext save data list.");
+        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate ext save data list.");
 
         listData->populateData.result = 0;
     }
@@ -201,7 +201,7 @@ static bool extsavedata_filter(void* data, u64 titleId, FS_MediaType mediaType) 
 void extsavedata_open() {
     extsavedata_data* data = (extsavedata_data*) calloc(1, sizeof(extsavedata_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate ext save data data.");
+        error_display(NULL, NULL, "Failed to allocate ext save data data.");
 
         return;
     }

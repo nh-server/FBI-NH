@@ -23,7 +23,7 @@ static void action_delete_secure_value_update(ui_view* view, void* data, float* 
     info_destroy(view);
 
     if(R_FAILED(res)) {
-        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to delete secure value.");
+        error_display_res(info, ui_draw_title_info, res, "Failed to delete secure value.");
     } else {
         prompt_display("Success", "Secure value deleted.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
     }

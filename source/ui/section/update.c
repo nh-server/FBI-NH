@@ -142,9 +142,9 @@ static bool update_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
-        error_display(NULL, NULL, NULL, "Failed to update FBI.\nHTTP server returned response code %d", updateData->responseCode);
+        error_display(NULL, NULL, "Failed to update FBI.\nHTTP server returned response code %d", updateData->responseCode);
     } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to update FBI.");
+        error_display_res(NULL, NULL, res, "Failed to update FBI.");
     }
 
     return false;
@@ -274,14 +274,14 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
         if(R_SUCCEEDED(res = task_data_op(&updateData->installInfo))) {
             info_display("Updating FBI", "Press B to cancel.", true, data, update_install_update, NULL);
         } else {
-            error_display_res(NULL, NULL, NULL, res, "Failed to begin update.");
+            error_display_res(NULL, NULL, res, "Failed to begin update.");
         }
     } else {
         if(R_FAILED(res)) {
             if(res == R_FBI_HTTP_RESPONSE_CODE) {
-                error_display(NULL, NULL, NULL, "Failed to check for update.\nHTTP server returned response code %d", responseCode);
+                error_display(NULL, NULL, "Failed to check for update.\nHTTP server returned response code %d", responseCode);
             } else {
-                error_display_res(NULL, NULL, NULL, res, "Failed to check for update.");
+                error_display_res(NULL, NULL, res, "Failed to check for update.");
             }
         } else {
             prompt_display("Success", "No updates available.", COLOR_TEXT, false, NULL, NULL, NULL);
@@ -302,7 +302,7 @@ static void update_onresponse(ui_view* view, void* data, bool response) {
 void update_open() {
     update_data* data = (update_data*) calloc(1, sizeof(update_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate update check data.");
+        error_display(NULL, NULL, "Failed to allocate update check data.");
 
         return;
     }

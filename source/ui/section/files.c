@@ -97,7 +97,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
             if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archive, info->path, selected == &copy_all_contents))) {
                 prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : info->isDirectory ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, ui_draw_file_info, NULL);
             } else {
-                error_display_res(NULL, info, ui_draw_file_info, res, "Failed to copy to clipboard.");
+                error_display_res(info, ui_draw_file_info, res, "Failed to copy to clipboard.");
             }
         } else {
             action(actionData->items, actionData->selected);
@@ -153,7 +153,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
 static void files_action_open(linked_list* items, list_item* selected, files_data* parent) {
     files_action_data* data = (files_action_data*) calloc(1, sizeof(files_action_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate files action data.");
+        error_display(NULL, NULL, "Failed to allocate files action data.");
 
         return;
     }
@@ -252,7 +252,7 @@ static void files_repopulate(files_data* listData, linked_list* items) {
 
     Result res = task_populate_files(&listData->populateData);
     if(R_FAILED(res)) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to initiate file list population.");
+        error_display_res(NULL, NULL, res, "Failed to initiate file list population.");
     }
 
     listData->populated = true;
@@ -342,7 +342,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
-        error_display_res(NULL, NULL, NULL, listData->populateData.result, "Failed to populate file list.");
+        error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate file list.");
 
         listData->populateData.result = 0;
     }
@@ -373,7 +373,7 @@ static bool files_filter(void* data, const char* name, u32 attributes) {
 void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     files_data* data = (files_data*) calloc(1, sizeof(files_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate files data.");
+        error_display(NULL, NULL, "Failed to allocate files data.");
 
         return;
     }
@@ -400,7 +400,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     if(archivePath.data != NULL) {
         data->archivePath.data = calloc(1, data->archivePath.size);
         if(data->archivePath.data == NULL) {
-            error_display(NULL, NULL, NULL, "Failed to allocate files data.");
+            error_display(NULL, NULL, "Failed to allocate files data.");
 
             files_free_data(data);
             return;
@@ -415,7 +415,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
 
     Result res = 0;
     if(R_FAILED(res = util_open_archive(&data->archive, archiveId, archivePath))) {
-        error_display_res(NULL, NULL, NULL, res, "Failed to open file listing archive.");
+        error_display_res(NULL, NULL, res, "Failed to open file listing archive.");
 
         files_free_data(data);
         return;

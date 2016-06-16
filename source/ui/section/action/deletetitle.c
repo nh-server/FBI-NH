@@ -32,7 +32,7 @@ static void action_delete_title_update(ui_view* view, void* data, float* progres
     info_destroy(view);
 
     if(R_FAILED(res)) {
-        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to delete title.");
+        error_display_res(info, ui_draw_title_info, res, "Failed to delete title.");
     } else {
         linked_list_remove(deleteData->items, deleteData->selected);
         task_free_title(deleteData->selected);
@@ -54,7 +54,7 @@ static void action_delete_title_onresponse(ui_view* view, void* data, bool respo
 void action_delete_title(linked_list* items, list_item* selected) {
     delete_title_data* data = (delete_title_data*) calloc(1, sizeof(delete_title_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate delete title data.");
+        error_display(NULL, NULL, "Failed to allocate delete title data.");
 
         return;
     }

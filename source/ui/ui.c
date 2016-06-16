@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include <3ds.h>
+#include <malloc.h>
 
 #include "ui.h"
 #include "section/task/task.h"
@@ -29,6 +30,31 @@ void ui_exit() {
     }
 }
 
+ui_view* ui_create() {
+    ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
+    if(view == NULL) {
+        util_panic("Failed to allocate UI view.");
+        return NULL;
+    }
+
+    Result res = 0;
+    if(R_FAILED(res = svcCreateEvent(&view->active, 1))) {
+        util_panic("Failed to create view active event: 0x%08lX", res);
+
+        free(view);
+        return NULL;
+    }
+
+    return view;
+}
+
+void ui_destroy(ui_view* view) {
+    if(view != NULL) {
+        svcCloseHandle(view->active);
+        free(view);
+    }
+}
+
 ui_view* ui_top() {
     svcWaitSynchronization(ui_stack_mutex, U64_MAX);
 
@@ -52,6 +78,8 @@ bool ui_push(ui_view* view) {
     bool space = ui_stack_top < MAX_UI_VIEWS - 1;
     if(space) {
         ui_stack[++ui_stack_top] = view;
+
+        svcClearEvent(view->active);
     }
 
     svcReleaseMutex(ui_stack_mutex);
@@ -63,6 +91,8 @@ void ui_pop() {
     svcWaitSynchronization(ui_stack_mutex, U64_MAX);
 
     if(ui_stack_top >= 0) {
+        svcSignalEvent(ui_stack[ui_stack_top]->active);
+
         ui_stack[ui_stack_top--] = NULL;
     }
 

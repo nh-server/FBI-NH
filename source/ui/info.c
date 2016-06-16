@@ -67,13 +67,13 @@ static void info_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
     screen_draw_string(infoData->text, textX, textY, 0.5f, 0.5f, COLOR_TEXT, true);
 }
 
-void info_display(const char* name, const char* info, bool bar, void* data, void (*update)(ui_view* view, void* data, float* progress, char* text),
+ui_view* info_display(const char* name, const char* info, bool bar, void* data, void (*update)(ui_view* view, void* data, float* progress, char* text),
                                                                             void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2)) {
     info_data* infoData = (info_data*) calloc(1, sizeof(info_data));
     if(infoData == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate info data.");
+        error_display(NULL, NULL, "Failed to allocate info data.");
 
-        return;
+        return NULL;
     }
 
     infoData->bar = bar;
@@ -83,14 +83,7 @@ void info_display(const char* name, const char* info, bool bar, void* data, void
     infoData->update = update;
     infoData->drawTop = drawTop;
 
-    ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
-    if(view == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate UI view.");
-
-        free(infoData);
-        return;
-    }
-
+    ui_view* view = ui_create();
     view->name = name;
     view->info = info;
     view->data = infoData;
@@ -98,9 +91,13 @@ void info_display(const char* name, const char* info, bool bar, void* data, void
     view->drawTop = info_draw_top;
     view->drawBottom = info_draw_bottom;
     ui_push(view);
+
+    return view;
 }
 
 void info_destroy(ui_view* view) {
-    free(view->data);
-    free(view);
+    if(view != NULL) {
+        free(view->data);
+        ui_destroy(view);
+    }
 }

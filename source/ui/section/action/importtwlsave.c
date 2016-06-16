@@ -100,7 +100,7 @@ static bool action_import_twl_save_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Import cancelled.", COLOR_TEXT, false, importData->title, ui_draw_title_info, NULL);
     } else {
-        error_display_res(NULL, importData->title, ui_draw_title_info, res, "Failed to import save.");
+        error_display_res(importData->title, ui_draw_title_info, res, "Failed to import save.");
     }
 
     return false;
@@ -138,7 +138,7 @@ static void action_import_twl_save_onresponse(ui_view* view, void* data, bool re
         if(R_SUCCEEDED(res)) {
             info_display("Importing Save", "Press B to cancel.", true, data, action_import_twl_save_update, action_import_twl_save_draw_top);
         } else {
-            error_display_res(NULL, importData->title, ui_draw_title_info, res, "Failed to initiate save import.");
+            error_display_res(importData->title, ui_draw_title_info, res, "Failed to initiate save import.");
             free(data);
         }
     } else {
@@ -149,7 +149,7 @@ static void action_import_twl_save_onresponse(ui_view* view, void* data, bool re
 void action_import_twl_save(linked_list* items, list_item* selected) {
     import_twl_save_data* data = (import_twl_save_data*) calloc(1, sizeof(import_twl_save_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate import TWL save data.");
+        error_display(NULL, NULL, "Failed to allocate import TWL save data.");
 
         return;
     }

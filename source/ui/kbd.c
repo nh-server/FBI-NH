@@ -63,7 +63,7 @@ static void kbd_cancel(ui_view* view, kbd_data* data) {
     }
 
     free(data);
-    free(view);
+    ui_destroy(view);
 }
 
 static void kbd_finish(ui_view* view, kbd_data* data) {
@@ -74,7 +74,7 @@ static void kbd_finish(ui_view* view, kbd_data* data) {
     }
 
     free(data);
-    free(view);
+    ui_destroy(view);
 }
 
 #define NUM_KEYS 56
@@ -332,13 +332,13 @@ static void kbd_draw_bottom(ui_view* view, void* data, float x1, float y1, float
     }
 }
 
-void kbd_display(const char* name, const char* initialInput, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
-                                                                         void (*finished)(void* data, char* input),
-                                                                         void (*canceled)(void* data)) {
+ui_view* kbd_display(const char* name, const char* initialInput, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
+                                                                             void (*finished)(void* data, char* input),
+                                                                             void (*canceled)(void* data)) {
     kbd_data* kbdData = (kbd_data*) calloc(1, sizeof(kbd_data));
     if(kbdData == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate info data.");
-        return;
+        error_display(NULL, NULL, "Failed to allocate info data.");
+        return NULL;
     }
 
     memset(kbdData->input, '\0', MAX_INPUT_SIZE);
@@ -363,14 +363,7 @@ void kbd_display(const char* name, const char* initialInput, void* data, void (*
     kbdData->finished = finished;
     kbdData->canceled = canceled;
 
-    ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
-    if(view == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate UI view.");
-
-        free(kbdData);
-        return;
-    }
-
+    ui_view* view = ui_create();
     view->name = name;
     view->info = "";
     view->data = kbdData;
@@ -378,4 +371,6 @@ void kbd_display(const char* name, const char* initialInput, void* data, void (*
     view->drawTop = kbd_draw_top;
     view->drawBottom = kbd_draw_bottom;
     ui_push(view);
+
+    return view;
 }

@@ -73,11 +73,9 @@ static bool action_delete_pending_titles_error(void* data, u32 index, Result res
         prompt_display("Failure", "Delete cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
-        volatile bool dismissed = false;
-        error_display_res(&dismissed, data, action_delete_pending_titles_draw_top, res, "Failed to delete pending title.");
-
-        while(!dismissed) {
-            svcSleepThread(1000000);
+        ui_view* view = error_display_res(data, action_delete_pending_titles_draw_top, res, "Failed to delete pending title.");
+        if(view != NULL) {
+            svcWaitSynchronization(view->active, U64_MAX);
         }
     }
 
@@ -122,7 +120,7 @@ static void action_delete_pending_titles_onresponse(ui_view* view, void* data, b
         if(R_SUCCEEDED(res)) {
             info_display("Deleting Pending Title(s)", "Press B to cancel.", true, data, action_delete_pending_titles_update, action_delete_pending_titles_draw_top);
         } else {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate delete operation.");
+            error_display_res(NULL, NULL, res, "Failed to initiate delete operation.");
 
             action_delete_pending_titles_free_data(deleteData);
         }
@@ -134,7 +132,7 @@ static void action_delete_pending_titles_onresponse(ui_view* view, void* data, b
 void action_delete_pending_titles(linked_list* items, list_item* selected, const char* message, bool all) {
     delete_pending_titles_data* data = (delete_pending_titles_data*) calloc(1, sizeof(delete_pending_titles_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate delete pending titles data.");
+        error_display(NULL, NULL, "Failed to allocate delete pending titles data.");
 
         return;
     }
@@ -163,7 +161,7 @@ void action_delete_pending_titles(linked_list* items, list_item* selected, const
 
         Result listRes = task_populate_pending_titles(&popData);
         if(R_FAILED(listRes)) {
-            error_display_res(NULL, NULL, NULL, listRes, "Failed to initiate pending title list population.");
+            error_display_res(NULL, NULL, listRes, "Failed to initiate pending title list population.");
 
             action_delete_pending_titles_free_data(data);
             return;
@@ -174,7 +172,7 @@ void action_delete_pending_titles(linked_list* items, list_item* selected, const
         }
 
         if(R_FAILED(popData.result)) {
-            error_display_res(NULL, NULL, NULL, popData.result, "Failed to populate pending title list.");
+            error_display_res(NULL, NULL, popData.result, "Failed to populate pending title list.");
 
             action_delete_pending_titles_free_data(data);
             return;

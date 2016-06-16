@@ -32,7 +32,7 @@ static void action_delete_ext_save_data_update(ui_view* view, void* data, float*
     info_destroy(view);
 
     if(R_FAILED(res)) {
-        error_display_res(NULL, info, ui_draw_ext_save_data_info, res, "Failed to delete ext save data.");
+        error_display_res(info, ui_draw_ext_save_data_info, res, "Failed to delete ext save data.");
     } else {
         linked_list_remove(deleteData->items, deleteData->selected);
         task_free_ext_save_data(deleteData->selected);
@@ -54,7 +54,7 @@ static void action_delete_ext_save_data_onresponse(ui_view* view, void* data, bo
 void action_delete_ext_save_data(linked_list* items, list_item* selected) {
     delete_ext_save_data_data* data = (delete_ext_save_data_data*) calloc(1, sizeof(delete_ext_save_data_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate delete ext save data data.");
+        error_display(NULL, NULL, "Failed to allocate delete ext save data data.");
 
         return;
     }

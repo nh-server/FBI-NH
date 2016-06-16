@@ -187,11 +187,9 @@ bool action_install_cias_error(void* data, u32 index, Result res) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
     } else {
-        volatile bool dismissed = false;
-        error_display_res(&dismissed, data, action_install_cias_draw_top, res, "Failed to install CIA file.");
-
-        while(!dismissed) {
-            svcSleepThread(1000000);
+        ui_view* view = error_display_res(data, action_install_cias_draw_top, res, "Failed to install CIA file.");
+        if(view != NULL) {
+            svcWaitSynchronization(view->active, U64_MAX);
         }
     }
 
@@ -240,7 +238,7 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
         if(R_SUCCEEDED(res)) {
             info_display("Installing CIA(s)", "Press B to cancel.", true, data, action_install_cias_update, action_install_cias_draw_top);
         } else {
-            error_display_res(NULL, NULL, NULL, res, "Failed to initiate CIA installation.");
+            error_display_res(NULL, NULL, res, "Failed to initiate CIA installation.");
 
             action_install_cias_free_data(installData);
         }
@@ -252,7 +250,7 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
 static void action_install_cias_internal(linked_list* items, list_item* selected, const char* message, bool delete) {
     install_cias_data* data = (install_cias_data*) calloc(1, sizeof(install_cias_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate install CIAs data.");
+        error_display(NULL, NULL, "Failed to allocate install CIAs data.");
 
         return;
     }
@@ -306,7 +304,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
 
     Result listRes = task_populate_files(&popData);
     if(R_FAILED(listRes)) {
-        error_display_res(NULL, NULL, NULL, listRes, "Failed to initiate CIA list population.");
+        error_display_res(NULL, NULL, listRes, "Failed to initiate CIA list population.");
 
         action_install_cias_free_data(data);
         return;
@@ -317,7 +315,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     }
 
     if(R_FAILED(popData.result)) {
-        error_display_res(NULL, NULL, NULL, popData.result, "Failed to populate CIA list.");
+        error_display_res(NULL, NULL, popData.result, "Failed to populate CIA list.");
 
         action_install_cias_free_data(data);
         return;

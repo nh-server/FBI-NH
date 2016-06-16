@@ -267,13 +267,13 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
     }
 }
 
-void list_display(const char* name, const char* info, void* data, void (*update)(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched),
-                                                                  void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected)) {
+ui_view* list_display(const char* name, const char* info, void* data, void (*update)(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched),
+                                                                      void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected)) {
     list_data* listData = (list_data*) calloc(1, sizeof(list_data));
     if(listData == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate list data.");
+        error_display(NULL, NULL, "Failed to allocate list data.");
 
-        return;
+        return NULL;
     }
 
     listData->data = data;
@@ -286,14 +286,7 @@ void list_display(const char* name, const char* info, void* data, void (*update)
     listData->update = update;
     listData->drawTop = drawTop;
 
-    ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
-    if(view == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate UI view.");
-
-        free(listData);
-        return;
-    }
-
+    ui_view* view = ui_create();
     view->name = name;
     view->info = info;
     view->data = listData;
@@ -301,11 +294,15 @@ void list_display(const char* name, const char* info, void* data, void (*update)
     view->drawTop = list_draw_top;
     view->drawBottom = list_draw_bottom;
     ui_push(view);
+
+    return view;
 }
 
 void list_destroy(ui_view* view) {
-    linked_list_destroy(&((list_data*) view->data)->items);
+    if(view != NULL) {
+        linked_list_destroy(&((list_data*) view->data)->items);
 
-    free(view->data);
-    free(view);
+        free(view->data);
+        ui_destroy(view);
+    }
 }

@@ -29,7 +29,7 @@ static void action_launch_title_update(ui_view* view, void* data, float* progres
         ui_pop();
         info_destroy(view);
 
-        error_display_res(NULL, info, ui_draw_title_info, res, "Failed to launch title.");
+        error_display_res(info, ui_draw_title_info, res, "Failed to launch title.");
     }
 }
 

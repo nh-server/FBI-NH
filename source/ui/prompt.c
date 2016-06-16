@@ -24,7 +24,7 @@ static void prompt_notify_response(ui_view* view, prompt_data* promptData, bool 
     }
 
     free(promptData);
-    free(view);
+    ui_destroy(view);
 }
 
 static void prompt_update(ui_view* view, void* data, float bx1, float by1, float bx2, float by2) {
@@ -134,13 +134,13 @@ static void prompt_draw_bottom(ui_view* view, void* data, float x1, float y1, fl
     screen_draw_string(promptData->text, x1 + (x2 - x1 - textWidth) / 2, y1 + (y2 - 5 - buttonHeight - y1 - textHeight) / 2, 0.5f, 0.5f, promptData->color, true);
 }
 
-void prompt_display(const char* name, const char* text, u32 color, bool option, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
-                                                                                            void (*onResponse)(ui_view* view, void* data, bool response)) {
+ui_view* prompt_display(const char* name, const char* text, u32 color, bool option, void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2),
+                                                                                                void (*onResponse)(ui_view* view, void* data, bool response)) {
     prompt_data* promptData = (prompt_data*) calloc(1, sizeof(prompt_data));
     if(promptData == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate prompt data.");
+        error_display(NULL, NULL, "Failed to allocate prompt data.");
 
-        return;
+        return NULL;
     }
 
     promptData->text = text;
@@ -150,14 +150,7 @@ void prompt_display(const char* name, const char* text, u32 color, bool option, 
     promptData->drawTop = drawTop;
     promptData->onResponse = onResponse;
 
-    ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
-    if(view == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate UI view.");
-
-        free(promptData);
-        return;
-    }
-
+    ui_view* view = ui_create();
     view->name = name;
     view->info = "";
     view->data = promptData;
@@ -165,4 +158,6 @@ void prompt_display(const char* name, const char* text, u32 color, bool option, 
     view->drawTop = prompt_draw_top;
     view->drawBottom = prompt_draw_bottom;
     ui_push(view);
+
+    return view;
 }

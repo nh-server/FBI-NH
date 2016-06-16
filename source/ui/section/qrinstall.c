@@ -28,16 +28,24 @@ typedef struct {
 
     u32 tex;
 
-    u32 responseCode;
-    u64 currTitleId;
-    bool ticket;
-
     bool cdn;
+    bool cdnDecided;
+
+    u32 responseCode;
+    bool ticket;
+    u64 currTitleId;
     ticket_info ticketInfo;
 
     capture_cam_data captureInfo;
     data_op_data installInfo;
 } qr_install_data;
+
+static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
+    qr_install_data* qrInstallData = (qr_install_data*) data;
+
+    qrInstallData->cdn = response;
+    qrInstallData->cdnDecided = true;
+}
 
 static Result qrinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
@@ -109,7 +117,19 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
 
     Result res = 0;
 
+    qrInstallData->responseCode = 0;
+    qrInstallData->ticket = false;
+    qrInstallData->currTitleId = 0;
+    memset(&qrInstallData->ticketInfo, 0, sizeof(qrInstallData->ticketInfo));
+
     if(*(u16*) initialReadBlock == 0x0100) {
+        if(!qrInstallData->cdnDecided) {
+            ui_view* view = prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, qrinstall_cdn_check_onresponse);
+            if(view != NULL) {
+                svcWaitSynchronization(view->active, U64_MAX);
+            }
+        }
+
         qrInstallData->ticket = true;
         qrInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
 
@@ -213,23 +233,24 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
     } else {
         char* url = qrInstallData->urls[index];
 
-        volatile bool dismissed = false;
+        ui_view* view = NULL;
+
         if(res == R_FBI_HTTP_RESPONSE_CODE) {
             if(strlen(url) > 38) {
-                error_display(&dismissed, NULL, NULL, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+                view = error_display(NULL, NULL, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             } else {
-                error_display(&dismissed, NULL, NULL, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
+                view = error_display(NULL, NULL, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
             }
         } else {
             if(strlen(url) > 38) {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from URL.\n%.35s...", url);
+                view = error_display_res(NULL, NULL, res, "Failed to install from URL.\n%.35s...", url);
             } else {
-                error_display_res(&dismissed, NULL, NULL, res, "Failed to install from URL.\n%.38s", url);
+                view = error_display_res(NULL, NULL, res, "Failed to install from URL.\n%.38s", url);
             }
         }
 
-        while(!dismissed) {
-            svcSleepThread(1000000);
+        if(view != NULL) {
+            svcWaitSynchronization(view->active, U64_MAX);
         }
     }
 
@@ -251,6 +272,14 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
             memset(qrInstallData->urls[i], '\0', URL_MAX);
         }
 
+        qrInstallData->cdn = false;
+        qrInstallData->cdnDecided = false;
+
+        qrInstallData->responseCode = 0;
+        qrInstallData->ticket = false;
+        qrInstallData->currTitleId = 0;
+        memset(&qrInstallData->ticketInfo, 0, sizeof(qrInstallData->ticketInfo));
+
         return;
     }
 
@@ -262,22 +291,16 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", qrInstallData->installInfo.processed, qrInstallData->installInfo.total, util_get_display_size(qrInstallData->installInfo.currProcessed), util_get_display_size_units(qrInstallData->installInfo.currProcessed), util_get_display_size(qrInstallData->installInfo.currTotal), util_get_display_size_units(qrInstallData->installInfo.currTotal));
 }
 
-static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
+static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
     qr_install_data* qrInstallData = (qr_install_data*) data;
 
-    qrInstallData->cdn = response;
-
-    Result res = task_data_op(&qrInstallData->installInfo);
-    if(R_SUCCEEDED(res)) {
-        info_display("Installing From URL(s)", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
-    } else {
-        error_display_res(NULL, NULL, NULL, res, "Failed to initiate installation.");
-    }
-}
-
-static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, qrinstall_cdn_check_onresponse);
+        Result res = task_data_op(&qrInstallData->installInfo);
+        if(R_SUCCEEDED(res)) {
+            info_display("Installing From URL(s)", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
+        } else {
+            error_display_res(NULL, NULL, res, "Failed to initiate installation.");
+        }
     }
 }
 
@@ -381,7 +404,7 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         info_destroy(view);
 
         if(R_FAILED(qrInstallData->captureInfo.result)) {
-            error_display_res(NULL, NULL, NULL, qrInstallData->captureInfo.result, "Error while capturing camera frames.");
+            error_display_res(NULL, NULL, qrInstallData->captureInfo.result, "Error while capturing camera frames.");
         }
 
         qrinstall_free_data(qrInstallData);
@@ -439,16 +462,20 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
 void qrinstall_open() {
     qr_install_data* data = (qr_install_data*) calloc(1, sizeof(qr_install_data));
     if(data == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to allocate QR install data.");
+        error_display(NULL, NULL, "Failed to allocate QR install data.");
 
         return;
     }
 
     data->tex = 0;
 
+    data->cdn = false;
+    data->cdnDecided = false;
+
     data->responseCode = 0;
-    data->currTitleId = 0;
     data->ticket = false;
+    data->currTitleId = 0;
+    memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
 
     data->installInfo.data = data;
 
@@ -488,14 +515,14 @@ void qrinstall_open() {
 
     data->qrContext = quirc_new();
     if(data->qrContext == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create QR context.");
+        error_display(NULL, NULL, "Failed to create QR context.");
 
         qrinstall_free_data(data);
         return;
     }
 
     if(quirc_resize(data->qrContext, IMAGE_WIDTH, IMAGE_HEIGHT) != 0) {
-        error_display(NULL, NULL, NULL, "Failed to resize QR context.");
+        error_display(NULL, NULL, "Failed to resize QR context.");
 
         qrinstall_free_data(data);
         return;
@@ -503,7 +530,7 @@ void qrinstall_open() {
 
     data->captureInfo.buffer = (u16*) calloc(1, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
     if(data->captureInfo.buffer == NULL) {
-        error_display(NULL, NULL, NULL, "Failed to create image buffer.");
+        error_display(NULL, NULL, "Failed to create image buffer.");
 
         qrinstall_free_data(data);
         return;
@@ -511,7 +538,7 @@ void qrinstall_open() {
 
     Result capRes = task_capture_cam(&data->captureInfo);
     if(R_FAILED(capRes)) {
-        error_display_res(NULL, NULL, NULL, capRes, "Failed to start camera capture.");
+        error_display_res(NULL, NULL, capRes, "Failed to start camera capture.");
 
         qrinstall_free_data(data);
         return;
