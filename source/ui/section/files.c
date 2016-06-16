@@ -127,9 +127,9 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
             linked_list_add(items, &delete_all_contents);
             linked_list_add(items, &copy_all_contents);
 
-            linked_list_add(items, &delete_dir);
-
             linked_list_add(items, &new_folder);
+
+            linked_list_add(items, &delete_dir);
         } else {
             if(info->isCia) {
                 linked_list_add(items, &install_cia);
