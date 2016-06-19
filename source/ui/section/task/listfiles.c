@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include <3ds.h>
-#include <3ds/services/fs.h>
 
 #include "task.h"
 #include "../../list.h"

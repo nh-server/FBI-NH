@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <3ds.h>
 
@@ -7,6 +8,7 @@
 #include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../kbd.h"
 #include "../../list.h"
 #include "../../prompt.h"
 #include "../../ui.h"
@@ -21,6 +23,7 @@ typedef struct {
     volatile bool* done;
     bool finishedPrompt;
 
+    char tmdVersion[16];
     u32 contentCount;
     u16 contentIndices[CONTENTS_MAX];
     u32 contentIds[CONTENTS_MAX];
@@ -48,7 +51,11 @@ static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
     if(context != NULL) {
         char url[256];
         if(index == 0) {
-            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd", installData->ticket->titleId);
+            if(strlen(installData->tmdVersion) > 0) {
+                snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd.%s", installData->ticket->titleId, installData->tmdVersion);
+            } else {
+                snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd", installData->ticket->titleId);
+            }
         } else {
             snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->titleId, installData->contentIds[index - 1]);
         }
@@ -249,7 +256,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal));
 }
 
-void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt) {
+static void action_install_cdn_internal(volatile bool* done, ticket_info* info, bool finishedPrompt, char* tmdVersion) {
     install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate install CDN data.");
@@ -260,6 +267,15 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
     data->ticket = info;
     data->done = done;
     data->finishedPrompt = finishedPrompt;
+
+    memset(data->tmdVersion, '\0', sizeof(data->tmdVersion));
+    if(tmdVersion != NULL) {
+        strncpy(data->tmdVersion, tmdVersion, sizeof(data->tmdVersion));
+    }
+
+    data->contentCount = 0;
+    memset(data->contentIndices, 0, sizeof(data->contentIndices));
+    memset(data->contentIds, 0, sizeof(data->contentIds));
 
     data->responseCode = 0;
 
@@ -323,11 +339,17 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
     }
 }
 
-static void action_install_cdn_onresponse(ui_view* view, void* data, bool response) {
-    ticket_info* info = (ticket_info*) data;
+void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt) {
+    action_install_cdn_internal(done, info, finishedPrompt, NULL);
+}
 
+static void action_install_cdn_kbd_finished(void* data, char* input) {
+    action_install_cdn_internal(NULL, (ticket_info*) data, true, input);
+}
+
+static void action_install_cdn_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        action_install_cdn_noprompt(NULL, info, true);
+        kbd_display("Enter Version (leave empty for default)", NULL, data, NULL, action_install_cdn_kbd_finished, NULL);
     }
 }
 
