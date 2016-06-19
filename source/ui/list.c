@@ -123,27 +123,45 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
 
         u32 lastSelectedIndex = listData->selectedIndex;
 
-        if(((hidKeysDown() & KEY_DOWN) || ((hidKeysHeld() & KEY_DOWN) && osGetTime() >= listData->nextActionTime)) && listData->selectedIndex < size - 1) {
-            listData->selectedIndex++;
+        if(((hidKeysDown() & KEY_DOWN) || ((hidKeysHeld() & KEY_DOWN) && osGetTime() >= listData->nextActionTime))) {
+            if(listData->selectedIndex < size - 1) {
+                listData->selectedIndex++;
+            } else {
+                listData->selectedIndex = 0;
+            }
+
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_DOWN) ? 500 : 100);
         }
 
-        if(((hidKeysDown() & KEY_UP) || ((hidKeysHeld() & KEY_UP) && osGetTime() >= listData->nextActionTime)) && listData->selectedIndex > 0) {
-            listData->selectedIndex--;
+        if(((hidKeysDown() & KEY_UP) || ((hidKeysHeld() & KEY_UP) && osGetTime() >= listData->nextActionTime))) {
+            if(listData->selectedIndex > 0) {
+                listData->selectedIndex--;
+            } else {
+                listData->selectedIndex = size - 1;
+            }
+
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_UP) ? 500 : 100);
         }
 
-        if(((hidKeysDown() & KEY_RIGHT) || ((hidKeysHeld() & KEY_RIGHT) && osGetTime() >= listData->nextActionTime)) && listData->selectedIndex < size - 1) {
-            u32 remaining = size - 1 - listData->selectedIndex;
+        if(((hidKeysDown() & KEY_RIGHT) || ((hidKeysHeld() & KEY_RIGHT) && osGetTime() >= listData->nextActionTime))) {
+            if(listData->selectedIndex < size - 1) {
+                u32 remaining = size - 1 - listData->selectedIndex;
+                listData->selectedIndex += remaining < 13 ? remaining : 13;
+            } else {
+                listData->selectedIndex = 0;
+            }
 
-            listData->selectedIndex += remaining < 13 ? remaining : 13;
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_RIGHT) ? 500 : 100);
         }
 
-        if(((hidKeysDown() & KEY_LEFT) || ((hidKeysHeld() & KEY_LEFT) && osGetTime() >= listData->nextActionTime)) && listData->selectedIndex > 0) {
-            u32 remaining = listData->selectedIndex;
+        if(((hidKeysDown() & KEY_LEFT) || ((hidKeysHeld() & KEY_LEFT) && osGetTime() >= listData->nextActionTime))) {
+            if(listData->selectedIndex > 0) {
+                u32 remaining = listData->selectedIndex;
+                listData->selectedIndex -= remaining < 13 ? remaining : 13;
+            } else {
+                listData->selectedIndex = size - 1;
+            }
 
-            listData->selectedIndex -= remaining < 13 ? remaining : 13;
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_LEFT) ? 500 : 100);
         }
 
