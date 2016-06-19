@@ -383,9 +383,13 @@ int util_compare_file_infos(const void** p1, const void** p2) {
     }
 }
 
-static char path_3dsx[FILE_PATH_MAX];
+static char path_3dsx[FILE_PATH_MAX] = {'\0'};
 
 const char* util_get_3dsx_path() {
+    if(strlen(path_3dsx) == 0) {
+        return NULL;
+    }
+
     return path_3dsx;
 }
 
