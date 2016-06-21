@@ -29,8 +29,8 @@ static list_item install_ticket = {"Install ticket", COLOR_TEXT, action_install_
 static list_item install_and_delete_ticket = {"Install and delete ticket", COLOR_TEXT, action_install_ticket_delete};
 
 static list_item delete_dir = {"Delete", COLOR_TEXT, action_delete_dir};
-static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
 static list_item copy_all_contents = {"Copy all contents", COLOR_TEXT, NULL};
+static list_item delete_all_contents = {"Delete all contents", COLOR_TEXT, action_delete_dir_contents};
 static list_item new_folder = {"New folder", COLOR_TEXT, action_new_folder};
 
 static list_item install_all_cias = {"Install all CIAs", COLOR_TEXT, action_install_cias};
@@ -124,8 +124,8 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
                 linked_list_add(items, &delete_all_tickets);
             }
 
-            linked_list_add(items, &delete_all_contents);
             linked_list_add(items, &copy_all_contents);
+            linked_list_add(items, &delete_all_contents);
 
             linked_list_add(items, &new_folder);
 
