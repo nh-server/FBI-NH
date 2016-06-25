@@ -36,6 +36,7 @@ typedef struct {
     u64 currTitleId;
     ticket_info ticketInfo;
 
+    bool capturing;
     capture_cam_data captureInfo;
     data_op_data installInfo;
 } qr_install_data;
@@ -319,6 +320,8 @@ static void qrinstall_free_data(qr_install_data* data) {
         }
     }
 
+    data->capturing = false;
+
     if(data->captureInfo.buffer != NULL) {
         free(data->captureInfo.buffer);
         data->captureInfo.buffer = NULL;
@@ -382,6 +385,16 @@ static void qrinstall_process_urls(void* data, char* input) {
         }
 
         if(qrInstallData->installInfo.total > 0) {
+            if(!qrInstallData->captureInfo.finished) {
+                svcSignalEvent(qrInstallData->captureInfo.cancelEvent);
+                while(!qrInstallData->captureInfo.finished) {
+                    svcSleepThread(1000000);
+                }
+            }
+
+            qrInstallData->capturing = false;
+            memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+
             prompt_display("Confirmation", "Install from the provided URL(s)?", COLOR_TEXT, true, data, NULL, qrinstall_confirm_onresponse);
         }
     }
@@ -399,6 +412,21 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         return;
     }
 
+    if(!qrInstallData->capturing) {
+        Result capRes = task_capture_cam(&qrInstallData->captureInfo);
+        if(R_FAILED(capRes)) {
+            ui_pop();
+            info_destroy(view);
+
+            error_display_res(NULL, NULL, capRes, "Failed to start camera capture.");
+
+            qrinstall_free_data(qrInstallData);
+            return;
+        } else {
+            qrInstallData->capturing = true;
+        }
+    }
+
     if(qrInstallData->captureInfo.finished) {
         ui_pop();
         info_destroy(view);
@@ -414,7 +442,6 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
 
     if(hidKeysDown() & KEY_X) {
         kbd_display("Enter URL(s)", NULL, data, NULL, qrinstall_process_urls, NULL);
-
         return;
     }
 
@@ -508,6 +535,8 @@ void qrinstall_open() {
 
     data->installInfo.finished = true;
 
+    data->capturing = false;
+
     data->captureInfo.width = IMAGE_WIDTH;
     data->captureInfo.height = IMAGE_HEIGHT;
 
@@ -531,14 +560,6 @@ void qrinstall_open() {
     data->captureInfo.buffer = (u16*) calloc(1, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
     if(data->captureInfo.buffer == NULL) {
         error_display(NULL, NULL, "Failed to create image buffer.");
-
-        qrinstall_free_data(data);
-        return;
-    }
-
-    Result capRes = task_capture_cam(&data->captureInfo);
-    if(R_FAILED(capRes)) {
-        error_display_res(NULL, NULL, capRes, "Failed to start camera capture.");
 
         qrinstall_free_data(data);
         return;
