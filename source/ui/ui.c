@@ -579,7 +579,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
              "Media Type: %s\n"
              "Version: %hu\n"
              "Product Code: %s\n"
-             "Installed Size: %.2f %s",
+             "Size: %.2f %s",
              info->titleId,
              info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card",
              info->version,
