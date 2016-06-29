@@ -511,3 +511,27 @@ const char* util_get_display_size_units(u64 size) {
 
     return "B";
 }
+
+void util_escape_file_name(char* out, const char* in, size_t size) {
+    static const char reservedChars[] = {'<', '>', ':', '"', '/', '\\', '|', '?', '*'};
+
+    for(u32 i = 0; i < size; i++) {
+        bool reserved = false;
+        for(u32 j = 0; j < sizeof(reservedChars); j++) {
+            if(in[i] == reservedChars[j]) {
+                reserved = true;
+                break;
+            }
+        }
+
+        if(reserved) {
+            out[i] = '_';
+        } else {
+            out[i] = in[i];
+        }
+
+        if(in[i] == '\0') {
+            break;
+        }
+    }
+}
