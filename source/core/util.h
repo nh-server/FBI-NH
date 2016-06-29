@@ -73,3 +73,5 @@ Result util_close_archive(FS_Archive archive);
 
 double util_get_display_size(u64 size);
 const char* util_get_display_size_units(u64 size);
+
+void util_escape_file_name(char* out, const char* in, size_t size);

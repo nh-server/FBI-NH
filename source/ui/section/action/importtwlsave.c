@@ -39,8 +39,11 @@ static Result action_import_twl_save_open_src(void* data, u32 index, u32* handle
 
     Result res = 0;
 
+    char gameName[0x10] = {'\0'};
+    util_escape_file_name(gameName, importData->title->productCode, sizeof(gameName));
+
     char path[FILE_PATH_MAX];
-    snprintf(path, sizeof(path), "/fbi/save/%s.sav", importData->title->productCode);
+    snprintf(path, sizeof(path), "/fbi/save/%s.sav", gameName);
 
     FS_Path* fsPath = util_make_path_utf8(path);
     if(fsPath != NULL) {
