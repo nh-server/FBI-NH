@@ -52,6 +52,7 @@ void util_get_path_file(char* out, const char* path, u32 size);
 void util_get_parent_path(char* out, const char* path, u32 size);
 
 Result util_import_seed(u64 titleId);
+u32 util_get_seed_response_code();
 
 u64 util_get_cia_title_id(u8* cia);
 u64 util_get_ticket_title_id(u8* ticket);
