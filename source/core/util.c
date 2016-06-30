@@ -241,7 +241,7 @@ void util_get_parent_path(char* out, const char* path, u32 size) {
 static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
     u32 *cmdbuf = getThreadCommandBuffer();
 
-    cmdbuf[0] = 0x087a0180;
+    cmdbuf[0] = 0x087A0180;
     cmdbuf[1] = (u32) (titleId & 0xFFFFFFFF);
     cmdbuf[2] = (u32) (titleId >> 32);
     memcpy(&cmdbuf[3], seed, 16);
@@ -253,63 +253,46 @@ static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
     return ret;
 }
 
-Result util_import_seed(u64 titleId) {
-    char pathBuf[64];
-    snprintf(pathBuf, 64, "/fbi/seed/%016llX.dat", titleId);
+static u32 import_response_code = 0;
 
+Result util_import_seed(u64 titleId) {
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(pathBuf);
-    if(fsPath != NULL) {
-        u8 seed[16];
+    u8 region = CFG_REGION_USA;
+    CFGU_SecureInfoGetRegion(&region);
 
-        Handle fileHandle = 0;
-        if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
-            u32 bytesRead = 0;
-            res = FSFILE_Read(fileHandle, &bytesRead, 0, seed, sizeof(seed));
+    if(region <= CFG_REGION_TWN) {
+        static const char* regionStrings[] = {"JP", "US", "GB", "GB", "HK", "KR", "TW"};
 
-            FSFILE_Close(fileHandle);
-        }
+        char url[128];
+        snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
 
-        util_free_path_utf8(fsPath);
+        httpcContext context;
+        if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
+            if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &import_response_code, 0))) {
+                if(import_response_code == 200) {
+                    u8 seed[16];
 
-        if(R_FAILED(res)) {
-            static const char* regionStrings[] = {"JP", "US", "GB", "GB", "HK", "KR", "TW"};
-
-            u8 region = CFG_REGION_USA;
-            CFGU_SecureInfoGetRegion(&region);
-
-            if(region <= CFG_REGION_TWN) {
-                char url[128];
-                snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
-
-                httpcContext context;
-                if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
-                    u32 responseCode = 0;
-                    if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
-                        if(responseCode == 200) {
-                            u32 bytesRead = 0;
-                            res = httpcDownloadData(&context, seed, sizeof(seed), &bytesRead);
-                        } else {
-                            res = R_FBI_HTTP_RESPONSE_CODE;
-                        }
+                    u32 bytesRead = 0;
+                    if(R_SUCCEEDED(res = httpcDownloadData(&context, seed, sizeof(seed), &bytesRead))) {
+                        res = FSUSER_AddSeed(titleId, seed);
                     }
-
-                    httpcCloseContext(&context);
+                } else {
+                    res = R_FBI_HTTP_RESPONSE_CODE;
                 }
-            } else {
-                res = R_FBI_OUT_OF_RANGE;
             }
-        }
 
-        if(R_SUCCEEDED(res)) {
-            res = FSUSER_AddSeed(titleId, seed);
+            httpcCloseContext(&context);
         }
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_FBI_OUT_OF_RANGE;
     }
 
     return res;
+}
+
+u32 util_get_seed_response_code() {
+    return import_response_code;
 }
 
 static u32 sigSizes[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
