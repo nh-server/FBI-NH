@@ -34,6 +34,7 @@ typedef struct {
     u32 responseCode;
     bool ticket;
     u64 currTitleId;
+    volatile bool n3dsContinue;
     ticket_info ticketInfo;
 
     bool capturing;
@@ -46,6 +47,10 @@ static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool respo
 
     qrInstallData->cdn = response;
     qrInstallData->cdnDecided = true;
+}
+
+static void qrinstall_n3ds_onresponse(ui_view* view, void* data, bool response) {
+    ((qr_install_data*) data)->n3dsContinue = response;
 }
 
 static Result qrinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
@@ -121,6 +126,7 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
     qrInstallData->responseCode = 0;
     qrInstallData->ticket = false;
     qrInstallData->currTitleId = 0;
+    qrInstallData->n3dsContinue = false;
     memset(&qrInstallData->ticketInfo, 0, sizeof(qrInstallData->ticketInfo));
 
     if(*(u16*) initialReadBlock == 0x0100) {
@@ -143,7 +149,14 @@ static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, 
 
         bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-            return R_FBI_WRONG_SYSTEM;
+            ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, NULL, qrinstall_n3ds_onresponse);
+            if(view != NULL) {
+                svcWaitSynchronization(view->active, U64_MAX);
+            }
+
+            if(!qrInstallData->n3dsContinue) {
+                return R_FBI_WRONG_SYSTEM;
+            }
         }
 
         // Deleting FBI before it reinstalls itself causes issues.
@@ -193,8 +206,6 @@ static Result qrinstall_close_dst(void* data, u32 index, bool succeeded, u32 han
             }
         }
 
-        qrInstallData->currTitleId = 0;
-
         return res;
     } else {
         if(qrInstallData->ticket) {
@@ -231,7 +242,7 @@ static bool qrinstall_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
-    } else {
+    } else if(res != R_FBI_WRONG_SYSTEM) {
         char* url = qrInstallData->urls[index];
 
         ui_view* view = NULL;
@@ -279,6 +290,7 @@ static void qrinstall_install_update(ui_view* view, void* data, float* progress,
         qrInstallData->responseCode = 0;
         qrInstallData->ticket = false;
         qrInstallData->currTitleId = 0;
+        qrInstallData->n3dsContinue = false;
         memset(&qrInstallData->ticketInfo, 0, sizeof(qrInstallData->ticketInfo));
 
         return;
@@ -502,6 +514,7 @@ void qrinstall_open() {
     data->responseCode = 0;
     data->ticket = false;
     data->currTitleId = 0;
+    data->n3dsContinue = false;
     memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
 
     data->installInfo.data = data;
