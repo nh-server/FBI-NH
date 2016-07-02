@@ -256,6 +256,37 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal));
 }
 
+static void action_install_cdn_start(install_cdn_data* data) {
+    FS_MediaType dest = ((data->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+
+    AM_DeleteTitle(dest, data->ticket->titleId);
+    if(dest == MEDIATYPE_SD) {
+        AM_QueryAvailableExternalTitleDatabase(NULL);
+    }
+
+    Result res = 0;
+
+    if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, data->ticket->titleId, false))) {
+        if(R_SUCCEEDED(res = task_data_op(&data->installInfo))) {
+            info_display("Installing CDN Title", "Press B to cancel.", true, data, action_install_cdn_update, action_install_cdn_draw_top);
+        } else {
+            AM_InstallTitleAbort();
+        }
+    }
+
+    if(R_FAILED(res)) {
+        error_display_res(data->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
+
+        action_install_cdn_free_data(data);
+    }
+}
+
+static void action_install_cdn_n3ds_onresponse(ui_view* view, void* data, bool response) {
+    if(response) {
+        action_install_cdn_start((install_cdn_data*) data);
+    }
+}
+
 static void action_install_cdn_internal(volatile bool* done, ticket_info* info, bool finishedPrompt, char* tmdVersion) {
     install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
     if(data == NULL) {
@@ -310,32 +341,11 @@ static void action_install_cdn_internal(volatile bool* done, ticket_info* info, 
 
     data->installInfo.finished = true;
 
-    Result res = 0;
-
     bool n3ds = false;
-    if(R_FAILED(APT_CheckNew3DS(&n3ds)) || n3ds || ((data->ticket->titleId >> 28) & 0xF) != 2) {
-        FS_MediaType dest = ((data->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
-
-        AM_DeleteTitle(dest, data->ticket->titleId);
-        if(dest == MEDIATYPE_SD) {
-            AM_QueryAvailableExternalTitleDatabase(NULL);
-        }
-
-        if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, data->ticket->titleId, false))) {
-            if(R_SUCCEEDED(res = task_data_op(&data->installInfo))) {
-                info_display("Installing CDN Title", "Press B to cancel.", true, data, action_install_cdn_update, action_install_cdn_draw_top);
-            } else {
-                AM_InstallTitleAbort();
-            }
-        }
+    if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((data->ticket->titleId >> 28) & 0xF) == 2) {
+        prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, action_install_cdn_draw_top, action_install_cdn_n3ds_onresponse);
     } else {
-        res = R_FBI_WRONG_SYSTEM;
-    }
-
-    if(R_FAILED(res)) {
-        error_display_res(data->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
-
-        action_install_cdn_free_data(data);
+        action_install_cdn_start(data);
     }
 }
 

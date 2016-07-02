@@ -24,9 +24,14 @@ typedef struct {
     bool delete;
 
     u64 currTitleId;
+    volatile bool n3dsContinue;
 
     data_op_data installInfo;
 } install_cias_data;
+
+static void action_install_cias_n3ds_onresponse(ui_view* view, void* data, bool response) {
+    ((install_cias_data*) data)->n3dsContinue = response;
+}
 
 static void action_install_cias_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     install_cias_data* installData = (install_cias_data*) data;
@@ -112,13 +117,23 @@ static Result action_install_cias_read_src(void* data, u32 handle, u32* bytesRea
 static Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
+    installData->currTitleId = 0;
+    installData->n3dsContinue = false;
+
     u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
     FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
     bool n3ds = false;
     if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-        return R_FBI_WRONG_SYSTEM;
+        ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, action_install_cias_draw_top, action_install_cias_n3ds_onresponse);
+        if(view != NULL) {
+            svcWaitSynchronization(view->active, U64_MAX);
+        }
+
+        if(!installData->n3dsContinue) {
+            return R_FBI_WRONG_SYSTEM;
+        }
     }
 
     // Deleting FBI before it reinstalls itself causes issues.
@@ -152,8 +167,6 @@ static Result action_install_cias_close_dst(void* data, u32 index, bool succeede
             }
         }
 
-        installData->currTitleId = 0;
-
         return res;
     } else {
         return AM_CancelCIAInstall(handle);
@@ -186,7 +199,7 @@ bool action_install_cias_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
         return false;
-    } else {
+    } else if(res != R_FBI_WRONG_SYSTEM) {
         ui_view* view = error_display_res(data, action_install_cias_draw_top, res, "Failed to install CIA file.");
         if(view != NULL) {
             svcWaitSynchronization(view->active, U64_MAX);
@@ -261,6 +274,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     data->delete = delete;
 
     data->currTitleId = 0;
+    data->n3dsContinue = false;
 
     data->installInfo.data = data;
 

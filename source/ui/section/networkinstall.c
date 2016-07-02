@@ -27,6 +27,7 @@ typedef struct {
 
     bool ticket;
     u64 currTitleId;
+    volatile bool n3dsContinue;
     ticket_info ticketInfo;
 
     data_op_data installInfo;
@@ -61,6 +62,10 @@ static void networkinstall_cdn_check_onresponse(ui_view* view, void* data, bool 
 
     qrInstallData->cdn = response;
     qrInstallData->cdnDecided = true;
+}
+
+static void networkinstall_n3ds_onresponse(ui_view* view, void* data, bool response) {
+    ((network_install_data*) data)->n3dsContinue = response;
 }
 
 static Result networkinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
@@ -118,6 +123,7 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
 
     networkInstallData->ticket = false;
     networkInstallData->currTitleId = 0;
+    networkInstallData->n3dsContinue = false;
     memset(&networkInstallData->ticketInfo, 0, sizeof(networkInstallData->ticketInfo));
 
     if(*(u16*) initialReadBlock == 0x0100) {
@@ -140,7 +146,14 @@ static Result networkinstall_open_dst(void* data, u32 index, void* initialReadBl
 
         bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-            return R_FBI_WRONG_SYSTEM;
+            ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, NULL, networkinstall_n3ds_onresponse);
+            if(view != NULL) {
+                svcWaitSynchronization(view->active, U64_MAX);
+            }
+
+            if(!networkInstallData->n3dsContinue) {
+                return R_FBI_WRONG_SYSTEM;
+            }
         }
 
         // Deleting FBI before it reinstalls itself causes issues.
@@ -190,8 +203,6 @@ static Result networkinstall_close_dst(void* data, u32 index, bool succeeded, u3
             }
         }
 
-        networkInstallData->currTitleId = 0;
-
         return res;
     } else {
         if(networkInstallData->ticket) {
@@ -227,7 +238,7 @@ static bool networkinstall_error(void* data, u32 index, Result res) {
         prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
     } else if(res == R_FBI_ERRNO) {
         error_display_errno(NULL, NULL, errno, "Failed to install over the network.");
-    } else {
+    } else if(res != R_FBI_WRONG_SYSTEM) {
         error_display_res(NULL, NULL, res, "Failed to install over the network.");
     }
 
@@ -248,6 +259,7 @@ static void networkinstall_close_client(network_install_data* data) {
 
     data->ticket = false;
     data->currTitleId = 0;
+    data->n3dsContinue = false;
     memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
 }
 
@@ -365,6 +377,7 @@ void networkinstall_open() {
 
     data->ticket = false;
     data->currTitleId = 0;
+    data->n3dsContinue = false;
     memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
 
     data->installInfo.data = data;
