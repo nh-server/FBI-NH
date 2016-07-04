@@ -8,7 +8,6 @@
 #include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
-#include "../../kbd.h"
 #include "../../list.h"
 #include "../../prompt.h"
 #include "../../ui.h"
@@ -16,61 +15,40 @@
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 
-typedef struct {
-    linked_list* items;
-    file_info* parentDir;
-} new_folder_data;
+void action_new_folder(linked_list* items, list_item* selected) {
+    SwkbdState swkbd;
+    swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, -1);
+    swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY, 0, 0);
+    swkbdSetHintText(&swkbd, "Enter folder name");
 
-static void action_new_folder_kbd_finished(void* data, char* input) {
-    new_folder_data* newFolderData = (new_folder_data*) data;
+    char textBuf[FILE_NAME_MAX];
+    if(swkbdInputText(&swkbd, textBuf, sizeof(textBuf)) == SWKBD_BUTTON_CONFIRM) {
+        Result res = 0;
 
-    if(strlen(input) == 0) {
-        error_display(NULL, NULL, "No name specified.");
-    }
+        file_info* parentDir = (file_info*) selected->data;
 
-    Result res = 0;
+        char path[FILE_PATH_MAX] = {'\0'};
+        snprintf(path, FILE_PATH_MAX, "%s%s", parentDir->path, textBuf);
 
-    char path[FILE_PATH_MAX] = {'\0'};
-    snprintf(path, FILE_PATH_MAX, "%s%s", newFolderData->parentDir->path, input);
+        FS_Path* fsPath = util_make_path_utf8(path);
+        if(fsPath != NULL) {
+            res = FSUSER_CreateDirectory(parentDir->archive, *fsPath, 0);
 
-    FS_Path* fsPath = util_make_path_utf8(path);
-    if(fsPath != NULL) {
-        res = FSUSER_CreateDirectory(newFolderData->parentDir->archive, *fsPath, 0);
-
-        util_free_path_utf8(fsPath);
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
-    }
-
-    if(R_SUCCEEDED(res)) {
-        list_item* folderItem = NULL;
-        if(R_SUCCEEDED(task_create_file_item(&folderItem, newFolderData->parentDir->archive, path))) {
-            linked_list_add(newFolderData->items, folderItem);
-            linked_list_sort(newFolderData->items, util_compare_file_infos);
+            util_free_path_utf8(fsPath);
+        } else {
+            res = R_FBI_OUT_OF_MEMORY;
         }
 
-        prompt_display("Success", "Folder created.", COLOR_TEXT, false, NULL, NULL, NULL);
-    } else {
-        error_display_res(NULL, NULL, res, "Failed to create folder.");
+        if(R_SUCCEEDED(res)) {
+            list_item* folderItem = NULL;
+            if(R_SUCCEEDED(task_create_file_item(&folderItem, parentDir->archive, path))) {
+                linked_list_add(items, folderItem);
+                linked_list_sort(items, util_compare_file_infos);
+            }
+
+            prompt_display("Success", "Folder created.", COLOR_TEXT, false, NULL, NULL, NULL);
+        } else {
+            error_display_res(NULL, NULL, res, "Failed to create folder.");
+        }
     }
-
-    free(data);
-}
-
-static void action_new_folder_kbd_canceled(void* data) {
-    free(data);
-}
-
-void action_new_folder(linked_list* items, list_item* selected) {
-    new_folder_data* data = (new_folder_data*) calloc(1, sizeof(new_folder_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate new folder data.");
-
-        return;
-    }
-
-    data->items = items;
-    data->parentDir = (file_info*) selected->data;
-
-    kbd_display("Enter Name", NULL, data, NULL, action_new_folder_kbd_finished, action_new_folder_kbd_canceled);
 }
