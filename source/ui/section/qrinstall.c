@@ -9,7 +9,6 @@
 #include "task/task.h"
 #include "../error.h"
 #include "../info.h"
-#include "../kbd.h"
 #include "../prompt.h"
 #include "../ui.h"
 #include "../../core/screen.h"
@@ -360,16 +359,14 @@ static void qrinstall_wait_draw_top(ui_view* view, void* data, float x1, float y
     }
 }
 
-static void qrinstall_process_urls(void* data, char* input) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    qrInstallData->installInfo.total = 0;
+static void qrinstall_process_urls(qr_install_data* data, char* input) {
+    data->installInfo.total = 0;
 
     size_t payloadLen = strlen(input);
 
     if(payloadLen > 0) {
         char* currStart = input;
-        while(qrInstallData->installInfo.total < URLS_MAX && currStart - input < payloadLen) {
+        while(data->installInfo.total < URLS_MAX && currStart - input < payloadLen) {
             char* currEnd = strchr(currStart, '\n');
             if(currEnd == NULL) {
                 currEnd = input + payloadLen;
@@ -382,30 +379,30 @@ static void qrinstall_process_urls(void* data, char* input) {
                     len = URL_MAX - 7;
                 }
 
-                strncpy(qrInstallData->urls[qrInstallData->installInfo.total], "http://", 7);
-                strncpy(&qrInstallData->urls[qrInstallData->installInfo.total][7], currStart, len);
+                strncpy(data->urls[data->installInfo.total], "http://", 7);
+                strncpy(&data->urls[data->installInfo.total][7], currStart, len);
             } else {
                 if(len > URL_MAX) {
                     len = URL_MAX;
                 }
 
-                strncpy(qrInstallData->urls[qrInstallData->installInfo.total], currStart, len);
+                strncpy(data->urls[data->installInfo.total], currStart, len);
             }
 
-            qrInstallData->installInfo.total++;
+            data->installInfo.total++;
             currStart = currEnd + 1;
         }
 
-        if(qrInstallData->installInfo.total > 0) {
-            if(!qrInstallData->captureInfo.finished) {
-                svcSignalEvent(qrInstallData->captureInfo.cancelEvent);
-                while(!qrInstallData->captureInfo.finished) {
+        if(data->installInfo.total > 0) {
+            if(!data->captureInfo.finished) {
+                svcSignalEvent(data->captureInfo.cancelEvent);
+                while(!data->captureInfo.finished) {
                     svcSleepThread(1000000);
                 }
             }
 
-            qrInstallData->capturing = false;
-            memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+            data->capturing = false;
+            memset(data->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
 
             prompt_display("Confirmation", "Install from the provided URL(s)?", COLOR_TEXT, true, data, NULL, qrinstall_confirm_onresponse);
         }
@@ -453,8 +450,17 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
     }
 
     if(hidKeysDown() & KEY_X) {
-        kbd_display("Enter URL(s)", NULL, data, NULL, qrinstall_process_urls, NULL);
-        return;
+        SwkbdState swkbd;
+        swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, -1);
+        swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY, 0, 0);
+        swkbdSetFeatures(&swkbd, SWKBD_MULTILINE);
+        swkbdSetHintText(&swkbd, "Enter URL(s)");
+
+        char textBuf[1024];
+        if(swkbdInputText(&swkbd, textBuf, sizeof(textBuf)) == SWKBD_BUTTON_CONFIRM) {
+            qrinstall_process_urls(qrInstallData, textBuf);
+            return;
+        }
     }
 
     if(qrInstallData->tex != 0) {
@@ -490,7 +496,7 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         quirc_decode_error_t err = quirc_decode(&qrCode, &qrData);
 
         if(err == 0) {
-            qrinstall_process_urls(data, (char*) qrData.payload);
+            qrinstall_process_urls(qrInstallData, (char*) qrData.payload);
             return;
         }
     }

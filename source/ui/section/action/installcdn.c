@@ -8,7 +8,6 @@
 #include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
-#include "../../kbd.h"
 #include "../../list.h"
 #include "../../prompt.h"
 #include "../../ui.h"
@@ -353,13 +352,16 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
     action_install_cdn_internal(done, info, finishedPrompt, NULL);
 }
 
-static void action_install_cdn_kbd_finished(void* data, char* input) {
-    action_install_cdn_internal(NULL, (ticket_info*) data, true, input);
-}
-
 static void action_install_cdn_onresponse(ui_view* view, void* data, bool response) {
     if(response) {
-        kbd_display("Enter Version (leave empty for default)", NULL, data, NULL, action_install_cdn_kbd_finished, NULL);
+        SwkbdState swkbd;
+        swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, -1);
+        swkbdSetHintText(&swkbd, "Enter version (empty for default)");
+
+        char textBuf[16];
+        swkbdInputText(&swkbd, textBuf, sizeof(textBuf));
+
+        action_install_cdn_internal(NULL, (ticket_info*) data, true, textBuf);
     }
 }
 
