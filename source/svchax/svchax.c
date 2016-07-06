@@ -20,7 +20,6 @@ u32 __ctr_svchax = 0;
 u32 __ctr_svchax_srv = 0;
 
 extern void* __service_ptr;
-extern Handle gspEvents[GSPGPU_EVENT_MAX];
 
 typedef u32(*backdoor_fn)(u32 arg0, u32 arg1);
 
@@ -294,7 +293,6 @@ static void do_memchunkhax2(void)
    GSPGPU_InvalidateDataCache((void*)dst_memchunk, 16);
    GSPGPU_FlushDataCache((void*)linear_buffer, 16);
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
-   svcClearEvent(gspEvents[GSPGPU_EVENT_PPF]);
 
    svcCreateThread(&mch2.alloc_thread, (ThreadFunc)alloc_thread_entry, (u32)&mch2,
                    mch2.threads[MCH2_THREAD_COUNT_MAX - 1].stack_top, 0x3F, 1);
@@ -304,7 +302,7 @@ static void do_memchunkhax2(void)
 
    GX_TextureCopy((void*)linear_buffer, 0, (void*)dst_memchunk, 0, 16, 8);
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
-   svcWaitSynchronization(gspEvents[GSPGPU_EVENT_PPF], U64_MAX);
+   gspWaitForPPF();
 
    svcWaitSynchronization(mch2.alloc_thread, U64_MAX);
    svcCloseHandle(mch2.alloc_thread);
@@ -378,16 +376,13 @@ static void do_memchunkhax2(void)
 
 static void gspwn(u32 dst, u32 src, u32 size, u8* flush_buffer)
 {
-   extern Handle gspEvents[GSPGPU_EVENT_MAX];
-
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
    GSPGPU_InvalidateDataCache((void*)dst, size);
    GSPGPU_FlushDataCache((void*)src, size);
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
 
-   svcClearEvent(gspEvents[GSPGPU_EVENT_PPF]);
    GX_TextureCopy((void*)src, 0, (void*)dst, 0, size, 8);
-   svcWaitSynchronization(gspEvents[GSPGPU_EVENT_PPF], U64_MAX);
+   gspWaitForPPF();
 
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
 }
