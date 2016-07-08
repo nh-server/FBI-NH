@@ -1,5 +1,7 @@
 #include <malloc.h>
 #include <stdio.h>
+#include <string.h>
+#include <time.h>
 
 #include <3ds.h>
 
@@ -38,7 +40,31 @@ static Result dumpnand_read_src(void* data, u32 handle, u32* bytesRead, void* bu
 }
 
 static Result dumpnand_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
-    return FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_UTF16, u"/NAND.bin"), FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+    Result res = 0;
+
+    FS_Archive sdmcArchive = 0;
+    if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
+        if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/nand/"))) {
+            time_t t = time(NULL);
+            struct tm* timeInfo = localtime(&t);
+
+            char path[FILE_PATH_MAX];
+            strftime(path, sizeof(path), "/fbi/nand/NAND_%m-%d-%y_%H-%M-%S.bin", timeInfo);
+
+            FS_Path* fsPath = util_make_path_utf8(path);
+            if(fsPath != NULL) {
+                res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+
+                util_free_path_utf8(fsPath);
+            } else {
+                res = R_FBI_OUT_OF_MEMORY;
+            }
+        }
+
+        FSUSER_CloseArchive(sdmcArchive);
+    }
+
+    return res;
 }
 
 static Result dumpnand_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
