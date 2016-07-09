@@ -320,13 +320,41 @@ u32 util_get_seed_response_code() {
 static u32 sigSizes[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
 
 u64 util_get_cia_title_id(u8* cia) {
-    u32 headerSize = *(u32*) &cia[0x00];
-    u32 certSize = *(u32*) &cia[0x08];
-    u32 ticketSize = *(u32*) &cia[0x0C];
+    u32 headerSize = ((*(u32*) &cia[0x00]) + 0x3F) & ~0x3F;
+    u32 certSize = ((*(u32*) &cia[0x08]) + 0x3F) & ~0x3F;
+    u32 ticketSize = ((*(u32*) &cia[0x0C]) + 0x3F) & ~0x3F;
 
-    u8* tmd = &cia[((headerSize + 0x3F) & ~0x3F) + ((certSize + 0x3F) & ~0x3F) + ((ticketSize + 0x3F) & ~0x3F)];
+    u8* tmd = &cia[headerSize + certSize + ticketSize];
 
     return util_get_tmd_title_id(tmd);
+}
+
+Result util_get_cia_file_smdh(SMDH* smdh, Handle handle) {
+    Result res = 0;
+
+    if(smdh != NULL) {
+        u32 bytesRead = 0;
+
+        u32 header[8];
+        if(R_SUCCEEDED(res = FSFILE_Read(handle, &bytesRead, 0, header, sizeof(header))) && bytesRead == sizeof(header)) {
+            u32 headerSize = (header[0] + 0x3F) & ~0x3F;
+            u32 certSize = (header[2] + 0x3F) & ~0x3F;
+            u32 ticketSize = (header[3] + 0x3F) & ~0x3F;
+            u32 tmdSize = (header[4] + 0x3F) & ~0x3F;
+            u32 metaSize = (header[5] + 0x3F) & ~0x3F;
+            u64 contentSize = ((header[6] | ((u64) header[7] << 32)) + 0x3F) & ~0x3F;
+
+            if(metaSize >= 0x3AC0) {
+                res = FSFILE_Read(handle, &bytesRead, headerSize + certSize + ticketSize + tmdSize + contentSize + 0x400, smdh, sizeof(SMDH));
+            } else {
+                res = R_FBI_BAD_DATA;
+            }
+        }
+    } else {
+        res = R_FBI_INVALID_ARGUMENT;
+    }
+
+    return res;
 }
 
 u64 util_get_ticket_title_id(u8* ticket) {
