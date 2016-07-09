@@ -66,7 +66,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
 
                                     SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
                                     if(smdh != NULL) {
-                                        if(R_SUCCEEDED(AM_GetCiaIcon(smdh, fileHandle))) {
+                                        if(R_SUCCEEDED(util_get_cia_file_smdh(smdh, fileHandle))) {
                                             if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
                                                 u8 systemLanguage = CFG_LANGUAGE_EN;
                                                 CFGU_GetSystemLanguage(&systemLanguage);

@@ -55,6 +55,7 @@ Result util_import_seed(u64 titleId);
 u32 util_get_seed_response_code();
 
 u64 util_get_cia_title_id(u8* cia);
+Result util_get_cia_file_smdh(SMDH* smdh, Handle handle);
 u64 util_get_ticket_title_id(u8* ticket);
 u64 util_get_tmd_title_id(u8* tmd);
 u16 util_get_tmd_content_count(u8* tmd);
