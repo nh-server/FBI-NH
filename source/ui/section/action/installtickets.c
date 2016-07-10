@@ -275,7 +275,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     popData.archive = data->target->archive;
     strncpy(popData.path, data->target->path, FILE_PATH_MAX);
     popData.recursive = false;
-    popData.includeBase = !data->target->isDirectory;
+    popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
     popData.filter = util_filter_tickets;
     popData.filterData = NULL;
 

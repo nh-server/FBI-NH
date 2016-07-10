@@ -400,7 +400,49 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
         infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Name: %.48s\n", info->name);
     }
 
-    if(!info->isDirectory) {
+    infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Attributes: ");
+
+    if(info->attributes & (FS_ATTRIBUTE_DIRECTORY | FS_ATTRIBUTE_HIDDEN | FS_ATTRIBUTE_ARCHIVE | FS_ATTRIBUTE_READ_ONLY)) {
+        bool needsSeparator = false;
+
+        if(info->attributes & FS_ATTRIBUTE_DIRECTORY) {
+            infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Directory");
+            needsSeparator = true;
+        }
+
+        if(info->attributes & FS_ATTRIBUTE_HIDDEN) {
+            if(needsSeparator) {
+                infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, ", ");
+            }
+
+            infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Hidden");
+            needsSeparator = true;
+        }
+
+        if(info->attributes & FS_ATTRIBUTE_ARCHIVE) {
+            if(needsSeparator) {
+                infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, ", ");
+            }
+
+            infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Archive");
+            needsSeparator = true;
+        }
+
+        if(info->attributes & FS_ATTRIBUTE_READ_ONLY) {
+            if(needsSeparator) {
+                infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, ", ");
+            }
+
+            infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Read Only");
+            needsSeparator = true;
+        }
+    } else {
+        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "None");
+    }
+
+    infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "\n");
+
+    if(!(info->attributes & FS_ATTRIBUTE_DIRECTORY)) {
         infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f %s\n", util_get_display_size(info->size), util_get_display_size_units(info->size));
 
         if(info->isCia) {
@@ -460,8 +502,6 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
         } else if(info->isTicket) {
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Ticket ID: %016llX", info->ticketInfo.titleId);
         }
-    } else {
-        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Directory");
     }
 
     float infoWidth;

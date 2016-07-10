@@ -46,7 +46,7 @@ static void action_paste_files_get_dst_path(paste_files_data* data, u32 index, c
     }
 
     char baseDstPath[FILE_PATH_MAX];
-    if(data->target->isDirectory) {
+    if(data->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
         strncpy(baseDstPath, data->target->path, FILE_PATH_MAX);
     } else {
         util_get_parent_path(baseDstPath, data->target->path, FILE_PATH_MAX);
@@ -58,7 +58,7 @@ static void action_paste_files_get_dst_path(paste_files_data* data, u32 index, c
 static Result action_paste_files_is_src_directory(void* data, u32 index, bool* isDirectory) {
     paste_files_data* pasteData = (paste_files_data*) data;
 
-    *isDirectory = ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->isDirectory;
+    *isDirectory = (bool) (((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes & FS_ATTRIBUTE_DIRECTORY);
     return 0;
 }
 
@@ -75,7 +75,7 @@ static Result action_paste_files_make_dst_directory(void* data, u32 index) {
         util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
 
         char baseDstPath[FILE_PATH_MAX];
-        if(pasteData->target->isDirectory) {
+        if(pasteData->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
             strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
         } else {
             util_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
@@ -164,7 +164,7 @@ static Result action_paste_files_close_dst(void* data, u32 index, bool succeeded
         util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
 
         char baseDstPath[FILE_PATH_MAX];
-        if(pasteData->target->isDirectory) {
+        if(pasteData->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
             strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
         } else {
             util_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
@@ -312,21 +312,12 @@ void action_paste_contents(linked_list* items, list_item* selected) {
 
     data->pasteInfo.finished = true;
 
-    list_item* clipboardItem = NULL;
-    Result createRes = 0;
-    if(R_FAILED(createRes = task_create_file_item(&clipboardItem, clipboard_get_archive(), clipboard_get_path()))) {
-        error_display_res(NULL, NULL, createRes, "Failed to retrieve clipboard content info.");
-
-        action_paste_files_free_data(data);
-        return;
-    }
-
     linked_list_init(&data->contents);
 
     populate_files_data popData;
     popData.items = &data->contents;
-    popData.archive = ((file_info*) clipboardItem->data)->archive;
-    strncpy(popData.path, ((file_info*) clipboardItem->data)->path, FILE_PATH_MAX);
+    popData.archive = clipboard_get_archive();
+    strncpy(popData.path, clipboard_get_path(), FILE_PATH_MAX);
     popData.recursive = true;
     popData.includeBase = !clipboard_is_contents_only() || !util_is_dir(clipboard_get_archive(), clipboard_get_path());
     popData.filter = NULL;
@@ -336,7 +327,6 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     if(R_FAILED(listRes)) {
         error_display_res(NULL, NULL, listRes, "Failed to initiate clipboard content list population.");
 
-        task_free_file(clipboardItem);
         action_paste_files_free_data(data);
         return;
     }
@@ -344,8 +334,6 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     while(!popData.finished) {
         svcSleepThread(1000000);
     }
-
-    task_free_file(clipboardItem);
 
     if(R_FAILED(popData.result)) {
         error_display_res(NULL, NULL, popData.result, "Failed to populate clipboard content list.");

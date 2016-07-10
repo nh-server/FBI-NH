@@ -58,7 +58,7 @@ typedef struct file_info_s {
     FS_Archive archive;
     char name[FILE_NAME_MAX];
     char path[FILE_PATH_MAX];
-    bool isDirectory;
+    u32 attributes;
 
     // Files only
     u64 size;
