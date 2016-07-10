@@ -406,9 +406,9 @@ int util_compare_file_infos(const void** p1, const void** p2) {
         file_info* f1 = (file_info*) info1->data;
         file_info* f2 = (file_info*) info2->data;
 
-        if(f1->isDirectory && !f2->isDirectory) {
+        if((f1->attributes & FS_ATTRIBUTE_DIRECTORY) && !(f2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
             return -1;
-        } else if(!f1->isDirectory && f2->isDirectory) {
+        } else if(!(f1->attributes & FS_ATTRIBUTE_DIRECTORY) && (f2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
             return 1;
         } else {
             return strncasecmp(f1->name, f2->name, FILE_NAME_MAX);

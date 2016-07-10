@@ -312,7 +312,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     popData.archive = data->target->archive;
     strncpy(popData.path, data->target->path, FILE_PATH_MAX);
     popData.recursive = false;
-    popData.includeBase = !data->target->isDirectory;
+    popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
     popData.filter = util_filter_cias;
     popData.filterData = NULL;
 

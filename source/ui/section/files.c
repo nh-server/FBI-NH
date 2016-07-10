@@ -95,7 +95,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
 
             Result res = 0;
             if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archive, info->path, selected == &copy_all_contents))) {
-                prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : info->isDirectory ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, ui_draw_file_info, NULL);
+                prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : (info->attributes & FS_ATTRIBUTE_DIRECTORY) ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, ui_draw_file_info, NULL);
             } else {
                 error_display_res(info, ui_draw_file_info, res, "Failed to copy to clipboard.");
             }
@@ -111,7 +111,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
     if(linked_list_size(items) == 0) {
         file_info* info = (file_info*) actionData->selected->data;
 
-        if(info->isDirectory) {
+        if(info->attributes & FS_ATTRIBUTE_DIRECTORY) {
             if(actionData->containsCias) {
                 linked_list_add(items, &install_all_cias);
                 linked_list_add(items, &install_and_delete_all_cias);
@@ -178,7 +178,7 @@ static void files_action_open(linked_list* items, list_item* selected, files_dat
         }
     }
 
-    list_display(((file_info*) selected->data)->isDirectory ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
+    list_display((((file_info*) selected->data)->attributes & FS_ATTRIBUTE_DIRECTORY) ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
 
 static void files_filters_add_entry(linked_list* items, const char* name, bool* val) {
@@ -329,7 +329,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
         file_info* fileInfo = (file_info*) selected->data;
 
-        if(fileInfo->isDirectory && strncmp(selected->name, "<current directory>", LIST_ITEM_NAME_MAX) != 0) {
+        if((fileInfo->attributes & FS_ATTRIBUTE_DIRECTORY) && strncmp(selected->name, "<current directory>", LIST_ITEM_NAME_MAX) != 0) {
             files_navigate(listData, items, fileInfo->path);
         } else {
             files_action_open(items, selected, listData);

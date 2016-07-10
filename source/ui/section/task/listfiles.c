@@ -23,8 +23,11 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
         if(fileInfo != NULL) {
             fileInfo->archive = archive;
             util_get_path_file(fileInfo->name, path, FILE_NAME_MAX);
+            fileInfo->attributes = 0;
+
             fileInfo->size = 0;
             fileInfo->isCia = false;
+            fileInfo->isTicket = false;
 
             if(util_is_dir(archive, path)) {
                 item->color = COLOR_DIRECTORY;
@@ -36,17 +39,17 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                     strncpy(fileInfo->path, path, FILE_PATH_MAX);
                 }
 
-                fileInfo->isDirectory = true;
+                fileInfo->attributes = FS_ATTRIBUTE_DIRECTORY;
             } else {
                 item->color = COLOR_FILE;
 
                 strncpy(fileInfo->path, path, FILE_PATH_MAX);
-                fileInfo->isDirectory = false;
 
                 FS_Path* fileFsPath = util_make_path_utf8(fileInfo->path);
                 if(fileFsPath != NULL) {
                     Handle fileHandle;
                     if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, archive, *fileFsPath, FS_OPEN_READ, 0))) {
+                        FSFILE_GetAttributes(fileHandle, &fileInfo->attributes);
                         FSFILE_GetSize(fileHandle, &fileInfo->size);
 
                         size_t len = strlen(fileInfo->path);
@@ -149,7 +152,7 @@ static void task_populate_files_thread(void* arg) {
     list_item* baseItem = NULL;
     if(R_SUCCEEDED(res = task_create_file_item(&baseItem, data->archive, data->path))) {
         file_info* baseInfo = (file_info*) baseItem->data;
-        if(baseInfo->isDirectory) {
+        if(baseInfo->attributes & FS_ATTRIBUTE_DIRECTORY) {
             strncpy(baseItem->name, "<current directory>", LIST_ITEM_NAME_MAX);
         } else {
             strncpy(baseItem->name, "<current file>", LIST_ITEM_NAME_MAX);
@@ -171,7 +174,7 @@ static void task_populate_files_thread(void* arg) {
                 linked_list_add(data->items, currItem);
             }
 
-            if(curr->isDirectory) {
+            if(curr->attributes & FS_ATTRIBUTE_DIRECTORY) {
                 FS_Path* fsPath = util_make_path_utf8(curr->path);
                 if(fsPath != NULL) {
                     Handle dirHandle = 0;
@@ -198,7 +201,7 @@ static void task_populate_files_thread(void* arg) {
 
                                         list_item* item = NULL;
                                         if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path))) {
-                                            if(data->recursive && ((file_info*) item->data)->isDirectory) {
+                                            if(data->recursive && (((file_info*) item->data)->attributes & FS_ATTRIBUTE_DIRECTORY)) {
                                                 linked_list_add(&queue, item);
                                             } else {
                                                 linked_list_add(data->items, item);

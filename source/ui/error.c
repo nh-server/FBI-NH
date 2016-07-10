@@ -323,6 +323,8 @@ static const char* description_to_string(Result res) {
                     return "Illegal operation / File in use";
                 case 231:
                     return "Resource locked";
+                case 250:
+                    return "FAT operation denied";
                 case 265:
                     return "Bus: Timeout";
                 case 331:

@@ -38,7 +38,7 @@ void action_rename(linked_list* items, list_item* selected) {
         if(srcFsPath != NULL) {
             FS_Path* dstFsPath = util_make_path_utf8(dstPath);
             if(dstFsPath != NULL) {
-                if(targetInfo->isDirectory) {
+                if(targetInfo->attributes & FS_ATTRIBUTE_DIRECTORY) {
                     res = FSUSER_RenameDirectory(targetInfo->archive, *srcFsPath, targetInfo->archive, *dstFsPath);
                 } else {
                     res = FSUSER_RenameFile(targetInfo->archive, *srcFsPath, targetInfo->archive, *dstFsPath);
