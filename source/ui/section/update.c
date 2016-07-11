@@ -211,7 +211,10 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                                     }
 
                                     if(name != NULL && assets != NULL) {
-                                        if(strncmp(name->u.string.ptr, VERSION_STRING, name->u.string.length) != 0) {
+                                        char versionString[16];
+                                        snprintf(versionString, sizeof(versionString), "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+
+                                        if(strncmp(name->u.string.ptr, versionString, name->u.string.length) != 0) {
                                             char* url = NULL;
 
                                             for(u32 i = 0; i < assets->u.array.length; i++) {
