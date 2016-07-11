@@ -494,10 +494,10 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos,
                      "Title ID: %016llX\n"
-                     "Version: %hu\n"
+                     "Version: %hu (%d.%d.%d)\n"
                      "Installed Size: %.2f %s",
                      info->ciaInfo.titleId,
-                     info->ciaInfo.version,
+                     info->ciaInfo.version, (info->ciaInfo.version >> 10) & 0x3F, (info->ciaInfo.version >> 4) & 0x3F, info->ciaInfo.version & 0xF,
                      util_get_display_size(info->ciaInfo.installedSize), util_get_display_size_units(info->ciaInfo.installedSize));
         } else if(info->isTicket) {
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Ticket ID: %016llX", info->ticketInfo.titleId);
@@ -520,10 +520,10 @@ void ui_draw_pending_title_info(ui_view* view, void* data, float x1, float y1, f
     snprintf(infoText, sizeof(infoText),
              "Pending Title ID: %016llX\n"
              "Media Type: %s\n"
-             "Version: %hu",
+             "Version: %hu (%d.%d.%d)",
              info->titleId,
              info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card",
-             info->version);
+             info->version, (info->version >> 10) & 0x3F, (info->version >> 4) & 0x3F, info->version & 0xF);
 
     float infoWidth;
     screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
