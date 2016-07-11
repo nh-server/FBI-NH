@@ -25,7 +25,7 @@ static void task_capture_cam_thread(void* arg) {
     u16* buffer = (u16*) calloc(1, bufferSize);
     if(buffer != NULL) {
         if(R_SUCCEEDED(res = camInit())) {
-            if(R_SUCCEEDED(res = CAMU_SetSize(SELECT_OUT1, SIZE_VGA, CONTEXT_A))
+            if(R_SUCCEEDED(res = CAMU_SetSize(SELECT_OUT1, SIZE_CTR_TOP_LCD, CONTEXT_A))
                && R_SUCCEEDED(res = CAMU_SetOutputFormat(SELECT_OUT1, OUTPUT_RGB_565, CONTEXT_A))
                && R_SUCCEEDED(res = CAMU_SetFrameRate(SELECT_OUT1, FRAME_RATE_30))
                && R_SUCCEEDED(res = CAMU_SetNoiseFilter(SELECT_OUT1, true))
@@ -36,7 +36,7 @@ static void task_capture_cam_thread(void* arg) {
 
                 if(R_SUCCEEDED(res = CAMU_GetBufferErrorInterruptEvent(&events[EVENT_BUFFER_ERROR], PORT_CAM1))
                    && R_SUCCEEDED(res = CAMU_SetTrimming(PORT_CAM1, true))
-                   && R_SUCCEEDED(res = CAMU_SetTrimmingParamsCenter(PORT_CAM1, data->width, data->height, 640, 480))
+                   && R_SUCCEEDED(res = CAMU_SetTrimmingParamsCenter(PORT_CAM1, data->width, data->height, 400, 240))
                    && R_SUCCEEDED(res = CAMU_GetMaxBytes(&transferUnit, data->width, data->height))
                    && R_SUCCEEDED(res = CAMU_SetTransferBytes(PORT_CAM1, transferUnit, data->width, data->height))
                    && R_SUCCEEDED(res = CAMU_ClearBuffer(PORT_CAM1))
