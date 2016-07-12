@@ -184,18 +184,21 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
 
     httpcContext context;
     if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, "https://api.github.com/repos/Steveice10/FBI/releases/latest", 1))) {
+        char userAgent[128];
+        snprintf(userAgent, sizeof(userAgent), "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+
         if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify))
-           && R_SUCCEEDED(res = httpcAddRequestHeaderField(&context, "User-Agent", "FBI"))
+           && R_SUCCEEDED(res = httpcAddRequestHeaderField(&context, "User-Agent", userAgent))
            && R_SUCCEEDED(res = httpcBeginRequest(&context))
            && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
             if(responseCode == 200) {
                 u32 size = 0;
                 if(R_SUCCEEDED(res = httpcGetDownloadSizeState(&context, NULL, &size))) {
-                    char* text = (char*) calloc(sizeof(char), size);
-                    if(text != NULL) {
+                    char* jsonText = (char*) calloc(sizeof(char), size);
+                    if(jsonText != NULL) {
                         u32 bytesRead = 0;
-                        if(R_SUCCEEDED(res = httpcDownloadData(&context, (u8*) text, size, &bytesRead))) {
-                            json_value* json = json_parse(text, size);
+                        if(R_SUCCEEDED(res = httpcDownloadData(&context, (u8*) jsonText, size, &bytesRead))) {
+                            json_value* json = json_parse(jsonText, size);
                             if(json != NULL) {
                                 if(json->type == json_object) {
                                     json_value* name = NULL;
@@ -258,6 +261,8 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                                 res = R_FBI_PARSE_FAILED;
                             }
                         }
+
+                        free(jsonText);
                     } else {
                         res = R_FBI_OUT_OF_MEMORY;
                     }

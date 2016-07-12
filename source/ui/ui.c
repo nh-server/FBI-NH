@@ -38,7 +38,7 @@ ui_view* ui_create() {
     }
 
     Result res = 0;
-    if(R_FAILED(res = svcCreateEvent(&view->active, 1))) {
+    if(R_FAILED(res = svcCreateEvent(&view->active, RESET_STICKY))) {
         util_panic("Failed to create view active event: 0x%08lX", res);
 
         free(view);
@@ -323,53 +323,61 @@ bool ui_update() {
     return ui != NULL;
 }
 
+void ui_draw_meta_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    meta_info* info = (meta_info*) data;
+
+    u32 metaInfoBoxShadowWidth;
+    u32 metaInfoBoxShadowHeight;
+    screen_get_texture_size(&metaInfoBoxShadowWidth, &metaInfoBoxShadowHeight, TEXTURE_META_INFO_BOX_SHADOW);
+
+    float metaInfoBoxShadowX = x1 + (x2 - x1 - metaInfoBoxShadowWidth) / 2;
+    float metaInfoBoxShadowY = y1 + (y2 - y1) / 4 - metaInfoBoxShadowHeight / 2;
+    screen_draw_texture(TEXTURE_META_INFO_BOX_SHADOW, metaInfoBoxShadowX, metaInfoBoxShadowY, metaInfoBoxShadowWidth, metaInfoBoxShadowHeight);
+
+    u32 metaInfoBoxWidth;
+    u32 metaInfoBoxHeight;
+    screen_get_texture_size(&metaInfoBoxWidth, &metaInfoBoxHeight, TEXTURE_META_INFO_BOX);
+
+    float metaInfoBoxX = x1 + (x2 - x1 - metaInfoBoxWidth) / 2;
+    float metaInfoBoxY = y1 + (y2 - y1) / 4 - metaInfoBoxHeight / 2;
+    screen_draw_texture(TEXTURE_META_INFO_BOX, metaInfoBoxX, metaInfoBoxY, metaInfoBoxWidth, metaInfoBoxHeight);
+
+    if(info->texture != 0) {
+        u32 iconWidth;
+        u32 iconHeight;
+        screen_get_texture_size(&iconWidth, &iconHeight, info->texture);
+
+        float iconX = metaInfoBoxX + (64 - iconWidth) / 2;
+        float iconY = metaInfoBoxY + (metaInfoBoxHeight - iconHeight) / 2;
+        screen_draw_texture(info->texture, iconX, iconY, iconWidth, iconHeight);
+    }
+
+    float metaTextX = metaInfoBoxX + 64;
+
+    float shortDescriptionHeight;
+    screen_get_string_size_wrap(NULL, &shortDescriptionHeight, info->shortDescription, 0.5f, 0.5f, metaInfoBoxX + metaInfoBoxWidth - 8 - metaTextX);
+
+    float longDescriptionHeight;
+    screen_get_string_size_wrap(NULL, &longDescriptionHeight, info->longDescription, 0.5f, 0.5f, metaInfoBoxX + metaInfoBoxWidth - 8 - metaTextX);
+
+    float publisherHeight;
+    screen_get_string_size_wrap(NULL, &publisherHeight, info->publisher, 0.5f, 0.5f, metaInfoBoxX + metaInfoBoxWidth - 8 - metaTextX);
+
+    float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
+    screen_draw_string_wrap(info->shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false, metaInfoBoxX + metaInfoBoxWidth - 8);
+
+    float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
+    screen_draw_string_wrap(info->longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false, metaInfoBoxX + metaInfoBoxWidth - 8);
+
+    float publisherY = longDescriptionY + longDescriptionHeight + 2;
+    screen_draw_string_wrap(info->publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false, metaInfoBoxX + metaInfoBoxWidth - 8);
+}
+
 void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     ext_save_data_info* info = (ext_save_data_info*) data;
 
     if(info->hasMeta) {
-        u32 metaInfoBoxShadowWidth;
-        u32 metaInfoBoxShadowHeight;
-        screen_get_texture_size(&metaInfoBoxShadowWidth, &metaInfoBoxShadowHeight, TEXTURE_META_INFO_BOX_SHADOW);
-
-        float metaInfoBoxShadowX = x1 + (x2 - x1 - metaInfoBoxShadowWidth) / 2;
-        float metaInfoBoxShadowY = y1 + (y2 - y1) / 4 - metaInfoBoxShadowHeight / 2;
-        screen_draw_texture(TEXTURE_META_INFO_BOX_SHADOW, metaInfoBoxShadowX, metaInfoBoxShadowY, metaInfoBoxShadowWidth, metaInfoBoxShadowHeight);
-
-        u32 metaInfoBoxWidth;
-        u32 metaInfoBoxHeight;
-        screen_get_texture_size(&metaInfoBoxWidth, &metaInfoBoxHeight, TEXTURE_META_INFO_BOX);
-
-        float metaInfoBoxX = x1 + (x2 - x1 - metaInfoBoxWidth) / 2;
-        float metaInfoBoxY = y1 + (y2 - y1) / 4 - metaInfoBoxHeight / 2;
-        screen_draw_texture(TEXTURE_META_INFO_BOX, metaInfoBoxX, metaInfoBoxY, metaInfoBoxWidth, metaInfoBoxHeight);
-
-        u32 iconWidth;
-        u32 iconHeight;
-        screen_get_texture_size(&iconWidth, &iconHeight, info->meta.texture);
-
-        float iconX = metaInfoBoxX + (64 - iconWidth) / 2;
-        float iconY = metaInfoBoxY + (metaInfoBoxHeight - iconHeight) / 2;
-        screen_draw_texture(info->meta.texture, iconX, iconY, iconWidth, iconHeight);
-
-        float shortDescriptionHeight;
-        screen_get_string_size(NULL, &shortDescriptionHeight, info->meta.shortDescription, 0.5f, 0.5f);
-
-        float longDescriptionHeight;
-        screen_get_string_size(NULL, &longDescriptionHeight, info->meta.longDescription, 0.5f, 0.5f);
-
-        float publisherHeight;
-        screen_get_string_size(NULL, &publisherHeight, info->meta.publisher, 0.5f, 0.5f);
-
-        float metaTextX = metaInfoBoxX + 64;
-
-        float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-        float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-        float publisherY = longDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+        ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
     }
 
     char infoText[512];
@@ -447,49 +455,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
 
         if(info->isCia) {
             if(info->ciaInfo.hasMeta) {
-                u32 metaInfoBoxShadowWidth;
-                u32 metaInfoBoxShadowHeight;
-                screen_get_texture_size(&metaInfoBoxShadowWidth, &metaInfoBoxShadowHeight, TEXTURE_META_INFO_BOX_SHADOW);
-
-                float metaInfoBoxShadowX = x1 + (x2 - x1 - metaInfoBoxShadowWidth) / 2;
-                float metaInfoBoxShadowY = y1 + (y2 - y1) / 4 - metaInfoBoxShadowHeight / 2;
-                screen_draw_texture(TEXTURE_META_INFO_BOX_SHADOW, metaInfoBoxShadowX, metaInfoBoxShadowY, metaInfoBoxShadowWidth, metaInfoBoxShadowHeight);
-
-                u32 metaInfoBoxWidth;
-                u32 metaInfoBoxHeight;
-                screen_get_texture_size(&metaInfoBoxWidth, &metaInfoBoxHeight, TEXTURE_META_INFO_BOX);
-
-                float metaInfoBoxX = x1 + (x2 - x1 - metaInfoBoxWidth) / 2;
-                float metaInfoBoxY = y1 + (y2 - y1) / 4 - metaInfoBoxHeight / 2;
-                screen_draw_texture(TEXTURE_META_INFO_BOX, metaInfoBoxX, metaInfoBoxY, metaInfoBoxWidth, metaInfoBoxHeight);
-
-                u32 iconWidth;
-                u32 iconHeight;
-                screen_get_texture_size(&iconWidth, &iconHeight, info->ciaInfo.meta.texture);
-
-                float iconX = metaInfoBoxX + (64 - iconWidth) / 2;
-                float iconY = metaInfoBoxY + (metaInfoBoxHeight - iconHeight) / 2;
-                screen_draw_texture(info->ciaInfo.meta.texture, iconX, iconY, iconWidth, iconHeight);
-
-                float shortDescriptionHeight;
-                screen_get_string_size(NULL, &shortDescriptionHeight, info->ciaInfo.meta.shortDescription, 0.5f, 0.5f);
-
-                float longDescriptionHeight;
-                screen_get_string_size(NULL, &longDescriptionHeight, info->ciaInfo.meta.longDescription, 0.5f, 0.5f);
-
-                float publisherHeight;
-                screen_get_string_size(NULL, &publisherHeight, info->ciaInfo.meta.publisher, 0.5f, 0.5f);
-
-                float metaTextX = metaInfoBoxX + 64;
-
-                float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-                screen_draw_string(info->ciaInfo.meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-                float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-                float publisherY = longDescriptionY + longDescriptionHeight + 2;
-                screen_draw_string(info->ciaInfo.meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+                ui_draw_meta_info(view, &info->ciaInfo.meta, x1, y1, x2, y2);
             }
 
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos,
@@ -567,49 +533,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
     title_info* info = (title_info*) data;
 
     if(info->hasMeta) {
-        u32 metaInfoBoxShadowWidth;
-        u32 metaInfoBoxShadowHeight;
-        screen_get_texture_size(&metaInfoBoxShadowWidth, &metaInfoBoxShadowHeight, TEXTURE_META_INFO_BOX_SHADOW);
-
-        float metaInfoBoxShadowX = x1 + (x2 - x1 - metaInfoBoxShadowWidth) / 2;
-        float metaInfoBoxShadowY = y1 + (y2 - y1) / 4 - metaInfoBoxShadowHeight / 2;
-        screen_draw_texture(TEXTURE_META_INFO_BOX_SHADOW, metaInfoBoxShadowX, metaInfoBoxShadowY, metaInfoBoxShadowWidth, metaInfoBoxShadowHeight);
-
-        u32 metaInfoBoxWidth;
-        u32 metaInfoBoxHeight;
-        screen_get_texture_size(&metaInfoBoxWidth, &metaInfoBoxHeight, TEXTURE_META_INFO_BOX);
-
-        float metaInfoBoxX = x1 + (x2 - x1 - metaInfoBoxWidth) / 2;
-        float metaInfoBoxY = y1 + (y2 - y1) / 4 - metaInfoBoxHeight / 2;
-        screen_draw_texture(TEXTURE_META_INFO_BOX, metaInfoBoxX, metaInfoBoxY, metaInfoBoxWidth, metaInfoBoxHeight);
-
-        u32 iconWidth;
-        u32 iconHeight;
-        screen_get_texture_size(&iconWidth, &iconHeight, info->meta.texture);
-
-        float iconX = metaInfoBoxX + (64 - iconWidth) / 2;
-        float iconY = metaInfoBoxY + (metaInfoBoxHeight - iconHeight) / 2;
-        screen_draw_texture(info->meta.texture, iconX, iconY, iconWidth, iconHeight);
-
-        float shortDescriptionHeight;
-        screen_get_string_size(NULL, &shortDescriptionHeight, info->meta.shortDescription, 0.5f, 0.5f);
-
-        float longDescriptionHeight;
-        screen_get_string_size(NULL, &longDescriptionHeight, info->meta.longDescription, 0.5f, 0.5f);
-
-        float publisherHeight;
-        screen_get_string_size(NULL, &publisherHeight, info->meta.publisher, 0.5f, 0.5f);
-
-        float metaTextX = metaInfoBoxX + 64;
-
-        float shortDescriptionY = metaInfoBoxY + (64 - shortDescriptionHeight - 2 - longDescriptionHeight - 2 - publisherHeight) / 2;
-        screen_draw_string(info->meta.shortDescription, metaTextX, shortDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-        float longDescriptionY = shortDescriptionY + shortDescriptionHeight + 2;
-        screen_draw_string(info->meta.longDescription, metaTextX, longDescriptionY, 0.5f, 0.5f, COLOR_TEXT, false);
-
-        float publisherY = longDescriptionY + longDescriptionHeight + 2;
-        screen_draw_string(info->meta.publisher, metaTextX, publisherY, 0.5f, 0.5f, COLOR_TEXT, false);
+        ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
     }
 
     char infoText[512];
@@ -625,6 +549,27 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
              info->version,
              info->productCode,
              util_get_display_size(info->installedSize), util_get_display_size_units(info->installedSize));
+
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
+
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
+}
+
+void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    titledb_info* info = (titledb_info*) data;
+
+    ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
+
+    char infoText[512];
+
+    snprintf(infoText, sizeof(infoText),
+             "Title ID: %016llX\n"
+             "Size: %.2f %s",
+             info->titleId,
+             util_get_display_size(info->size), util_get_display_size_units(info->size));
 
     float infoWidth;
     screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);

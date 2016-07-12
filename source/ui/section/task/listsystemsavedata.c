@@ -104,8 +104,8 @@ Result task_populate_system_save_data(populate_system_save_data_data* data) {
     data->cancelEvent = 0;
 
     Result res = 0;
-    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1))) {
-        if(threadCreate(task_populate_system_save_data_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
+        if(threadCreate(task_populate_system_save_data_thread, data, 0x10000, 0x19, 1, true) == NULL) {
             res = R_FBI_THREAD_CREATE_FAILED;
         }
     }

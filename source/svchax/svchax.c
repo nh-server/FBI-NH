@@ -227,7 +227,7 @@ static void do_memchunkhax2(void)
       if (!mch2.threads[i].keep)
          svcCloseHandle(mch2.threads[i].handle);
 
-   svcCreateEvent(&mch2.dummy_threads_lock, 1);
+   svcCreateEvent(&mch2.dummy_threads_lock, RESET_STICKY);
    svcClearEvent(mch2.dummy_threads_lock);
 
    for (i = 0; i < mch2.threads_limit; i++)
@@ -311,8 +311,8 @@ static void do_memchunkhax2(void)
 
    volatile u32* thread_ACL = &mapped_page[THREAD_PAGE_ACL_OFFSET >> 2];
 
-   svcCreateEvent(&mch2.main_thread_lock, 0);
-   svcCreateEvent(&mch2.target_threads_lock, 1);
+   svcCreateEvent(&mch2.main_thread_lock, RESET_ONESHOT);
+   svcCreateEvent(&mch2.target_threads_lock, RESET_STICKY);
    svcClearEvent(mch2.target_threads_lock);
 
    for (i = 0; i < mch2.threads_limit; i++)

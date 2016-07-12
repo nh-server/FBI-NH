@@ -124,8 +124,8 @@ Result task_capture_cam(capture_cam_data* data) {
     data->cancelEvent = 0;
 
     Result res = 0;
-    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, 1)) && R_SUCCEEDED(res = svcCreateMutex(&data->mutex, false))) {
-        if(threadCreate(task_capture_cam_thread, data, 0x10000, 0x19, 1, true) == NULL) {
+    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY)) && R_SUCCEEDED(res = svcCreateMutex(&data->mutex, false))) {
+        if(threadCreate(task_capture_cam_thread, data, 0x10000, 0x1A, 1, true) == NULL) {
             res = R_FBI_THREAD_CREATE_FAILED;
         }
     }

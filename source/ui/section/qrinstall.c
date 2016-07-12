@@ -12,7 +12,6 @@
 #include "../prompt.h"
 #include "../ui.h"
 #include "../../core/screen.h"
-#include "../../core/util.h"
 #include "../../quirc/quirc_internal.h"
 
 #define IMAGE_WIDTH 400
@@ -23,307 +22,13 @@
 
 typedef struct {
     struct quirc* qrContext;
-    char urls[URLS_MAX][URL_MAX];
-
     u32 tex;
-
-    bool cdn;
-    bool cdnDecided;
-
-    u32 responseCode;
-    bool ticket;
-    u64 currTitleId;
-    volatile bool n3dsContinue;
-    ticket_info ticketInfo;
 
     bool capturing;
     capture_cam_data captureInfo;
-    data_op_data installInfo;
 } qr_install_data;
 
-static void qrinstall_cdn_check_onresponse(ui_view* view, void* data, bool response) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    qrInstallData->cdn = response;
-    qrInstallData->cdnDecided = true;
-}
-
-static void qrinstall_n3ds_onresponse(ui_view* view, void* data, bool response) {
-    ((qr_install_data*) data)->n3dsContinue = response;
-}
-
-static Result qrinstall_is_src_directory(void* data, u32 index, bool* isDirectory) {
-    *isDirectory = false;
-    return 0;
-}
-
-static Result qrinstall_make_dst_directory(void* data, u32 index) {
-    return 0;
-}
-
-static Result qrinstall_open_src(void* data, u32 index, u32* handle) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    Result res = 0;
-
-    httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
-    if(context != NULL) {
-        if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, qrInstallData->urls[index], 1))) {
-            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &qrInstallData->responseCode, 0))) {
-                if(qrInstallData->responseCode == 200) {
-                    *handle = (u32) context;
-                } else if(qrInstallData->responseCode == 301 || qrInstallData->responseCode == 302 || qrInstallData->responseCode == 303) {
-                    memset(qrInstallData->urls[index], '\0', URL_MAX);
-                    if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", qrInstallData->urls[index], URL_MAX))) {
-                        httpcCloseContext(context);
-                        free(context);
-
-                        return qrinstall_open_src(data, index, handle);
-                    }
-                } else {
-                    res = R_FBI_HTTP_RESPONSE_CODE;
-                }
-            }
-
-            if(R_FAILED(res)) {
-                httpcCloseContext(context);
-            }
-        }
-
-        if(R_FAILED(res)) {
-            free(context);
-        }
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
-    }
-
-    return res;
-}
-
-static Result qrinstall_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    return httpcCloseContext((httpcContext*) handle);
-}
-
-static Result qrinstall_get_src_size(void* data, u32 handle, u64* size) {
-    u32 downloadSize = 0;
-    Result res = httpcGetDownloadSizeState((httpcContext*) handle, NULL, &downloadSize);
-
-    *size = downloadSize;
-    return res;
-}
-
-static Result qrinstall_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    Result res = httpcDownloadData((httpcContext*) handle, buffer, size, bytesRead);
-    return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
-}
-
-static Result qrinstall_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    Result res = 0;
-
-    qrInstallData->responseCode = 0;
-    qrInstallData->ticket = false;
-    qrInstallData->currTitleId = 0;
-    qrInstallData->n3dsContinue = false;
-    memset(&qrInstallData->ticketInfo, 0, sizeof(qrInstallData->ticketInfo));
-
-    if(*(u16*) initialReadBlock == 0x0100) {
-        if(!qrInstallData->cdnDecided) {
-            ui_view* view = prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, qrinstall_cdn_check_onresponse);
-            if(view != NULL) {
-                svcWaitSynchronization(view->active, U64_MAX);
-            }
-        }
-
-        qrInstallData->ticket = true;
-        qrInstallData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
-
-        AM_DeleteTicket(qrInstallData->ticketInfo.titleId);
-        res = AM_InstallTicketBegin(handle);
-    } else if(*(u16*) initialReadBlock == 0x2020) {
-        u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
-
-        FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
-
-        bool n3ds = false;
-        if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-            ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, NULL, qrinstall_n3ds_onresponse);
-            if(view != NULL) {
-                svcWaitSynchronization(view->active, U64_MAX);
-            }
-
-            if(!qrInstallData->n3dsContinue) {
-                return R_FBI_WRONG_SYSTEM;
-            }
-        }
-
-        // Deleting FBI before it reinstalls itself causes issues.
-        if(((titleId >> 8) & 0xFFFFF) != 0xF8001) {
-            AM_DeleteTitle(dest, titleId);
-            AM_DeleteTicket(titleId);
-
-            if(dest == MEDIATYPE_SD) {
-                AM_QueryAvailableExternalTitleDatabase(NULL);
-            }
-        }
-
-        if(R_SUCCEEDED(res = AM_StartCiaInstall(dest, handle))) {
-            qrInstallData->currTitleId = titleId;
-        }
-    } else {
-        res = R_FBI_BAD_DATA;
-    }
-
-    return res;
-}
-
-static Result qrinstall_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    if(succeeded) {
-        Result res = 0;
-
-        if(qrInstallData->ticket) {
-            res = AM_InstallTicketFinish(handle);
-
-            if(R_SUCCEEDED(res) && qrInstallData->cdn) {
-                volatile bool done = false;
-                action_install_cdn_noprompt(&done, &qrInstallData->ticketInfo, false);
-
-                while(!done) {
-                    svcSleepThread(100000000);
-                }
-            }
-        } else {
-            if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-                util_import_seed(qrInstallData->currTitleId);
-
-                if(qrInstallData->currTitleId == 0x0004013800000002 || qrInstallData->currTitleId == 0x0004013820000002) {
-                    res = AM_InstallFirm(qrInstallData->currTitleId);
-                }
-            }
-        }
-
-        return res;
-    } else {
-        if(qrInstallData->ticket) {
-            return AM_InstallTicketAbort(handle);
-        } else {
-            return AM_CancelCIAInstall(handle);
-        }
-    }
-}
-
-static Result qrinstall_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
-    return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
-}
-
-static Result qrinstall_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result qrinstall_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result qrinstall_suspend(void* data, u32 index) {
-    return 0;
-}
-
-static Result qrinstall_restore(void* data, u32 index) {
-    return 0;
-}
-
-static bool qrinstall_error(void* data, u32 index, Result res) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
-        return false;
-    } else if(res != R_FBI_WRONG_SYSTEM) {
-        char* url = qrInstallData->urls[index];
-
-        ui_view* view = NULL;
-
-        if(res == R_FBI_HTTP_RESPONSE_CODE) {
-            if(strlen(url) > 38) {
-                view = error_display(NULL, NULL, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, qrInstallData->responseCode);
-            } else {
-                view = error_display(NULL, NULL, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, qrInstallData->responseCode);
-            }
-        } else {
-            if(strlen(url) > 38) {
-                view = error_display_res(NULL, NULL, res, "Failed to install from URL.\n%.35s...", url);
-            } else {
-                view = error_display_res(NULL, NULL, res, "Failed to install from URL.\n%.38s", url);
-            }
-        }
-
-        if(view != NULL) {
-            svcWaitSynchronization(view->active, U64_MAX);
-        }
-    }
-
-    return index < qrInstallData->installInfo.total - 1;
-}
-
-static void qrinstall_install_update(ui_view* view, void* data, float* progress, char* text) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    if(qrInstallData->installInfo.finished) {
-        ui_pop();
-        info_destroy(view);
-
-        if(R_SUCCEEDED(qrInstallData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
-        }
-
-        for(u32 i = 0; i < qrInstallData->installInfo.total; i++) {
-            memset(qrInstallData->urls[i], '\0', URL_MAX);
-        }
-
-        qrInstallData->cdn = false;
-        qrInstallData->cdnDecided = false;
-
-        qrInstallData->responseCode = 0;
-        qrInstallData->ticket = false;
-        qrInstallData->currTitleId = 0;
-        qrInstallData->n3dsContinue = false;
-        memset(&qrInstallData->ticketInfo, 0, sizeof(qrInstallData->ticketInfo));
-
-        return;
-    }
-
-    if(hidKeysDown() & KEY_B) {
-        svcSignalEvent(qrInstallData->installInfo.cancelEvent);
-    }
-
-    *progress = qrInstallData->installInfo.currTotal != 0 ? (float) ((double) qrInstallData->installInfo.currProcessed / (double) qrInstallData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", qrInstallData->installInfo.processed, qrInstallData->installInfo.total, util_get_display_size(qrInstallData->installInfo.currProcessed), util_get_display_size_units(qrInstallData->installInfo.currProcessed), util_get_display_size(qrInstallData->installInfo.currTotal), util_get_display_size_units(qrInstallData->installInfo.currTotal));
-}
-
-static void qrinstall_confirm_onresponse(ui_view* view, void* data, bool response) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    if(response) {
-        Result res = task_data_op(&qrInstallData->installInfo);
-        if(R_SUCCEEDED(res)) {
-            info_display("Installing From URL(s)", "Press B to cancel.", true, data, qrinstall_install_update, NULL);
-        } else {
-            error_display_res(NULL, NULL, res, "Failed to initiate installation.");
-        }
-    }
-}
-
 static void qrinstall_free_data(qr_install_data* data) {
-    if(!data->installInfo.finished) {
-        svcSignalEvent(data->installInfo.cancelEvent);
-        while(!data->installInfo.finished) {
-            svcSleepThread(1000000);
-        }
-    }
-
     if(!data->captureInfo.finished) {
         svcSignalEvent(data->captureInfo.cancelEvent);
         while(!data->captureInfo.finished) {
@@ -356,56 +61,6 @@ static void qrinstall_wait_draw_top(ui_view* view, void* data, float x1, float y
 
     if(qrInstallData->tex != 0) {
         screen_draw_texture(qrInstallData->tex, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
-    }
-}
-
-static void qrinstall_process_urls(qr_install_data* data, char* input) {
-    data->installInfo.total = 0;
-
-    size_t payloadLen = strlen(input);
-
-    if(payloadLen > 0) {
-        char* currStart = input;
-        while(data->installInfo.total < URLS_MAX && currStart - input < payloadLen) {
-            char* currEnd = strchr(currStart, '\n');
-            if(currEnd == NULL) {
-                currEnd = input + payloadLen;
-            }
-
-            u32 len = currEnd - currStart;
-
-            if((len < 7 || strncmp(currStart, "http://", 7) != 0) && (len < 8 || strncmp(currStart, "https://", 8) != 0)) {
-                if(len > URL_MAX - 7) {
-                    len = URL_MAX - 7;
-                }
-
-                strncpy(data->urls[data->installInfo.total], "http://", 7);
-                strncpy(&data->urls[data->installInfo.total][7], currStart, len);
-            } else {
-                if(len > URL_MAX) {
-                    len = URL_MAX;
-                }
-
-                strncpy(data->urls[data->installInfo.total], currStart, len);
-            }
-
-            data->installInfo.total++;
-            currStart = currEnd + 1;
-        }
-
-        if(data->installInfo.total > 0) {
-            if(!data->captureInfo.finished) {
-                svcSignalEvent(data->captureInfo.cancelEvent);
-                while(!data->captureInfo.finished) {
-                    svcSleepThread(1000000);
-                }
-            }
-
-            data->capturing = false;
-            memset(data->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
-
-            prompt_display("Confirmation", "Install from the provided URL(s)?", COLOR_TEXT, true, data, NULL, qrinstall_confirm_onresponse);
-        }
     }
 }
 
@@ -458,7 +113,17 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
 
         char textBuf[1024];
         if(swkbdInputText(&swkbd, textBuf, sizeof(textBuf)) == SWKBD_BUTTON_CONFIRM) {
-            qrinstall_process_urls(qrInstallData, textBuf);
+            if(!qrInstallData->captureInfo.finished) {
+                svcSignalEvent(qrInstallData->captureInfo.cancelEvent);
+                while(!qrInstallData->captureInfo.finished) {
+                    svcSleepThread(1000000);
+                }
+            }
+
+            qrInstallData->capturing = false;
+            memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+
+            action_url_install("Install from the provided URL(s)?", textBuf);
             return;
         }
     }
@@ -496,7 +161,17 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         quirc_decode_error_t err = quirc_decode(&qrCode, &qrData);
 
         if(err == 0) {
-            qrinstall_process_urls(qrInstallData, (char*) qrData.payload);
+            if(!qrInstallData->captureInfo.finished) {
+                svcSignalEvent(qrInstallData->captureInfo.cancelEvent);
+                while(!qrInstallData->captureInfo.finished) {
+                    svcSleepThread(1000000);
+                }
+            }
+
+            qrInstallData->capturing = false;
+            memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+
+            action_url_install("Install from the scanned QR code?", (const char*) qrData.payload);
             return;
         }
     }
@@ -513,46 +188,6 @@ void qrinstall_open() {
     }
 
     data->tex = 0;
-
-    data->cdn = false;
-    data->cdnDecided = false;
-
-    data->responseCode = 0;
-    data->ticket = false;
-    data->currTitleId = 0;
-    data->n3dsContinue = false;
-    memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
-
-    data->installInfo.data = data;
-
-    data->installInfo.op = DATAOP_COPY;
-
-    data->installInfo.copyBufferSize = 256 * 1024;
-    data->installInfo.copyEmpty = false;
-
-    data->installInfo.total = 0;
-
-    data->installInfo.isSrcDirectory = qrinstall_is_src_directory;
-    data->installInfo.makeDstDirectory = qrinstall_make_dst_directory;
-
-    data->installInfo.openSrc = qrinstall_open_src;
-    data->installInfo.closeSrc = qrinstall_close_src;
-    data->installInfo.getSrcSize = qrinstall_get_src_size;
-    data->installInfo.readSrc = qrinstall_read_src;
-
-    data->installInfo.openDst = qrinstall_open_dst;
-    data->installInfo.closeDst = qrinstall_close_dst;
-    data->installInfo.writeDst = qrinstall_write_dst;
-
-    data->installInfo.suspendCopy = qrinstall_suspend_copy;
-    data->installInfo.restoreCopy = qrinstall_restore_copy;
-
-    data->installInfo.suspend = qrinstall_suspend;
-    data->installInfo.restore = qrinstall_restore;
-
-    data->installInfo.error = qrinstall_error;
-
-    data->installInfo.finished = true;
 
     data->capturing = false;
 
