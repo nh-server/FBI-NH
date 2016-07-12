@@ -14,4 +14,5 @@ void qrinstall_open();
 void systemsavedata_open();
 void tickets_open();
 void titles_open();
+void titledb_open();
 void update_open();

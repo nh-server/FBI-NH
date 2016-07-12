@@ -68,6 +68,12 @@ typedef struct file_info_s {
     ticket_info ticketInfo;
 } file_info;
 
+typedef struct titledb_info_s {
+    u64 titleId;
+    u64 size;
+    meta_info meta;
+} titledb_info;
+
 typedef struct {
     u16* buffer;
     s16 width;
@@ -196,6 +202,14 @@ typedef struct {
     Handle cancelEvent;
 } populate_titles_data;
 
+typedef struct {
+    linked_list* items;
+
+    volatile bool finished;
+    Result result;
+    Handle cancelEvent;
+} populate_titledb_data;
+
 void task_init();
 void task_exit();
 bool task_is_quit_all();
@@ -230,3 +244,7 @@ Result task_populate_tickets(populate_tickets_data* data);
 void task_free_title(list_item* item);
 void task_clear_titles(linked_list* items);
 Result task_populate_titles(populate_titles_data* data);
+
+void task_free_titledb(list_item* item);
+void task_clear_titledb(linked_list* items);
+Result task_populate_titledb(populate_titledb_data* data);
