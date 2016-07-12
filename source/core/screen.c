@@ -207,6 +207,10 @@ void screen_init() {
                 colorConfig[COLOR_ENABLED] = color;
             } else if(strcasecmp(key, "disabled") == 0) {
                 colorConfig[COLOR_DISABLED] = color;
+            } else if(strcasecmp(key, "installed") == 0) {
+                colorConfig[COLOR_INSTALLED] = color;
+            } else if(strcasecmp(key, "notinstalled") == 0) {
+                colorConfig[COLOR_NOT_INSTALLED] = color;
             }
         }
     }
