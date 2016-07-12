@@ -105,7 +105,13 @@ static void task_populate_titledb_thread(void* arg) {
                                         snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titledbInfo->titleId);
                                     }
 
-                                    item->color = COLOR_TEXT;
+                                    AM_TitleEntry entry;
+                                    if(R_SUCCEEDED(AM_GetTitleInfo(((titledbInfo->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, &titledbInfo->titleId, &entry))) {
+                                        item->color = COLOR_INSTALLED;
+                                    } else {
+                                        item->color = COLOR_NOT_INSTALLED;
+                                    }
+
                                     item->data = titledbInfo;
 
                                     linked_list_add(data->items, item);

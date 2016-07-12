@@ -42,7 +42,7 @@
 
 #define TEXTURE_AUTO_START 32
 
-#define NUM_COLORS 9
+#define NUM_COLORS 11
 
 #define COLOR_TEXT 0
 #define COLOR_NAND 1
@@ -53,6 +53,8 @@
 #define COLOR_DIRECTORY 6
 #define COLOR_ENABLED 7
 #define COLOR_DISABLED 8
+#define COLOR_INSTALLED 9
+#define COLOR_NOT_INSTALLED 10
 
 void screen_init();
 void screen_exit();
