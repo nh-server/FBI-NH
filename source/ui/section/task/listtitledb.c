@@ -106,7 +106,7 @@ static void task_populate_titledb_thread(void* arg) {
                                     }
 
                                     AM_TitleEntry entry;
-                                    if(R_SUCCEEDED(AM_GetTitleInfo(((titledbInfo->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, &titledbInfo->titleId, &entry))) {
+                                    if(R_SUCCEEDED(AM_GetTitleInfo((titledbInfo->titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, &titledbInfo->titleId, &entry))) {
                                         item->color = COLOR_INSTALLED;
                                     } else {
                                         item->color = COLOR_NOT_INSTALLED;

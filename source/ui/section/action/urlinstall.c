@@ -137,7 +137,7 @@ static Result action_url_install_open_dst(void* data, u32 index, void* initialRe
     } else if(*(u16*) initialReadBlock == 0x2020) {
         u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
-        FS_MediaType dest = ((titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+        FS_MediaType dest = (titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
         bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
