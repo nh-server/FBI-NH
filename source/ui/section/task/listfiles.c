@@ -63,7 +63,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                                     fileInfo->ciaInfo.installedSize = titleEntry.size;
                                     fileInfo->ciaInfo.hasMeta = false;
 
-                                    if(((titleEntry.titleID >> 32) & 0x8010) != 0 && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
+                                    if((titleEntry.titleID & 0x0000801000000002) != 0 && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
                                         fileInfo->ciaInfo.installedSize = titleEntry.size;
                                     }
 

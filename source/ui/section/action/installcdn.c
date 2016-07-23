@@ -133,7 +133,7 @@ static Result action_install_cdn_close_dst(void* data, u32 index, bool succeeded
         } else {
             Result res = 0;
             if(R_SUCCEEDED(res = AM_InstallContentFinish(handle)) && index == 1 && installData->contentCount > 1 && ((installData->ticket->titleId >> 48) & 0x4) != 0 && ((installData->ticket->titleId >> 32) & 0x4) != 0) {
-                FS_MediaType dest = ((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+                FS_MediaType dest = (installData->ticket->titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
                 if(R_SUCCEEDED(res = AM_InstallTitleFinish())
                    && R_SUCCEEDED(res = AM_CommitImportTitles(dest, 1, false, &installData->ticket->titleId))
                    && R_SUCCEEDED(res = AM_InstallTitleBegin(dest, installData->ticket->titleId, false))) {
@@ -181,7 +181,7 @@ static Result action_install_cdn_suspend(void* data, u32 index) {
 static Result action_install_cdn_restore(void* data, u32 index) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
-    return AM_InstallTitleResume(((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, installData->ticket->titleId);
+    return AM_InstallTitleResume((installData->ticket->titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, installData->ticket->titleId);
 }
 
 bool action_install_cdn_error(void* data, u32 index, Result res) {
@@ -221,7 +221,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
             if(R_SUCCEEDED(res = AM_InstallTitleFinish())
-               && R_SUCCEEDED(res = AM_CommitImportTitles(((installData->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, false, &installData->ticket->titleId))) {
+               && R_SUCCEEDED(res = AM_CommitImportTitles((installData->ticket->titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, false, &installData->ticket->titleId))) {
                 util_import_seed(installData->ticket->titleId);
 
                 if(installData->ticket->titleId == 0x0004013800000002 || installData->ticket->titleId == 0x0004013820000002) {
@@ -256,7 +256,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 }
 
 static void action_install_cdn_start(install_cdn_data* data) {
-    FS_MediaType dest = ((data->ticket->titleId >> 32) & 0x8010) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+    FS_MediaType dest = (data->ticket->titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
 
     AM_DeleteTitle(dest, data->ticket->titleId);
     if(dest == MEDIATYPE_SD) {
