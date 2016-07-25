@@ -50,6 +50,7 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                                 utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(titleInfo->meta.shortDescription) - 1);
                                 utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->meta.longDescription) - 1);
                                 utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->meta.publisher) - 1);
+                                titleInfo->meta.region = smdh->region;
                                 titleInfo->meta.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
                             }
                         }
@@ -111,28 +112,28 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
     u16 version = 0;
     u64 installedSize = 0;
 
+    u8 header[0x3B4] = {0};
+    Result headerRes = FSUSER_GetLegacyRomHeader(mediaType, titleId, header);
+
     AM_TitleEntry entry;
     if(R_SUCCEEDED(res = AM_GetTitleInfo(mediaType, 1, &titleId, &entry))) {
         realTitleId = titleId;
         AM_GetTitleProductCode(mediaType, titleId, productCode);
         version = entry.version;
         installedSize = entry.size;
-    } else {
-        u8 header[0x3B4] = {0};
-        if(R_SUCCEEDED(res = FSUSER_GetLegacyRomHeader(mediaType, titleId, header))) {
-            memcpy(&realTitleId, &header[0x230], sizeof(u64));
-            memcpy(productCode, header, 0x00C);
-            version = header[0x01E];
+    } else if(R_SUCCEEDED(res = headerRes)) {
+        memcpy(&realTitleId, &header[0x230], sizeof(realTitleId));
+        memcpy(productCode, header, sizeof(productCode));
+        version = header[0x01E];
 
-            u32 size = 0;
-            if((header[0x012] & 0x2) != 0) {
-                memcpy(&size, &header[0x210], sizeof(u32));
-            } else {
-                memcpy(&size, &header[0x080], sizeof(u32));
-            }
-
-            installedSize = size;
+        u32 size = 0;
+        if((header[0x012] & 0x2) != 0) {
+            memcpy(&size, &header[0x210], sizeof(size));
+        } else {
+            memcpy(&size, &header[0x080], sizeof(size));
         }
+
+        installedSize = size;
     }
 
     if(R_SUCCEEDED(res)) {
@@ -199,6 +200,12 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                                 icon[dstPos + 0] = (u8) (reversedPx & 0xFF);
                                 icon[dstPos + 1] = (u8) ((reversedPx >> 8) & 0xFF);
                             }
+                        }
+
+                        if(R_SUCCEEDED(headerRes)) {
+                            memcpy(&titleInfo->meta.region, &header[0x1B0], sizeof(titleInfo->meta.region));
+                        } else {
+                            titleInfo->meta.region = 0;
                         }
 
                         titleInfo->meta.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);

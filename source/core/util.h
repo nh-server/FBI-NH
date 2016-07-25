@@ -77,3 +77,5 @@ double util_get_display_size(u64 size);
 const char* util_get_display_size_units(u64 size);
 
 void util_escape_file_name(char* out, const char* in, size_t size);
+
+void util_smdh_region_to_string(char* out, u32 region, size_t size);
