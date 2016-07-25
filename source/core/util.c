@@ -568,3 +568,40 @@ void util_escape_file_name(char* out, const char* in, size_t size) {
         }
     }
 }
+
+#define SMDH_NUM_REGIONS 7
+#define SMDH_ALL_REGIONS 0x7F
+
+static const char* regionStrings[SMDH_NUM_REGIONS] = {
+        "Japan",
+        "North America",
+        "Europe",
+        "Australia",
+        "China",
+        "Korea",
+        "Taiwan"
+};
+
+void util_smdh_region_to_string(char* out, u32 region, size_t size) {
+    if(out == NULL) {
+        return;
+    }
+
+    if(region == 0) {
+        snprintf(out, size, "Unknown");
+    } else if((region & SMDH_ALL_REGIONS) == SMDH_ALL_REGIONS) {
+        snprintf(out, size, "Region Free");
+    } else {
+        size_t pos = 0;
+
+        for(u32 i = 0; i < SMDH_NUM_REGIONS; i++) {
+            if(region & (1 << i)) {
+                if(pos > 0) {
+                    pos += snprintf(out + pos, size - pos, ", ");
+                }
+
+                pos += snprintf(out + pos, size - pos, regionStrings[i]);
+            }
+        }
+    }
+}

@@ -454,16 +454,24 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
         infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f %s\n", util_get_display_size(info->size), util_get_display_size_units(info->size));
 
         if(info->isCia) {
+            char regionString[64];
+
             if(info->ciaInfo.hasMeta) {
                 ui_draw_meta_info(view, &info->ciaInfo.meta, x1, y1, x2, y2);
+
+                util_smdh_region_to_string(regionString, info->ciaInfo.meta.region, sizeof(regionString));
+            } else {
+                snprintf(regionString, sizeof(regionString), "Unknown");
             }
 
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos,
                      "Title ID: %016llX\n"
                      "Version: %hu (%d.%d.%d)\n"
+                     "Region: %s\n"
                      "Installed Size: %.2f %s",
                      info->ciaInfo.titleId,
                      info->ciaInfo.version, (info->ciaInfo.version >> 10) & 0x3F, (info->ciaInfo.version >> 4) & 0x3F, info->ciaInfo.version & 0xF,
+                     regionString,
                      util_get_display_size(info->ciaInfo.installedSize), util_get_display_size_units(info->ciaInfo.installedSize));
         } else if(info->isTicket) {
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Ticket ID: %016llX", info->ticketInfo.titleId);
@@ -532,8 +540,14 @@ void ui_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2
 void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     title_info* info = (title_info*) data;
 
+    char regionString[64];
+
     if(info->hasMeta) {
         ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
+
+        util_smdh_region_to_string(regionString, info->meta.region, sizeof(regionString));
+    } else {
+        snprintf(regionString, sizeof(regionString), "Unknown");
     }
 
     char infoText[512];
@@ -543,11 +557,13 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
              "Media Type: %s\n"
              "Version: %hu\n"
              "Product Code: %s\n"
+             "Region: %s\n"
              "Size: %.2f %s",
              info->titleId,
              info->mediaType == MEDIATYPE_NAND ? "NAND" : info->mediaType == MEDIATYPE_SD ? "SD" : "Game Card",
              info->version,
              info->productCode,
+             regionString,
              util_get_display_size(info->installedSize), util_get_display_size_units(info->installedSize));
 
     float infoWidth;
