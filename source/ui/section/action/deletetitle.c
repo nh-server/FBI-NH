@@ -15,6 +15,7 @@
 typedef struct {
     linked_list* items;
     list_item* selected;
+    bool ticket;
 } delete_title_data;
 
 static void action_delete_title_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -26,7 +27,11 @@ static void action_delete_title_update(ui_view* view, void* data, float* progres
 
     title_info* info = (title_info*) deleteData->selected->data;
 
-    Result res = AM_DeleteTitle(info->mediaType, info->titleId);
+    Result res = 0;
+
+    if(R_SUCCEEDED(res = AM_DeleteTitle(info->mediaType, info->titleId)) && deleteData->ticket) {
+        res = AM_DeleteTicket(info->titleId);
+    }
 
     ui_pop();
     info_destroy(view);
@@ -51,7 +56,7 @@ static void action_delete_title_onresponse(ui_view* view, void* data, bool respo
     }
 }
 
-void action_delete_title(linked_list* items, list_item* selected) {
+static void action_delete_title_internal(linked_list* items, list_item* selected, const char* message, bool ticket) {
     delete_title_data* data = (delete_title_data*) calloc(1, sizeof(delete_title_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate delete title data.");
@@ -61,6 +66,15 @@ void action_delete_title(linked_list* items, list_item* selected) {
 
     data->items = items;
     data->selected = selected;
+    data->ticket = ticket;
 
-    prompt_display("Confirmation", "Delete the selected title?", COLOR_TEXT, true, data, action_delete_title_draw_top, action_delete_title_onresponse);
+    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_delete_title_draw_top, action_delete_title_onresponse);
+}
+
+void action_delete_title(linked_list* items, list_item* selected) {
+    action_delete_title_internal(items, selected, "Delete the selected title?", false);
+}
+
+void action_delete_title_ticket(linked_list* items, list_item* selected) {
+    action_delete_title_internal(items, selected, "Delete the selected title and ticket?", true);
 }
