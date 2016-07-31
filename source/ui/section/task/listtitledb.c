@@ -53,10 +53,20 @@ static Result task_populate_titledb_download(u32* downloadSize, void* buffer, u3
     return res;
 }
 
+static int task_populate_titledb_compare(const void** p1, const void** p2) {
+    list_item* info1 = *(list_item**) p1;
+    list_item* info2 = *(list_item**) p2;
+
+    return strncasecmp(info1->name, info2->name, LIST_ITEM_NAME_MAX);
+}
+
 static void task_populate_titledb_thread(void* arg) {
     populate_titledb_data* data = (populate_titledb_data*) arg;
 
     Result res = 0;
+
+    linked_list tempItems;
+    linked_list_init(&tempItems);
 
     u32 maxTextSize = 128 * 1024;
     char* text = (char*) calloc(sizeof(char), maxTextSize);
@@ -114,7 +124,7 @@ static void task_populate_titledb_thread(void* arg) {
 
                                     item->data = titledbInfo;
 
-                                    linked_list_add(data->items, item);
+                                    linked_list_add(&tempItems, item);
                                 } else {
                                     free(item);
 
@@ -139,6 +149,15 @@ static void task_populate_titledb_thread(void* arg) {
     }
 
     if(R_SUCCEEDED(res)) {
+        linked_list_sort(&tempItems, task_populate_titledb_compare);
+
+        linked_list_iter tempIter;
+        linked_list_iterate(&tempItems, &tempIter);
+
+        while(linked_list_iter_has_next(&tempIter)) {
+            linked_list_add(data->items, linked_list_iter_next(&tempIter));
+        }
+
         linked_list_iter iter;
         linked_list_iterate(data->items, &iter);
 
@@ -190,6 +209,8 @@ static void task_populate_titledb_thread(void* arg) {
             }
         }
     }
+
+    linked_list_destroy(&tempItems);
 
     svcCloseHandle(data->cancelEvent);
 
