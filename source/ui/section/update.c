@@ -40,7 +40,7 @@ static Result update_open_src(void* data, u32 index, u32* handle) {
     httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
     if(context != NULL) {
         if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, updateData->url, 1))) {
-            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &updateData->responseCode, 0))) {
+            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &updateData->responseCode))) {
                 if(updateData->responseCode == 200) {
                     *handle = (u32) context;
                 } else if(updateData->responseCode == 301 || updateData->responseCode == 302 || updateData->responseCode == 303) {
@@ -190,7 +190,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
         if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify))
            && R_SUCCEEDED(res = httpcAddRequestHeaderField(&context, "User-Agent", userAgent))
            && R_SUCCEEDED(res = httpcBeginRequest(&context))
-           && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
+           && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode))) {
             if(responseCode == 200) {
                 u32 size = 0;
                 if(R_SUCCEEDED(res = httpcGetDownloadSizeState(&context, NULL, &size))) {

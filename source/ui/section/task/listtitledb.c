@@ -29,7 +29,7 @@ static Result task_populate_titledb_download(u32* downloadSize, void* buffer, u3
         if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify))
            && R_SUCCEEDED(res = httpcAddRequestHeaderField(&context, "User-Agent", userAgent))
            && R_SUCCEEDED(res = httpcBeginRequest(&context))
-           && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode, 0))) {
+           && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode))) {
             if(responseCode == 200) {
                 u32 size = 0;
                 u32 bytesRead = 0;
