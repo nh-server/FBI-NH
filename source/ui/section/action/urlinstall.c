@@ -62,7 +62,7 @@ static Result action_url_install_open_src(void* data, u32 index, u32* handle) {
             char userAgent[128];
             snprintf(userAgent, sizeof(userAgent), "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
-            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", userAgent)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &installData->responseCode, 0))) {
+            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", userAgent)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &installData->responseCode))) {
                 if(installData->responseCode == 200) {
                     *handle = (u32) context;
                 } else if(installData->responseCode == 301 || installData->responseCode == 302 || installData->responseCode == 303) {
