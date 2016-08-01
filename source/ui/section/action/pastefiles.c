@@ -315,6 +315,8 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     linked_list_init(&data->contents);
 
     populate_files_data popData;
+    memset(&popData, 0, sizeof(popData));
+
     popData.items = &data->contents;
     popData.archive = clipboard_get_archive();
     strncpy(popData.path, clipboard_get_path(), FILE_PATH_MAX);

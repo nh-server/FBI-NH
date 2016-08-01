@@ -173,6 +173,8 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     linked_list_init(&data->contents);
 
     populate_files_data popData;
+    memset(&popData, 0, sizeof(popData));
+
     popData.items = &data->contents;
     popData.archive = data->target->archive;
     strncpy(popData.path, data->target->path, FILE_PATH_MAX);
