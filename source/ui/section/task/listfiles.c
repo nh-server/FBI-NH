@@ -14,7 +14,7 @@
 
 #define MAX_FILES 1024
 
-Result task_create_file_item(list_item** out, FS_Archive archive, const char* path) {
+static Result task_create_file_item_attributes(list_item** out, FS_Archive archive, const char* path, u32 attributes) {
     Result res = 0;
 
     list_item* item = (list_item*) calloc(1, sizeof(list_item));
@@ -23,7 +23,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
         if(fileInfo != NULL) {
             fileInfo->archive = archive;
             util_get_path_file(fileInfo->name, path, FILE_NAME_MAX);
-            fileInfo->attributes = 0;
+            fileInfo->attributes = attributes != UINT32_MAX ? attributes : 0;
 
             fileInfo->size = 0;
             fileInfo->isCia = false;
@@ -39,7 +39,9 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                     strncpy(fileInfo->path, path, FILE_PATH_MAX);
                 }
 
-                fileInfo->attributes = FS_ATTRIBUTE_DIRECTORY;
+                if(attributes == UINT32_MAX) {
+                    fileInfo->attributes = FS_ATTRIBUTE_DIRECTORY;
+                }
             } else {
                 item->color = COLOR_FILE;
 
@@ -49,7 +51,10 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                 if(fileFsPath != NULL) {
                     Handle fileHandle;
                     if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, archive, *fileFsPath, FS_OPEN_READ, 0))) {
-                        FSFILE_GetAttributes(fileHandle, &fileInfo->attributes);
+                        if(attributes == UINT32_MAX) {
+                            FSFILE_GetAttributes(fileHandle, &fileInfo->attributes);
+                        }
+
                         FSFILE_GetSize(fileHandle, &fileInfo->size);
 
                         size_t len = strlen(fileInfo->path);
@@ -124,6 +129,10 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
     }
 
     return res;
+}
+
+Result task_create_file_item(list_item** out, FS_Archive archive, const char* path) {
+    return task_create_file_item_attributes(out, archive, path, UINT32_MAX);
 }
 
 static int task_populate_files_compare_directory_entries(const void* e1, const void* e2) {
@@ -201,7 +210,7 @@ static void task_populate_files_thread(void* arg) {
                                         snprintf(path, FILE_PATH_MAX, "%s%s", curr->path, name);
 
                                         list_item* item = NULL;
-                                        if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path))) {
+                                        if(R_SUCCEEDED(res = task_create_file_item_attributes(&item, curr->archive, path, entries[i].attributes))) {
                                             if(data->recursive && (((file_info*) item->data)->attributes & FS_ATTRIBUTE_DIRECTORY)) {
                                                 linked_list_add(&queue, item);
                                             } else {
