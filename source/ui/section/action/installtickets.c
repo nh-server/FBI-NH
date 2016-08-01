@@ -271,6 +271,8 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     linked_list_init(&data->contents);
 
     populate_files_data popData;
+    memset(&popData, 0, sizeof(popData));
+
     popData.items = &data->contents;
     popData.archive = data->target->archive;
     strncpy(popData.path, data->target->path, FILE_PATH_MAX);
