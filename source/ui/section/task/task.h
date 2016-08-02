@@ -227,7 +227,7 @@ Result task_populate_ext_save_data(populate_ext_save_data_data* data);
 
 void task_free_file(list_item* item);
 void task_clear_files(linked_list* items);
-Result task_create_file_item(list_item** out, FS_Archive archive, const char* path);
+Result task_create_file_item(list_item** out, FS_Archive archive, const char* path, u32 attributes);
 Result task_populate_files(populate_files_data* data);
 
 void task_free_pending_title(list_item* item);
