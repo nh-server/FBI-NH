@@ -14,7 +14,7 @@
 
 #define MAX_FILES 1024
 
-static Result task_create_file_item_attributes(list_item** out, FS_Archive archive, const char* path, u32 attributes) {
+Result task_create_file_item(list_item** out, FS_Archive archive, const char* path, u32 attributes) {
     Result res = 0;
 
     list_item* item = (list_item*) calloc(1, sizeof(list_item));
@@ -29,7 +29,7 @@ static Result task_create_file_item_attributes(list_item** out, FS_Archive archi
             fileInfo->isCia = false;
             fileInfo->isTicket = false;
 
-            if(util_is_dir(archive, path)) {
+            if((attributes != UINT32_MAX && (attributes & FS_ATTRIBUTE_DIRECTORY)) || util_is_dir(archive, path)) {
                 item->color = COLOR_DIRECTORY;
 
                 size_t len = strlen(path);
@@ -131,10 +131,6 @@ static Result task_create_file_item_attributes(list_item** out, FS_Archive archi
     return res;
 }
 
-Result task_create_file_item(list_item** out, FS_Archive archive, const char* path) {
-    return task_create_file_item_attributes(out, archive, path, UINT32_MAX);
-}
-
 static int task_populate_files_compare_directory_entries(const void* e1, const void* e2) {
     FS_DirectoryEntry* ent1 = (FS_DirectoryEntry*) e1;
     FS_DirectoryEntry* ent2 = (FS_DirectoryEntry*) e2;
@@ -160,7 +156,7 @@ static void task_populate_files_thread(void* arg) {
     Result res = 0;
 
     list_item* baseItem = NULL;
-    if(R_SUCCEEDED(res = task_create_file_item(&baseItem, data->archive, data->path))) {
+    if(R_SUCCEEDED(res = task_create_file_item(&baseItem, data->archive, data->path, UINT32_MAX))) {
         file_info* baseInfo = (file_info*) baseItem->data;
         if(baseInfo->attributes & FS_ATTRIBUTE_DIRECTORY) {
             strncpy(baseItem->name, "<current directory>", LIST_ITEM_NAME_MAX);
@@ -210,7 +206,7 @@ static void task_populate_files_thread(void* arg) {
                                         snprintf(path, FILE_PATH_MAX, "%s%s", curr->path, name);
 
                                         list_item* item = NULL;
-                                        if(R_SUCCEEDED(res = task_create_file_item_attributes(&item, curr->archive, path, entries[i].attributes))) {
+                                        if(R_SUCCEEDED(res = task_create_file_item(&item, curr->archive, path, entries[i].attributes))) {
                                             if(data->recursive && (((file_info*) item->data)->attributes & FS_ATTRIBUTE_DIRECTORY)) {
                                                 linked_list_add(&queue, item);
                                             } else {

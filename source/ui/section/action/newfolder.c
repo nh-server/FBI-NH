@@ -32,7 +32,7 @@ void action_new_folder(linked_list* items, list_item* selected) {
 
         FS_Path* fsPath = util_make_path_utf8(path);
         if(fsPath != NULL) {
-            res = FSUSER_CreateDirectory(parentDir->archive, *fsPath, 0);
+            res = FSUSER_CreateDirectory(parentDir->archive, *fsPath, FS_ATTRIBUTE_DIRECTORY);
 
             util_free_path_utf8(fsPath);
         } else {
@@ -41,7 +41,7 @@ void action_new_folder(linked_list* items, list_item* selected) {
 
         if(R_SUCCEEDED(res)) {
             list_item* folderItem = NULL;
-            if(R_SUCCEEDED(task_create_file_item(&folderItem, parentDir->archive, path))) {
+            if(R_SUCCEEDED(task_create_file_item(&folderItem, parentDir->archive, path, FS_ATTRIBUTE_DIRECTORY))) {
                 linked_list_add(items, folderItem);
                 linked_list_sort(items, util_compare_file_infos);
             }

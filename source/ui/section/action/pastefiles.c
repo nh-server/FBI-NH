@@ -67,10 +67,26 @@ static Result action_paste_files_make_dst_directory(void* data, u32 index) {
 
     Result res = 0;
 
+    u32 attributes = ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes;
+
     char dstPath[FILE_PATH_MAX];
     action_paste_files_get_dst_path(pasteData, index, dstPath);
 
-    if(R_SUCCEEDED(res = util_ensure_dir(pasteData->target->archive, dstPath))) {
+    FS_Path* fsPath = util_make_path_utf8(dstPath);
+    if(fsPath != NULL) {
+        Handle dirHandle = 0;
+        if(R_SUCCEEDED(FSUSER_OpenDirectory(&dirHandle, pasteData->target->archive, *fsPath))) {
+            FSDIR_Close(dirHandle);
+        } else {
+            res = FSUSER_CreateDirectory(pasteData->target->archive, *fsPath, attributes);
+        }
+
+        util_free_path_utf8(fsPath);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    if(R_SUCCEEDED(res)) {
         char parentPath[FILE_PATH_MAX];
         util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
 
@@ -83,7 +99,7 @@ static Result action_paste_files_make_dst_directory(void* data, u32 index) {
 
         if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
             list_item* dstItem = NULL;
-            if(R_SUCCEEDED(res) && R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath))) {
+            if(R_SUCCEEDED(res) && R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath, attributes))) {
                 linked_list_add(pasteData->items, dstItem);
             }
         }
@@ -136,7 +152,7 @@ static Result action_paste_files_open_dst(void* data, u32 index, void* initialRe
         if(pasteData->currExists) {
             FSFILE_Close(currHandle);
         } else {
-            res = FSUSER_CreateFile(pasteData->target->archive, *fsPath, 0, size);
+            res = FSUSER_CreateFile(pasteData->target->archive, *fsPath, ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes & ~FS_ATTRIBUTE_READ_ONLY, size);
         }
 
         if(R_SUCCEEDED(res)) {
@@ -172,7 +188,7 @@ static Result action_paste_files_close_dst(void* data, u32 index, bool succeeded
 
         if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
             list_item* dstItem = NULL;
-            if(R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath))) {
+            if(R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath, ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes & ~FS_ATTRIBUTE_READ_ONLY))) {
                 linked_list_add(pasteData->items, dstItem);
             }
         }
