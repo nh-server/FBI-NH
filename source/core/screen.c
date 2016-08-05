@@ -140,8 +140,8 @@ void screen_init() {
 
     C3D_DepthTest(true, GPU_GEQUAL, GPU_WRITE_ALL);
 
-    Mtx_OrthoTilt(&projection_top, 0.0, 400.0, 240.0, 0.0, 0.0, 1.0);
-    Mtx_OrthoTilt(&projection_bottom, 0.0, 320.0, 240.0, 0.0, 0.0, 1.0);
+    Mtx_OrthoTilt(&projection_top, 0.0, 400.0, 240.0, 0.0, 0.0, 1.0, true);
+    Mtx_OrthoTilt(&projection_bottom, 0.0, 320.0, 240.0, 0.0, 0.0, 1.0, true);
 
     Result fontMapRes = fontEnsureMapped();
     if(R_FAILED(fontMapRes)) {
