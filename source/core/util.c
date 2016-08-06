@@ -441,22 +441,6 @@ typedef struct {
 
 static linked_list opened_archives;
 
-static Result util_add_archive_ref(FS_Archive archive) {
-    Result res = 0;
-
-    archive_ref* ref = (archive_ref*) calloc(1, sizeof(archive_ref));
-    if(ref != NULL) {
-        ref->archive = archive;
-        ref->refs = 1;
-
-        linked_list_add(&opened_archives, ref);
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
-    }
-
-    return res;
-}
-
 Result util_open_archive(FS_Archive* archive, FS_ArchiveID id, FS_Path path) {
     if(archive == NULL) {
         return R_FBI_INVALID_ARGUMENT;
@@ -466,7 +450,7 @@ Result util_open_archive(FS_Archive* archive, FS_ArchiveID id, FS_Path path) {
 
     FS_Archive arch = 0;
     if(R_SUCCEEDED(res = FSUSER_OpenArchive(&arch, id, path))) {
-        if(R_SUCCEEDED(res = util_add_archive_ref(arch))) {
+        if(R_SUCCEEDED(res = util_ref_archive(arch))) {
             *archive = arch;
         } else {
             FSUSER_CloseArchive(arch);
@@ -488,7 +472,19 @@ Result util_ref_archive(FS_Archive archive) {
         }
     }
 
-    return util_add_archive_ref(archive);
+    Result res = 0;
+
+    archive_ref* ref = (archive_ref*) calloc(1, sizeof(archive_ref));
+    if(ref != NULL) {
+        ref->archive = archive;
+        ref->refs = 1;
+
+        linked_list_add(&opened_archives, ref);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    return res;
 }
 
 Result util_close_archive(FS_Archive archive) {
