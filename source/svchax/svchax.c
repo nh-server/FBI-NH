@@ -244,7 +244,8 @@ static void do_memchunkhax2(void)
          svcCloseHandle(mch2.threads[i].handle);
          mch2.threads[i].handle = 0;
       }
-
+   
+   svcSleepThread(40000000LL);
    svcCloseHandle(mch2.dummy_threads_lock);
 
    u32 fragmented_address = 0;
