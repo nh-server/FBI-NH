@@ -32,7 +32,11 @@ void action_rename(linked_list* items, list_item* selected) {
         util_get_parent_path(parentPath, targetInfo->path, FILE_PATH_MAX);
 
         char dstPath[FILE_PATH_MAX] = {'\0'};
-        snprintf(dstPath, FILE_PATH_MAX, "%s%s", parentPath, textBuf);
+        if(targetInfo->attributes & FS_ATTRIBUTE_DIRECTORY) {
+            snprintf(dstPath, FILE_PATH_MAX, "%s%s/", parentPath, textBuf);
+        } else {
+            snprintf(dstPath, FILE_PATH_MAX, "%s%s", parentPath, textBuf);
+        }
 
         FS_Path* srcFsPath = util_make_path_utf8(targetInfo->path);
         if(srcFsPath != NULL) {
