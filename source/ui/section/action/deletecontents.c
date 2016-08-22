@@ -18,6 +18,8 @@
 typedef struct {
     linked_list* items;
     file_info* target;
+    FS_Archive archive;
+    char path[FILE_PATH_MAX];
 
     linked_list contents;
 
@@ -44,10 +46,10 @@ static Result action_delete_delete(void* data, u32 index) {
 
     FS_Path* fsPath = util_make_path_utf8(info->path);
     if(fsPath != NULL) {
-        if(util_is_dir(deleteData->target->archive, info->path)) {
-            res = FSUSER_DeleteDirectory(deleteData->target->archive, *fsPath);
+        if(util_is_dir(deleteData->archive, info->path)) {
+            res = FSUSER_DeleteDirectory(deleteData->archive, *fsPath);
         } else {
-            res = FSUSER_DeleteFile(deleteData->target->archive, *fsPath);
+            res = FSUSER_DeleteFile(deleteData->archive, *fsPath);
         }
 
         util_free_path_utf8(fsPath);
@@ -64,6 +66,10 @@ static Result action_delete_delete(void* data, u32 index) {
             file_info* currInfo = (file_info*) item->data;
 
             if(strncmp(currInfo->path, info->path, FILE_PATH_MAX) == 0) {
+                if(currInfo == deleteData->target) {
+                    deleteData->target = NULL;
+                }
+
                 linked_list_iter_remove(&iter);
                 task_free_file(item);
             }
@@ -107,7 +113,7 @@ static void action_delete_update(ui_view* view, void* data, float* progress, cha
     delete_data* deleteData = (delete_data*) data;
 
     if(deleteData->deleteInfo.finished) {
-        FSUSER_ControlArchive(deleteData->target->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
+        FSUSER_ControlArchive(deleteData->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
 
         ui_pop();
         info_destroy(view);
@@ -137,7 +143,7 @@ static void action_delete_onresponse(ui_view* view, void* data, bool response) {
         if(R_SUCCEEDED(res)) {
             info_display("Deleting", "Press B to cancel.", true, data, action_delete_update, action_delete_draw_top);
         } else {
-            error_display_res(deleteData->target, ui_draw_file_info, res, "Failed to initiate delete operation.");
+            error_display_res(deleteData->target, deleteData->target != NULL ? ui_draw_file_info : NULL, res, "Failed to initiate delete operation.");
 
             action_delete_free_data(deleteData);
         }
@@ -156,6 +162,8 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
 
     data->items = items;
     data->target = (file_info*) selected->data;
+    data->archive = data->target->archive;
+    strncpy(data->path, data->target->path, FILE_PATH_MAX);
 
     data->deleteInfo.data = data;
 
@@ -176,8 +184,8 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     memset(&popData, 0, sizeof(popData));
 
     popData.items = &data->contents;
-    popData.archive = data->target->archive;
-    strncpy(popData.path, data->target->path, FILE_PATH_MAX);
+    popData.archive = data->archive;
+    strncpy(popData.path, data->path, FILE_PATH_MAX);
     popData.recursive = recursive;
     popData.includeBase = includeBase;
     popData.filter = ciasOnly ? util_filter_cias : ticketsOnly ? util_filter_tickets : NULL;
