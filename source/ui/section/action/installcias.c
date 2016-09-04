@@ -122,7 +122,7 @@ static Result action_install_cias_open_dst(void* data, u32 index, void* initialR
 
     u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
-    FS_MediaType dest = (titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD;
+    FS_MediaType dest = util_get_title_destination(titleId);
 
     bool n3ds = false;
     if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {

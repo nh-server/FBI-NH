@@ -10,6 +10,7 @@
 #include "../../error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
+#include "../../../core/util.h"
 #include "../../../json/json.h"
 #include "../../../stb_image/stb_image.h"
 
@@ -117,7 +118,7 @@ static void task_populate_titledb_thread(void* arg) {
                                     }
 
                                     AM_TitleEntry entry;
-                                    if(R_SUCCEEDED(AM_GetTitleInfo((titledbInfo->titleId & 0x0000801000000002) != 0 ? MEDIATYPE_NAND : MEDIATYPE_SD, 1, &titledbInfo->titleId, &entry))) {
+                                    if(R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(titledbInfo->titleId), 1, &titledbInfo->titleId, &entry))) {
                                         item->color = COLOR_INSTALLED;
                                     } else {
                                         item->color = COLOR_NOT_INSTALLED;
