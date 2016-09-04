@@ -54,6 +54,8 @@ void util_get_parent_path(char* out, const char* path, u32 size);
 Result util_import_seed(u64 titleId);
 u32 util_get_seed_response_code();
 
+FS_MediaType util_get_title_destination(u64 titleId);
+
 u64 util_get_cia_title_id(u8* cia);
 Result util_get_cia_file_smdh(SMDH* smdh, Handle handle);
 u64 util_get_ticket_title_id(u8* ticket);
