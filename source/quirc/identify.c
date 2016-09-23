@@ -121,59 +121,7 @@ static void perspective_unmap(const double *c,
  * Span-based floodfill routine
  */
 
-typedef struct fill_queue_node_s {
-	int x;
-	int y;
-
-	struct fill_queue_node_s* prev;
-	struct fill_queue_node_s* next;
-} fill_queue_node;
-
-typedef struct {
-	fill_queue_node* last;
-} fill_queue;
-
-static void fill_queue_init(fill_queue* queue) {
-	queue->last = NULL;
-}
-
-static int fill_queue_is_empty(fill_queue* queue) {
-	return queue->last == NULL;
-}
-
-static void fill_queue_push(fill_queue* queue, int x, int y) {
-	fill_queue_node* node = (fill_queue_node*) calloc(1, sizeof(fill_queue_node));
-	if(node == NULL) {
-		return;
-	}
-
-	node->x = x;
-	node->y = y;
-	node->next = NULL;
-
-	if(queue->last == NULL) {
-		node->prev = NULL;
-
-		queue->last = node;
-	} else {
-		node->prev = queue->last;
-
-		queue->last->next = node;
-		queue->last = node;
-	}
-}
-
-static void fill_queue_pop(fill_queue* queue, int* x, int* y) {
-	fill_queue_node* node = queue->last;
-	if(node != NULL) {
-		queue->last = node->prev;
-
-		*x = node->x;
-		*y = node->y;
-
-		free(node);
-	}
-}
+#define FLOOD_FILL_MAX_DEPTH		4096
 
 typedef void (*span_func_t)(void *user_data, int y, int left, int right);
 
@@ -181,52 +129,44 @@ static void flood_fill_seed(struct quirc *q, int x, int y, int from, int to,
 			    span_func_t func, void *user_data,
 			    int depth)
 {
-	fill_queue queue;
-	fill_queue_init(&queue);
-	fill_queue_push(&queue, x, y);
+	int left = x;
+	int right = x;
+	int i;
+	quirc_pixel_t *row = q->pixels + y * q->w;
 
-	while(!fill_queue_is_empty(&queue)) {
-		int currX = 0;
-		int currY = 0;
-		fill_queue_pop(&queue, &currX, &currY);
+	if (depth >= FLOOD_FILL_MAX_DEPTH)
+		return;
 
-		int left = currX;
-		int right = currX;
-		int i;
-		uint8_t *row = q->image + currY * q->w;
+	while (left > 0 && row[left - 1] == from)
+		left--;
 
-		if(row[currX] == to)
-			continue;
+	while (right < q->w - 1 && row[right + 1] == from)
+		right++;
 
-		while (left > 0 && row[left - 1] == from)
-			left--;
+	/* Fill the extent */
+	for (i = left; i <= right; i++)
+		row[i] = to;
 
-		while (right < q->w - 1 && row[right + 1] == from)
-			right++;
+	if (func)
+		func(user_data, y, left, right);
 
-		/* Fill the extent */
+	/* Seed new flood-fills */
+	if (y > 0) {
+		row = q->pixels + (y - 1) * q->w;
+
 		for (i = left; i <= right; i++)
-			row[i] = to;
+			if (row[i] == from)
+				flood_fill_seed(q, i, y - 1, from, to,
+						func, user_data, depth + 1);
+	}
 
-		if (func)
-			func(user_data, currY, left, right);
+	if (y < q->h - 1) {
+		row = q->pixels + (y + 1) * q->w;
 
-		/* Seed new flood-fills */
-		if (currY < q->h - 1) {
-			row = q->image + (currY + 1) * q->w;
-
-			for (i = right; i >= left; i--)
-				if (row[i] == from)
-					fill_queue_push(&queue, i, currY + 1);
-		}
-
-		if (currY > 0) {
-			row = q->image + (currY - 1) * q->w;
-
-			for (i = right; i >= left; i--)
-				if (row[i] == from)
-					fill_queue_push(&queue, i, currY - 1);
-		}
+		for (i = left; i <= right; i++)
+			if (row[i] == from)
+				flood_fill_seed(q, i, y + 1, from, to,
+						func, user_data, depth + 1);
 	}
 }
 
@@ -243,7 +183,7 @@ static void threshold(struct quirc *q)
 	int avg_w = 0;
 	int avg_u = 0;
 	int threshold_s = q->w / THRESHOLD_S_DEN;
-	uint8_t *row = q->image;
+	quirc_pixel_t *row = q->pixels;
 
 	for (y = 0; y < q->h; y++) {
 		int row_average[q->w];
@@ -296,7 +236,7 @@ static int region_code(struct quirc *q, int x, int y)
 	if (x < 0 || y < 0 || x >= q->w || y >= q->h)
 		return -1;
 
-	pixel = q->image[y * q->w + x];
+	pixel = q->pixels[y * q->w + x];
 
 	if (pixel >= QUIRC_PIXEL_REGION)
 		return pixel;
@@ -475,7 +415,7 @@ static void test_capstone(struct quirc *q, int x, int y, int *pb)
 
 static void finder_scan(struct quirc *q, int y)
 {
-	uint8_t *row = q->image + y * q->w;
+	quirc_pixel_t *row = q->pixels + y * q->w;
 	int x;
 	int last_color;
 	int run_length = 0;
@@ -652,7 +592,7 @@ static int timing_scan(const struct quirc *q,
 		if (y < 0 || y >= q->h || x < 0 || x >= q->w)
 			break;
 
-		pixel = q->image[y * q->w + x];
+		pixel = q->pixels[y * q->w + x];
 
 		if (pixel) {
 			if (run_length >= 2)
@@ -730,7 +670,7 @@ static int read_cell(const struct quirc *q, int index, int x, int y)
 	if (p.y < 0 || p.y >= q->h || p.x < 0 || p.x >= q->w)
 		return 0;
 
-	return q->image[p.y * q->w + p.x] ? 1 : -1;
+	return q->pixels[p.y * q->w + p.x] ? 1 : -1;
 }
 
 static int fitness_cell(const struct quirc *q, int index, int x, int y)
@@ -749,7 +689,7 @@ static int fitness_cell(const struct quirc *q, int index, int x, int y)
 			if (p.y < 0 || p.y >= q->h || p.x < 0 || p.x >= q->w)
 				continue;
 
-			if (q->image[p.y * q->w + p.x])
+			if (q->pixels[p.y * q->w + p.x])
 				score++;
 			else
 				score--;
@@ -908,8 +848,8 @@ static void rotate_capstone(struct quirc_capstone *cap,
 {
 	struct quirc_point copy[4];
 	int j;
-	int best = 0;
-	int best_score = 0;
+	int best;
+	int best_score;
 
 	for (j = 0; j < 4; j++) {
 		struct quirc_point *p = &cap->corners[j];
@@ -1126,6 +1066,20 @@ static void test_grouping(struct quirc *q, int i)
 	test_neighbours(q, i, &hlist, &vlist);
 }
 
+static void pixels_setup(struct quirc *q)
+{
+	if (sizeof(*q->image) == sizeof(*q->pixels)) {
+		q->pixels = (quirc_pixel_t *)q->image;
+	} else {
+		int x, y;
+		for (y = 0; y < q->h; y++) {
+			for (x = 0; x < q->w; x++) {
+				q->pixels[y * q->w + x] = q->image[y * q->w + x];
+			}
+		}
+	}
+}
+
 uint8_t *quirc_begin(struct quirc *q, int *w, int *h)
 {
 	q->num_regions = QUIRC_PIXEL_REGION;
@@ -1144,6 +1098,7 @@ void quirc_end(struct quirc *q)
 {
 	int i;
 
+	pixels_setup(q);
 	threshold(q);
 
 	for (i = 0; i < q->h; i++)
