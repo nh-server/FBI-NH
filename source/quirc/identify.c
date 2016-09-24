@@ -121,54 +121,178 @@ static void perspective_unmap(const double *c,
  * Span-based floodfill routine
  */
 
-#define FLOOD_FILL_MAX_DEPTH		4096
-
 typedef void (*span_func_t)(void *user_data, int y, int left, int right);
 
-static void flood_fill_seed(struct quirc *q, int x, int y, int from, int to,
-			    span_func_t func, void *user_data,
-			    int depth)
+#if 0 // recursive flood fill
+
+#define FLOOD_FILL_MAX_DEPTH	4096
+
+struct flood_fill_params{
+	struct quirc *q;
+	int from;
+	int to;
+	span_func_t func;
+	void *user_data;
+};
+
+static struct flood_fill_params ffp;
+
+static void flood_fill_rec(int x, int y, int depth)
 {
 	int left = x;
 	int right = x;
 	int i;
-	quirc_pixel_t *row = q->pixels + y * q->w;
+	quirc_pixel_t *row = ffp.q->pixels + y * ffp.q->w;
 
-	if (depth >= FLOOD_FILL_MAX_DEPTH)
+	if (!depth)
 		return;
 
-	while (left > 0 && row[left - 1] == from)
+	while (left > 0 && row[left - 1] == ffp.from)
 		left--;
 
-	while (right < q->w - 1 && row[right + 1] == from)
+	while (right < ffp.q->w - 1 && row[right + 1] == ffp.from)
 		right++;
 
 	/* Fill the extent */
 	for (i = left; i <= right; i++)
-		row[i] = to;
+		row[i] = ffp.to;
 
-	if (func)
-		func(user_data, y, left, right);
+	if (ffp.func)
+		ffp.func(ffp.user_data, y, left, right);
 
 	/* Seed new flood-fills */
 	if (y > 0) {
-		row = q->pixels + (y - 1) * q->w;
+		row = ffp.q->pixels + (y - 1) * ffp.q->w;
 
 		for (i = left; i <= right; i++)
-			if (row[i] == from)
-				flood_fill_seed(q, i, y - 1, from, to,
-						func, user_data, depth + 1);
+			if (row[i] == ffp.from)
+				flood_fill_rec(i, y - 1, depth - 1);
 	}
 
-	if (y < q->h - 1) {
-		row = q->pixels + (y + 1) * q->w;
+	if (y < ffp.q->h - 1) {
+		row = ffp.q->pixels + (y + 1) * ffp.q->w;
 
 		for (i = left; i <= right; i++)
-			if (row[i] == from)
-				flood_fill_seed(q, i, y + 1, from, to,
-						func, user_data, depth + 1);
+			if (row[i] == ffp.from)
+				flood_fill_rec(i, y + 1, depth - 1);
 	}
 }
+
+static void flood_fill_seed(struct quirc *q, int x, int y, int from, int to,
+				span_func_t func, void *user_data)
+{
+	ffp.q = q;
+	ffp.from = from;
+	ffp.to = to;
+	ffp.func = func;
+	ffp.user_data = user_data;
+
+	flood_fill_rec(x, y, FLOOD_FILL_MAX_DEPTH);
+}
+
+#else // stacked flood fill
+
+#define FILL_STACK_CHUNK_SIZE 0x400
+
+struct fill_stack_chunk{
+	int x[FILL_STACK_CHUNK_SIZE];
+	int y[FILL_STACK_CHUNK_SIZE];
+	struct fill_stack_chunk *prev;
+};
+
+struct fill_stack{
+	struct fill_stack_chunk *last_chunk;
+	int index;
+};
+
+static void fill_stack_init(struct fill_stack *s){
+	s->last_chunk = NULL;
+}
+
+static int fill_stack_is_empty(struct fill_stack *s){
+	return s->last_chunk == NULL;
+}
+
+static void fill_stack_push(struct fill_stack *s, int x, int y){
+	struct fill_stack_chunk *c;
+	if(s->last_chunk != NULL && s->index < FILL_STACK_CHUNK_SIZE - 1){
+		c = s->last_chunk;
+		s->index++;
+	}else{
+		c = (struct fill_stack_chunk*)malloc(sizeof(struct fill_stack_chunk));
+		if(c == NULL){
+			return;
+		}
+		c->prev = s->last_chunk;
+		s->last_chunk = c;
+		s->index = 0;
+	}
+	c->x[s->index] = x;
+	c->y[s->index] = y;
+}
+
+static void fill_stack_pop(struct fill_stack *s, int *px, int *py){
+	struct fill_stack_chunk *c = s->last_chunk;
+	if(c == NULL){
+		return;
+	}
+	*px = c->x[s->index];
+	*py = c->y[s->index];
+	if(s->index > 0){
+		s->index--;
+	}else{
+		s->last_chunk = c->prev;
+		s->index = FILL_STACK_CHUNK_SIZE - 1;
+		free(c);
+	}
+}
+
+static void flood_fill_seed(struct quirc *q, int start_x, int start_y, int from, int to,
+				span_func_t func, void *user_data)
+{
+	struct fill_stack s;
+	fill_stack_init(&s);
+	fill_stack_push(&s, start_x, start_y);
+
+	do{
+		int x, y;
+		fill_stack_pop(&s, &x, &y);
+
+		int left = x, right = x, i;
+		quirc_pixel_t *row = q->pixels + y * q->w;
+
+		while (left > 0 && row[left - 1] == from)
+			left--;
+
+		while (right < q->w - 1 && row[right + 1] == from)
+			right++;
+
+		/* Fill the extent */
+		for (i = left; i <= right; i++)
+			row[i] = to;
+
+		if (func)
+			func(user_data, y, left, right);
+
+		/* Seed new flood-fills */
+		if (y > 0) {
+			row = q->pixels + (y - 1) * q->w;
+
+			for (i = left; i <= right; i++)
+				if (row[i] == from)
+					fill_stack_push(&s, i, y - 1);
+		}
+
+		if (y < q->h - 1) {
+			row = q->pixels + (y + 1) * q->w;
+
+			for (i = left; i <= right; i++)
+				if (row[i] == from)
+					fill_stack_push(&s, i, y + 1);
+		}
+	}while(!fill_stack_is_empty(&s));
+}
+#endif
 
 /************************************************************************
  * Adaptive thresholding
@@ -256,7 +380,7 @@ static int region_code(struct quirc *q, int x, int y)
 	box->seed.y = y;
 	box->capstone = -1;
 
-	flood_fill_seed(q, x, y, pixel, region, area_count, box, 0);
+	flood_fill_seed(q, x, y, pixel, region, area_count, box);
 
 	return region;
 }
@@ -326,7 +450,7 @@ static void find_region_corners(struct quirc *q,
 	psd.scores[0] = -1;
 	flood_fill_seed(q, region->seed.x, region->seed.y,
 			rcode, QUIRC_PIXEL_BLACK,
-			find_one_corner, &psd, 0);
+			find_one_corner, &psd);
 
 	psd.ref.x = psd.corners[0].x - psd.ref.x;
 	psd.ref.y = psd.corners[0].y - psd.ref.y;
@@ -344,7 +468,7 @@ static void find_region_corners(struct quirc *q,
 
 	flood_fill_seed(q, region->seed.x, region->seed.y,
 			QUIRC_PIXEL_BLACK, rcode,
-			find_other_corners, &psd, 0);
+			find_other_corners, &psd);
 }
 
 static void record_capstone(struct quirc *q, int ring, int stone)
@@ -957,10 +1081,10 @@ static void record_qr_grid(struct quirc *q, int a, int b, int c)
 
 			flood_fill_seed(q, reg->seed.x, reg->seed.y,
 					qr->align_region, QUIRC_PIXEL_BLACK,
-					NULL, NULL, 0);
+					NULL, NULL);
 			flood_fill_seed(q, reg->seed.x, reg->seed.y,
 					QUIRC_PIXEL_BLACK, qr->align_region,
-					find_leftmost_to_line, &psd, 0);
+					find_leftmost_to_line, &psd);
 		}
 	}
 
