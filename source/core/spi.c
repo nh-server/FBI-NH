@@ -88,7 +88,7 @@ static Result spi_get_page_size(SaveChip chip, u32* pageSize) {
             size = 256;
             break;
         default:
-            res = R_FBI_UNSUPPORTED_OPERATION;
+            res = R_FBI_NOT_IMPLEMENTED;
             break;
     }
 
@@ -133,7 +133,7 @@ static Result spi_get_capacity(SaveChip chip, u32* capacity) {
             cap = 8 * 1024 * 1024;
             break;
         default:
-            res = R_FBI_UNSUPPORTED_OPERATION;
+            res = R_FBI_NOT_IMPLEMENTED;
             break;
     }
 
@@ -146,7 +146,7 @@ static Result spi_get_capacity(SaveChip chip, u32* capacity) {
 
 static Result spi_execute_command(SaveChip chip, void* cmd, u32 cmdSize, void* answer, u32 answerSize, void* data, u32 dataSize) {
     if(chip == CHIP_NONE) {
-        return R_FBI_UNSUPPORTED_OPERATION;
+        return R_FBI_NOT_IMPLEMENTED;
     }
 
     bool infrared = chip == CHIP_FLASH_256KB_INFRARED || chip == CHIP_FLASH_512KB_INFRARED || chip == CHIP_FLASH_1MB_INFRARED || chip == CHIP_FLASH_8MB_INFRARED;
@@ -277,7 +277,7 @@ static Result spi_read_data(SaveChip chip, u32* bytesRead, void* data, u32 offse
                     pos += size;
                     break;
                 default:
-                    res = R_FBI_UNSUPPORTED_OPERATION;
+                    res = R_FBI_NOT_IMPLEMENTED;
                     break;
             }
         }
@@ -341,7 +341,7 @@ static Result spi_write_data(SaveChip chip, u32* bytesWritten, void* data, u32 o
                     case CHIP_FLASH_8MB:
                     case CHIP_FLASH_8MB_INFRARED:
                     default:
-                        res = R_FBI_UNSUPPORTED_OPERATION;
+                        res = R_FBI_NOT_IMPLEMENTED;
                         break;
                 }
 
@@ -456,7 +456,7 @@ static Result spi_get_save_chip(SaveChip* chip, SaveChip base) {
                     if(base < CHIP_FLASH_256KB_INFRARED) {
                         res = spi_get_save_chip(&c, CHIP_FLASH_256KB_INFRARED);
                     } else {
-                        res = R_FBI_UNSUPPORTED_OPERATION;
+                        res = R_FBI_NOT_IMPLEMENTED;
                     }
 
                     break;
