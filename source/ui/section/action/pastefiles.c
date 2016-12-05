@@ -21,7 +21,6 @@ typedef struct {
     file_info* target;
 
     linked_list contents;
-    bool currExists;
 
     data_op_data pasteInfo;
 } paste_files_data;
@@ -148,14 +147,25 @@ static Result action_paste_files_open_dst(void* data, u32 index, void* initialRe
     FS_Path* fsPath = util_make_path_utf8(dstPath);
     if(fsPath != NULL) {
         Handle currHandle;
-        pasteData->currExists = R_SUCCEEDED(FSUSER_OpenFile(&currHandle, pasteData->target->archive, *fsPath, FS_OPEN_READ, 0));
-        if(pasteData->currExists) {
+        if(R_SUCCEEDED(FSUSER_OpenFile(&currHandle, pasteData->target->archive, *fsPath, FS_OPEN_READ, 0))) {
             FSFILE_Close(currHandle);
-        } else {
-            res = FSUSER_CreateFile(pasteData->target->archive, *fsPath, ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes & ~FS_ATTRIBUTE_READ_ONLY, size);
+            if(R_SUCCEEDED(res = FSUSER_DeleteFile(pasteData->target->archive, *fsPath))) {
+                linked_list_iter iter;
+                linked_list_iterate(pasteData->items, &iter);
+
+                while(linked_list_iter_has_next(&iter)) {
+                    list_item* item = (list_item*) linked_list_iter_next(&iter);
+                    file_info* currInfo = (file_info*) item->data;
+
+                    if(strncmp(currInfo->path, dstPath, FILE_PATH_MAX) == 0) {
+                        linked_list_iter_remove(&iter);
+                        task_free_file(item);
+                    }
+                }
+            }
         }
 
-        if(R_SUCCEEDED(res)) {
+        if(R_SUCCEEDED(res) && R_SUCCEEDED(res = FSUSER_CreateFile(pasteData->target->archive, *fsPath, ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes & ~FS_ATTRIBUTE_READ_ONLY, size))) {
             res = FSUSER_OpenFile(handle, pasteData->target->archive, *fsPath, FS_OPEN_WRITE, 0);
         }
 
@@ -172,7 +182,7 @@ static Result action_paste_files_close_dst(void* data, u32 index, bool succeeded
 
     Result res = 0;
 
-    if(R_SUCCEEDED(res = FSFILE_Close(handle)) && !pasteData->currExists) {
+    if(R_SUCCEEDED(res = FSFILE_Close(handle))) {
         char dstPath[FILE_PATH_MAX];
         action_paste_files_get_dst_path(pasteData, index, dstPath);
 
