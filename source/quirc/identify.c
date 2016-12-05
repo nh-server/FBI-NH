@@ -255,7 +255,7 @@ static void flood_fill_seed(struct quirc *q, int start_x, int start_y, int from,
 	fill_stack_push(&s, start_x, start_y);
 
 	do{
-		int x, y;
+		int x = 0, y = 0;
 		fill_stack_pop(&s, &x, &y);
 
 		int left = x, right = x, i;
@@ -972,8 +972,8 @@ static void rotate_capstone(struct quirc_capstone *cap,
 {
 	struct quirc_point copy[4];
 	int j;
-	int best;
-	int best_score;
+	int best = 0;
+	int best_score = 0;
 
 	for (j = 0; j < 4; j++) {
 		struct quirc_point *p = &cap->corners[j];
