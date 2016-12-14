@@ -1,4 +1,6 @@
+#include <sys/iosupport.h>
 #include <malloc.h>
+#include <stdio.h>
 
 #include <3ds.h>
 
@@ -86,7 +88,21 @@ void init() {
     }
 
     if(R_FAILED(init_services())) {
+        const devoptab_t* oldStdOut = devoptab_list[STD_OUT];
+        const devoptab_t* oldStdErr = devoptab_list[STD_ERR];
+
+        consoleInit(GFX_TOP, NULL);
+        util_store_console_std();
+
+        printf("Attempting to acquire kernel access...");
         svchax_init(true);
+
+        devoptab_list[STD_OUT] = oldStdOut;
+        devoptab_list[STD_ERR] = oldStdErr;
+
+        gfxSetScreenFormat(GFX_TOP, GSP_BGR8_OES);
+        gfxSetDoubleBuffering(GFX_TOP, true);
+
         if(!__ctr_svchax || !__ctr_svchax_srv) {
             util_panic("Failed to acquire kernel access.");
             return;
