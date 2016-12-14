@@ -32,6 +32,7 @@ void action_delete_pending_title(linked_list* items, list_item* selected);
 void action_delete_all_pending_titles(linked_list* items, list_item* selected);
 
 void action_delete_ticket(linked_list* items, list_item* selected);
+void action_delete_tickets_unused(linked_list* items, list_item* selected);
 void action_install_cdn(linked_list* items, list_item* selected);
 void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt);
 

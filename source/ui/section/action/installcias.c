@@ -260,6 +260,47 @@ static void action_install_cias_onresponse(ui_view* view, void* data, bool respo
     }
 }
 
+typedef struct {
+    install_cias_data* installData;
+
+    const char* message;
+
+    populate_files_data popData;
+} install_cias_loading_data;
+
+static void action_install_cias_loading_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    action_install_cias_draw_top(view, ((install_cias_loading_data*) data)->installData, x1, y1, x2, y2);
+}
+
+static void action_install_cias_loading_update(ui_view* view, void* data, float* progress, char* text)  {
+    install_cias_loading_data* loadingData = (install_cias_loading_data*) data;
+
+    if(loadingData->popData.finished) {
+        ui_pop();
+        info_destroy(view);
+
+        if(R_SUCCEEDED(loadingData->popData.result)) {
+            loadingData->installData->installInfo.total = linked_list_size(&loadingData->installData->contents);
+            loadingData->installData->installInfo.processed = loadingData->installData->installInfo.total;
+
+            prompt_display("Confirmation", loadingData->message, COLOR_TEXT, true, loadingData->installData, action_install_cias_draw_top, action_install_cias_onresponse);
+        } else {
+            error_display_res(NULL, NULL, loadingData->popData.result, "Failed to populate CIA list.");
+
+            action_install_cias_free_data(loadingData->installData);
+        }
+
+        free(loadingData);
+        return;
+    }
+
+    if((hidKeysDown() & KEY_B) && !loadingData->popData.finished) {
+        svcSignalEvent(loadingData->popData.cancelEvent);
+    }
+
+    snprintf(text, PROGRESS_TEXT_MAX, "Fetching CIA list...");
+}
+
 static void action_install_cias_internal(linked_list* items, list_item* selected, const char* message, bool delete) {
     install_cias_data* data = (install_cias_data*) calloc(1, sizeof(install_cias_data));
     if(data == NULL) {
@@ -307,40 +348,35 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
 
     linked_list_init(&data->contents);
 
-    populate_files_data popData;
-    memset(&popData, 0, sizeof(popData));
+    install_cias_loading_data* loadingData = (install_cias_loading_data*) calloc(1, sizeof(install_cias_loading_data));
+    if(loadingData == NULL) {
+        error_display(NULL, NULL, "Failed to allocate loading data.");
 
-    popData.items = &data->contents;
-    popData.archive = data->target->archive;
-    strncpy(popData.path, data->target->path, FILE_PATH_MAX);
-    popData.recursive = false;
-    popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
-    popData.filter = util_filter_cias;
-    popData.filterData = NULL;
+        action_install_cias_free_data(data);
+        return;
+    }
 
-    Result listRes = task_populate_files(&popData);
+    loadingData->installData = data;
+    loadingData->message = message;
+
+    loadingData->popData.items = &data->contents;
+    loadingData->popData.archive = data->target->archive;
+    strncpy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
+    loadingData->popData.recursive = false;
+    loadingData->popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
+    loadingData->popData.filter = util_filter_cias;
+    loadingData->popData.filterData = NULL;
+
+    Result listRes = task_populate_files(&loadingData->popData);
     if(R_FAILED(listRes)) {
         error_display_res(NULL, NULL, listRes, "Failed to initiate CIA list population.");
 
+        free(loadingData);
         action_install_cias_free_data(data);
         return;
     }
 
-    while(!popData.finished) {
-        svcSleepThread(1000000);
-    }
-
-    if(R_FAILED(popData.result)) {
-        error_display_res(NULL, NULL, popData.result, "Failed to populate CIA list.");
-
-        action_install_cias_free_data(data);
-        return;
-    }
-
-    data->installInfo.total = linked_list_size(&data->contents);
-    data->installInfo.processed = data->installInfo.total;
-
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_install_cias_draw_top, action_install_cias_onresponse);
+    info_display("Loading", "Press B to cancel.", false, loadingData, action_install_cias_loading_update, action_install_cias_loading_draw_top);
 }
 
 void action_install_cia(linked_list* items, list_item* selected) {
