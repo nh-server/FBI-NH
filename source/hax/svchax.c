@@ -3,6 +3,7 @@
 #include <string.h>
 #include <malloc.h>
 #include "svchax.h"
+#include "waithax.h"
 
 #define CURRENT_KTHREAD          0xFFFF9000
 #define CURRENT_KPROCESS         0xFFFF9004
@@ -45,10 +46,12 @@ static u32 svc_7b(backdoor_fn entry_fn, ...) // can pass up to two arguments to 
    return 0;
 }
 
-static void k_enable_all_svcs(u32 isNew3DS)
+static bool g_is_new3ds;
+
+static void k_enable_all_svcs()
 {
    u32* thread_ACL = *(*(u32***)CURRENT_KTHREAD + 0x22) - 0x6;
-   u32* process_ACL = *(u32**)CURRENT_KPROCESS + (isNew3DS ? 0x24 : 0x22);
+   u32* process_ACL = *(u32**)CURRENT_KPROCESS + (g_is_new3ds ? 0x24 : 0x22);
 
    memset(thread_ACL, 0xFF, 0x10);
    memset(process_ACL, 0xFF, 0x10);
@@ -460,31 +463,38 @@ static void do_memchunkhax1(void)
 
 Result svchax_init(bool patch_srv)
 {
-   bool isNew3DS;
-   APT_CheckNew3DS(&isNew3DS);
+   APT_CheckNew3DS(&g_is_new3ds);
 
    u32 kver = osGetKernelVersion();
 
-   if (!__ctr_svchax)
-   {
-      if (__service_ptr)
-      {
-         if (kver > SYSTEM_VERSION(2, 50, 11))
+   if(!__ctr_svchax) {
+      if(__service_ptr) {
+         if(kver > SYSTEM_VERSION(2, 51, 2)) {
             return -1;
-         else if (kver > SYSTEM_VERSION(2, 46, 0))
-            do_memchunkhax2();
-         else
-            do_memchunkhax1();
+         } else if(kver > SYSTEM_VERSION(2, 50, 11)) {
+            if(waithax_run()) {
+               waithax_backdoor(k_enable_all_svcs);
+               __ctr_svchax = 1;
+            }
+         } else {
+            if(kver > SYSTEM_VERSION(2, 46, 0)) {
+               do_memchunkhax2();
+            } else {
+               do_memchunkhax1();
+            }
+
+            svc_7b((backdoor_fn) k_enable_all_svcs);
+            __ctr_svchax = 1;
+         }
+      } else {
+         svc_7b((backdoor_fn) k_enable_all_svcs);
+         __ctr_svchax = 1;
       }
-
-      svc_7b((backdoor_fn)k_enable_all_svcs, isNew3DS);
-
-      __ctr_svchax = 1;
    }
 
-   if (patch_srv && !__ctr_svchax_srv)
+   if (patch_srv && __ctr_svchax && !__ctr_svchax_srv)
    {
-      u32 PID_kaddr = read_kaddr(CURRENT_KPROCESS) + (isNew3DS ? 0xBC : (kver > SYSTEM_VERSION(2, 40, 0)) ? 0xB4 : 0xAC);
+      u32 PID_kaddr = read_kaddr(CURRENT_KPROCESS) + (g_is_new3ds ? 0xBC : (kver > SYSTEM_VERSION(2, 40, 0)) ? 0xB4 : 0xAC);
       u32 old_PID = read_kaddr(PID_kaddr);
       write_kaddr(PID_kaddr, 0);
       srvExit();
