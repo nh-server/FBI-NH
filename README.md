@@ -11,3 +11,5 @@ Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/)
 Banner: [OctopusRift](http://gbatemp.net/members/octopusrift.356526/), [Apache Thunder](https://gbatemp.net/members/apache-thunder.105648/)
 
 SPI Protocol Information: [TuxSH](https://github.com/TuxSH/) ([TWLSaveTool](https://github.com/TuxSH/TWLSaveTool))
+
+svchax: [aliaspider](https://github.com/aliaspider), waithax: [Mrrraou](https://github.com/Mrrraou)

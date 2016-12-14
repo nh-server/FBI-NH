@@ -5,7 +5,7 @@
 #include "core/clipboard.h"
 #include "core/screen.h"
 #include "core/util.h"
-#include "svchax/svchax.h"
+#include "hax/svchax.h"
 #include "ui/error.h"
 #include "ui/mainmenu.h"
 #include "ui/ui.h"
