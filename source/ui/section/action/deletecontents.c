@@ -152,6 +152,47 @@ static void action_delete_onresponse(ui_view* view, void* data, bool response) {
     }
 }
 
+typedef struct {
+    delete_data* deleteData;
+
+    const char* message;
+
+    populate_files_data popData;
+} delete_loading_data;
+
+static void action_delete_loading_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    action_delete_draw_top(view, ((delete_loading_data*) data)->deleteData, x1, y1, x2, y2);
+}
+
+static void action_delete_loading_update(ui_view* view, void* data, float* progress, char* text)  {
+    delete_loading_data* loadingData = (delete_loading_data*) data;
+
+    if(loadingData->popData.finished) {
+        ui_pop();
+        info_destroy(view);
+
+        if(R_SUCCEEDED(loadingData->popData.result)) {
+            loadingData->deleteData->deleteInfo.total = linked_list_size(&loadingData->deleteData->contents);
+            loadingData->deleteData->deleteInfo.processed = loadingData->deleteData->deleteInfo.total;
+
+            prompt_display("Confirmation", loadingData->message, COLOR_TEXT, true, loadingData->deleteData, action_delete_draw_top, action_delete_onresponse);
+        } else {
+            error_display_res(NULL, NULL, loadingData->popData.result, "Failed to populate content list.");
+
+            action_delete_free_data(loadingData->deleteData);
+        }
+
+        free(loadingData);
+        return;
+    }
+
+    if((hidKeysDown() & KEY_B) && !loadingData->popData.finished) {
+        svcSignalEvent(loadingData->popData.cancelEvent);
+    }
+
+    snprintf(text, PROGRESS_TEXT_MAX, "Fetching content list...");
+}
+
 static void action_delete_internal(linked_list* items, list_item* selected, const char* message, bool recursive, bool includeBase, bool ciasOnly, bool ticketsOnly) {
     delete_data* data = (delete_data*) calloc(1, sizeof(delete_data));
     if(data == NULL) {
@@ -180,40 +221,35 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
 
     linked_list_init(&data->contents);
 
-    populate_files_data popData;
-    memset(&popData, 0, sizeof(popData));
+    delete_loading_data* loadingData = (delete_loading_data*) calloc(1, sizeof(delete_loading_data));
+    if(loadingData == NULL) {
+        error_display(NULL, NULL, "Failed to allocate loading data.");
 
-    popData.items = &data->contents;
-    popData.archive = data->archive;
-    strncpy(popData.path, data->path, FILE_PATH_MAX);
-    popData.recursive = recursive;
-    popData.includeBase = includeBase;
-    popData.filter = ciasOnly ? util_filter_cias : ticketsOnly ? util_filter_tickets : NULL;
-    popData.filterData = NULL;
+        action_delete_free_data(data);
+        return;
+    }
 
-    Result listRes = task_populate_files(&popData);
+    loadingData->deleteData = data;
+    loadingData->message = message;
+
+    loadingData->popData.items = &data->contents;
+    loadingData->popData.archive = data->archive;
+    strncpy(loadingData->popData.path, data->path, FILE_PATH_MAX);
+    loadingData->popData.recursive = recursive;
+    loadingData->popData.includeBase = includeBase;
+    loadingData->popData.filter = ciasOnly ? util_filter_cias : ticketsOnly ? util_filter_tickets : NULL;
+    loadingData->popData.filterData = NULL;
+
+    Result listRes = task_populate_files(&loadingData->popData);
     if(R_FAILED(listRes)) {
         error_display_res(NULL, NULL, listRes, "Failed to initiate content list population.");
 
+        free(loadingData);
         action_delete_free_data(data);
         return;
     }
 
-    while(!popData.finished) {
-        svcSleepThread(1000000);
-    }
-
-    if(R_FAILED(popData.result)) {
-        error_display_res(NULL, NULL, popData.result, "Failed to populate content list.");
-
-        action_delete_free_data(data);
-        return;
-    }
-
-    data->deleteInfo.total = linked_list_size(&data->contents);
-    data->deleteInfo.processed = data->deleteInfo.total;
-
-    prompt_display("Confirmation", message, COLOR_TEXT, true, data, action_delete_draw_top, action_delete_onresponse);
+    info_display("Loading", "Press B to cancel.", false, loadingData, action_delete_loading_update, action_delete_loading_draw_top);
 }
 
 void action_delete_file(linked_list* items, list_item* selected) {
