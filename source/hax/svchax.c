@@ -474,6 +474,7 @@ Result svchax_init(bool patch_srv)
          } else if(kver > SYSTEM_VERSION(2, 50, 11)) {
             if(waithax_run()) {
                waithax_backdoor(k_enable_all_svcs);
+               waithax_cleanup();
                __ctr_svchax = 1;
             }
          } else {
