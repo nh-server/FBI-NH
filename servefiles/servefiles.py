@@ -30,7 +30,7 @@ if not os.path.exists(directory):
 
 print("Preparing data...")
 
-baseUrl = "http://" + netifaces.ifaddresses(netifaces.gateways()['default'][netifaces.AF_INET][1])[2][0]['addr'] + ":8080/"
+baseUrl = netifaces.ifaddresses(netifaces.gateways()['default'][netifaces.AF_INET][1])[2][0]['addr'] + ":8080/"
 qrData = ""
 
 if os.path.isfile(directory):
