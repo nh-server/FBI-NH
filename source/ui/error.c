@@ -488,8 +488,6 @@ static const char* description_to_string(Result res) {
             switch(res) {
                 case R_FBI_CANCELLED:
                     return "Operation cancelled";
-                case R_FBI_ERRNO:
-                    return "I/O error";
                 case R_FBI_HTTP_RESPONSE_CODE:
                     return "HTTP request returned error";
                 case R_FBI_WRONG_SYSTEM:
