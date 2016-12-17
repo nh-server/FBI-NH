@@ -35,18 +35,19 @@ qrData = ""
 
 if os.path.isfile(directory):
 	if directory.endswith(('.cia', '.tik')):
-		qrData += baseUrl + os.path.basename(directory)
+		qrData += baseUrl + urllib.parse.quote(os.path.basename(directory))
 
 	directory = os.path.dirname(directory)
 else:
 	for file in [ file for file in next(os.walk(directory))[2] if file.endswith(('.cia', '.tik')) ]:
-		qrData += baseUrl + file + "\n"
+		qrData += baseUrl + urllib.parse.quote(file) + "\n"
 
 if len(qrData) == 0:
 	print("No files to serve.")
 	sys.exit(1)
 
-os.chdir(directory)
+if not directory == "":
+	os.chdir(directory)
 
 print("")
 print("URLS:")
