@@ -2,20 +2,25 @@ import atexit
 import os
 import sys
 import tempfile
+import threading
 import urllib
-import webbrowser
-
-import http.server
-import socketserver
 
 import netifaces
 import qrcode
 
+from PIL import ImageTk
+
 try:
+	from SimpleHTTPServer import SimpleHTTPRequestHandler
+	from SocketServer import TCPServer
+	from Tkinter import Tk, Frame, Label, BitmapImage
 	from urlparse import urljoin
-	from urllib import pathname2url
+	from urllib import pathname2url, quote
 except ImportError:
-	from urllib.parse import urljoin
+	from http.server import SimpleHTTPRequestHandler
+	from socketserver import TCPServer
+	from tkinter import Tk, Frame, Label, BitmapImage
+	from urllib.parse import urljoin, quote
 	from urllib.request import pathname2url
 
 if len(sys.argv) < 2:
@@ -35,12 +40,12 @@ qrData = ""
 
 if os.path.isfile(directory):
 	if directory.endswith(('.cia', '.tik')):
-		qrData += baseUrl + urllib.parse.quote(os.path.basename(directory))
+		qrData += baseUrl + quote(os.path.basename(directory))
 
 	directory = os.path.dirname(directory)
 else:
 	for file in [ file for file in next(os.walk(directory))[2] if file.endswith(('.cia', '.tik')) ]:
-		qrData += baseUrl + urllib.parse.quote(file) + "\n"
+		qrData += baseUrl + quote(file) + "\n"
 
 if len(qrData) == 0:
 	print("No files to serve.")
@@ -54,17 +59,27 @@ print("URLS:")
 print(qrData)
 print("")
 
-print("Creating QR code...")
+print("Opening HTTP server on port 8080...")
 
-qrFile = tempfile.mkstemp(suffix=".png")[1]
-atexit.register(os.remove, qrFile)
+server = TCPServer(("", 8080), SimpleHTTPRequestHandler)
+thread = threading.Thread(target=server.serve_forever)
+thread.start()
+atexit.register(server.shutdown)
+
+print("Displaying QR code...")
 
 qrImage = qrcode.make(qrData)
-qrImage.save(qrFile)
 
-webbrowser.open_new_tab(urljoin('file:', pathname2url(qrFile)))
+root = Tk()
+root.title("QR Code")
 
-print("Listening on port 8080...")
+frame = Frame(root)
+frame.pack()
 
-httpd = socketserver.TCPServer(("", 8080), http.server.SimpleHTTPRequestHandler)
-httpd.serve_forever()
+qrBitmap = ImageTk.PhotoImage(qrImage)
+qrLabel = Label(frame, image=qrBitmap)
+qrLabel.pack()
+
+root.mainloop()
+
+server.shutdown()
