@@ -66,9 +66,11 @@ thread = threading.Thread(target=server.serve_forever)
 thread.start()
 atexit.register(server.shutdown)
 
-print("Displaying QR code...")
+print("Generating QR code...")
 
 qrImage = qrcode.make(qrData)
+
+print("Displaying QR code...")
 
 root = Tk()
 root.title("QR Code")
@@ -81,5 +83,7 @@ qrLabel = Label(frame, image=qrBitmap)
 qrLabel.pack()
 
 root.mainloop()
+
+print("Shutting down HTTP server...")
 
 server.shutdown()
