@@ -255,6 +255,23 @@ void util_get_parent_path(char* out, const char* path, u32 size) {
     out[terminatorPos] = '\0';
 }
 
+bool util_is_string_empty(const char* str) {
+    if(strlen(str) == 0) {
+        return true;
+    }
+
+    const char* curr = str;
+    while(*curr) {
+        if(*curr != ' ') {
+            return false;
+        }
+
+        curr++;
+    }
+
+    return true;
+}
+
 static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
     u32 *cmdbuf = getThreadCommandBuffer();
 
@@ -417,9 +434,9 @@ bool util_filter_tickets(void* data, const char* name, u32 attributes) {
     return len >= 4 && strncasecmp(name + len - 4, ".tik", 4) == 0;
 }
 
-int util_compare_file_infos(const void** p1, const void** p2) {
-    list_item* info1 = *(list_item**) p1;
-    list_item* info2 = *(list_item**) p2;
+int util_compare_file_infos(void* userData, const void* p1, const void* p2) {
+    list_item* info1 = (list_item*) p1;
+    list_item* info2 = (list_item*) p2;
 
     bool info1Base = strncmp(info1->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info1->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;
     bool info2Base = strncmp(info2->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info2->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;

@@ -55,9 +55,9 @@ static Result task_populate_titledb_download(u32* downloadSize, void* buffer, u3
     return res;
 }
 
-static int task_populate_titledb_compare(const void** p1, const void** p2) {
-    list_item* info1 = *(list_item**) p1;
-    list_item* info2 = *(list_item**) p2;
+static int task_populate_titledb_compare(void* userData, const void* p1, const void* p2) {
+    list_item* info1 = (list_item*) p1;
+    list_item* info2 = (list_item*) p2;
 
     return strncasecmp(info1->name, info2->name, LIST_ITEM_NAME_MAX);
 }
@@ -151,7 +151,7 @@ static void task_populate_titledb_thread(void* arg) {
     }
 
     if(R_SUCCEEDED(res)) {
-        linked_list_sort(&tempItems, task_populate_titledb_compare);
+        linked_list_sort(&tempItems, NULL, task_populate_titledb_compare);
 
         linked_list_iter tempIter;
         linked_list_iterate(&tempItems, &tempIter);

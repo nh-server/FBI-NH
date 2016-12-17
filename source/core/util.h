@@ -52,6 +52,8 @@ Result util_ensure_dir(FS_Archive archive, const char* path);
 void util_get_path_file(char* out, const char* path, u32 size);
 void util_get_parent_path(char* out, const char* path, u32 size);
 
+bool util_is_string_empty(const char* str);
+
 Result util_import_seed(u64 titleId);
 u32 util_get_seed_response_code();
 
@@ -67,7 +69,7 @@ u8* util_get_tmd_content_chunk(u8* tmd, u32 index);
 bool util_filter_cias(void* data, const char* name, u32 attributes);
 bool util_filter_tickets(void* data, const char* name, u32 attributes);
 
-int util_compare_file_infos(const void** p1, const void** p2);
+int util_compare_file_infos(void* userData, const void* p1, const void* p2);
 
 const char* util_get_3dsx_path();
 void util_set_3dsx_path(const char* path);

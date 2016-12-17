@@ -61,22 +61,7 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                     FSFILE_Close(fileHandle);
                 }
 
-                bool empty = strlen(item->name) == 0;
-                if(!empty) {
-                    empty = true;
-
-                    char* curr = item->name;
-                    while(*curr) {
-                        if(*curr != ' ') {
-                            empty = false;
-                            break;
-                        }
-
-                        curr++;
-                    }
-                }
-
-                if(empty) {
+                if(util_is_string_empty(item->name)) {
                     snprintf(item->name, NAME_MAX, "%016llX", titleId);
                 }
 
@@ -214,22 +199,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                     free(bnr);
                 }
 
-                bool empty = strlen(item->name) == 0;
-                if(!empty) {
-                    empty = true;
-
-                    char* curr = item->name;
-                    while(*curr) {
-                        if(*curr != ' ') {
-                            empty = false;
-                            break;
-                        }
-
-                        curr++;
-                    }
-                }
-
-                if(empty) {
+                if(util_is_string_empty(item->name)) {
                     snprintf(item->name, NAME_MAX, "%016llX", realTitleId);
                 }
 
@@ -280,13 +250,15 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                             break;
                         }
 
-                        if(data->filter == NULL || data->filter(data->filterData, titleIds[i], mediaType)) {
+                        if(data->filter == NULL || data->filter(data->userData, titleIds[i], mediaType)) {
                             bool dsiWare = ((titleIds[i] >> 32) & 0x8000) != 0;
                             if(dsiWare != useDSiWare) {
                                 continue;
                             }
 
-                            res = dsiWare ? task_populate_titles_add_twl(data, mediaType, titleIds[i]) : task_populate_titles_add_ctr(data, mediaType, titleIds[i]);
+                            if(R_SUCCEEDED(res = dsiWare ? task_populate_titles_add_twl(data, mediaType, titleIds[i]) : task_populate_titles_add_ctr(data, mediaType, titleIds[i])) && data->compare != NULL) {
+                                linked_list_sort(data->items, data->userData, data->compare);
+                            }
                         }
                     }
                 }

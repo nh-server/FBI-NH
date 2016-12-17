@@ -66,7 +66,7 @@ void action_rename(linked_list* items, list_item* selected) {
             strncpy(targetInfo->name, textBuf, FILE_NAME_MAX);
             strncpy(targetInfo->path, dstPath, FILE_PATH_MAX);
 
-            linked_list_sort(items, util_compare_file_infos);
+            linked_list_sort(items, NULL, util_compare_file_infos);
 
             prompt_display("Success", "Renamed.", COLOR_TEXT, false, NULL, NULL, NULL);
         } else {
