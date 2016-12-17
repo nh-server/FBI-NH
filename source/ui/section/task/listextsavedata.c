@@ -35,7 +35,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                 break;
             }
 
-            if(data->filter == NULL || data->filter(data->filterData, extSaveDataIds[i], mediaType)) {
+            if(data->filter == NULL || data->filter(data->userData, extSaveDataIds[i], mediaType)) {
                 list_item* item = (list_item*) calloc(1, sizeof(list_item));
                 if(item != NULL) {
                     ext_save_data_info* extSaveDataInfo = (ext_save_data_info*) calloc(1, sizeof(ext_save_data_info));
@@ -69,22 +69,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                             free(smdh);
                         }
 
-                        bool empty = strlen(item->name) == 0;
-                        if(!empty) {
-                            empty = true;
-
-                            char* curr = item->name;
-                            while(*curr) {
-                                if(*curr != ' ') {
-                                    empty = false;
-                                    break;
-                                }
-
-                                curr++;
-                            }
-                        }
-
-                        if(empty) {
+                        if(util_is_string_empty(item->name)) {
                             snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", extSaveDataIds[i]);
                         }
 
@@ -97,6 +82,10 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                         item->data = extSaveDataInfo;
 
                         linked_list_add(data->items, item);
+
+                        if(data->compare != NULL) {
+                            linked_list_sort(data->items, data->userData, data->compare);
+                        }
                     } else {
                         free(item);
 

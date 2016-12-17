@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <3ds.h>
 
@@ -11,6 +12,7 @@
 #include "../ui.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
+#include "../../core/util.h"
 
 static list_item browse_user_save_data = {"Browse User Save Data", COLOR_TEXT, action_browse_user_ext_save_data};
 static list_item browse_spotpass_save_data = {"Browse SpotPass Save Data", COLOR_TEXT, action_browse_boss_ext_save_data};
@@ -21,6 +23,7 @@ typedef struct {
 
     bool showSD;
     bool showNAND;
+    bool sortByName;
 
     bool populated;
 } extsavedata_data;
@@ -80,7 +83,7 @@ static void extsavedata_action_open(linked_list* items, list_item* selected) {
     list_display("Ext Save Data Action", "A: Select, B: Return", data, extsavedata_action_update, extsavedata_action_draw_top);
 }
 
-static void extsavedata_filters_add_entry(linked_list* items, const char* name, bool* val) {
+static void extsavedata_options_add_entry(linked_list* items, const char* name, bool* val) {
     list_item* item = (list_item*) calloc(1, sizeof(list_item));
     if(item != NULL) {
         snprintf(item->name, LIST_ITEM_NAME_MAX, "%s", name);
@@ -91,7 +94,7 @@ static void extsavedata_filters_add_entry(linked_list* items, const char* name, 
     }
 }
 
-static void extsavedata_filters_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
+static void extsavedata_options_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     extsavedata_data* listData = (extsavedata_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -119,13 +122,14 @@ static void extsavedata_filters_update(ui_view* view, void* data, linked_list* i
     }
 
     if(linked_list_size(items) == 0) {
-        extsavedata_filters_add_entry(items, "Show SD", &listData->showSD);
-        extsavedata_filters_add_entry(items, "Show NAND", &listData->showNAND);
+        extsavedata_options_add_entry(items, "Show SD", &listData->showSD);
+        extsavedata_options_add_entry(items, "Show NAND", &listData->showNAND);
+        extsavedata_options_add_entry(items, "Sort by name", &listData->sortByName);
     }
 }
 
-static void extsavedata_filters_open(extsavedata_data* data) {
-    list_display("Filters", "A: Toggle, B: Return", data, extsavedata_filters_update, NULL);
+static void extsavedata_options_open(extsavedata_data* data) {
+    list_display("Options", "A: Toggle, B: Return", data, extsavedata_options_update, NULL);
 }
 
 static void extsavedata_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -155,7 +159,7 @@ static void extsavedata_update(ui_view* view, void* data, linked_list* items, li
     }
 
     if(hidKeysDown() & KEY_SELECT) {
-        extsavedata_filters_open(listData);
+        extsavedata_options_open(listData);
         return;
     }
 
@@ -198,6 +202,40 @@ static bool extsavedata_filter(void* data, u64 titleId, FS_MediaType mediaType) 
     }
 }
 
+static int extsavedata_compare(void* data, const void* p1, const void* p2) {
+    extsavedata_data* listData = (extsavedata_data*) data;
+
+    list_item* info1 = (list_item*) p1;
+    list_item* info2 = (list_item*) p2;
+
+    ext_save_data_info* title1 = (ext_save_data_info*) info1->data;
+    ext_save_data_info* title2 = (ext_save_data_info*) info2->data;
+
+    if(title1->mediaType > title2->mediaType) {
+        return -1;
+    } else if(title1->mediaType < title2->mediaType) {
+        return 1;
+    } else {
+        if(listData->sortByName) {
+            bool title1HasName = title1->hasMeta && !util_is_string_empty(title1->meta.shortDescription);
+            bool title2HasName = title2->hasMeta && !util_is_string_empty(title2->meta.shortDescription);
+
+            if(title1HasName && !title2HasName) {
+                return -1;
+            } else if(!title1HasName && title2HasName) {
+                return 1;
+            } else {
+                return strcasecmp(info1->name, info2->name);
+            }
+        } else {
+            u64 id1 = title1->extSaveDataId;
+            u64 id2 = title2->extSaveDataId;
+
+            return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+        }
+    }
+}
+
 void extsavedata_open() {
     extsavedata_data* data = (extsavedata_data*) calloc(1, sizeof(extsavedata_data));
     if(data == NULL) {
@@ -206,13 +244,15 @@ void extsavedata_open() {
         return;
     }
 
+    data->populateData.userData = data;
     data->populateData.filter = extsavedata_filter;
-    data->populateData.filterData = data;
+    data->populateData.compare = extsavedata_compare;
 
     data->populateData.finished = true;
 
     data->showSD = true;
     data->showNAND = true;
+    data->sortByName = true;
 
-    list_display("Ext Save Data", "A: Select, B: Return, X: Refresh, Select: Filter", data, extsavedata_update, extsavedata_draw_top);
+    list_display("Ext Save Data", "A: Select, B: Return, X: Refresh, Select: Options", data, extsavedata_update, extsavedata_draw_top);
 }

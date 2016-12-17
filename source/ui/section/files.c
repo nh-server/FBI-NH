@@ -181,7 +181,7 @@ static void files_action_open(linked_list* items, list_item* selected, files_dat
     list_display((((file_info*) selected->data)->attributes & FS_ATTRIBUTE_DIRECTORY) ? "Directory Action" : "File Action", "A: Select, B: Return", data, files_action_update, files_action_draw_top);
 }
 
-static void files_filters_add_entry(linked_list* items, const char* name, bool* val) {
+static void files_options_add_entry(linked_list* items, const char* name, bool* val) {
     list_item* item = (list_item*) calloc(1, sizeof(list_item));
     if(item != NULL) {
         snprintf(item->name, LIST_ITEM_NAME_MAX, "%s", name);
@@ -192,7 +192,7 @@ static void files_filters_add_entry(linked_list* items, const char* name, bool* 
     }
 }
 
-static void files_filters_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
+static void files_options_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     files_data* listData = (files_data*) data;
 
     if(hidKeysDown() & KEY_B) {
@@ -220,16 +220,16 @@ static void files_filters_update(ui_view* view, void* data, linked_list* items, 
     }
 
     if(linked_list_size(items) == 0) {
-        files_filters_add_entry(items, "Show hidden", &listData->showHidden);
-        files_filters_add_entry(items, "Show directories", &listData->showDirectories);
-        files_filters_add_entry(items, "Show files", &listData->showFiles);
-        files_filters_add_entry(items, "Show CIAs", &listData->showCias);
-        files_filters_add_entry(items, "Show tickets", &listData->showTickets);
+        files_options_add_entry(items, "Show hidden", &listData->showHidden);
+        files_options_add_entry(items, "Show directories", &listData->showDirectories);
+        files_options_add_entry(items, "Show files", &listData->showFiles);
+        files_options_add_entry(items, "Show CIAs", &listData->showCias);
+        files_options_add_entry(items, "Show tickets", &listData->showTickets);
     }
 }
 
-static void files_filters_open(files_data* data) {
-    list_display("Filters", "A: Toggle, B: Return", data, files_filters_update, NULL);
+static void files_options_open(files_data* data) {
+    list_display("Options", "A: Toggle, B: Return", data, files_options_update, NULL);
 }
 
 static void files_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -322,7 +322,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
     }
 
     if(hidKeysDown() & KEY_SELECT) {
-        files_filters_open(listData);
+        files_options_open(listData);
         return;
     }
 
@@ -421,7 +421,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
         return;
     }
 
-    list_display("Files", "A: Select, B: Back, X: Refresh, Select: Filters", data, files_update, files_draw_top);
+    list_display("Files", "A: Select, B: Back, X: Refresh, Select: Options", data, files_update, files_draw_top);
 }
 
 void files_open_sd() {

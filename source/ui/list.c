@@ -12,6 +12,7 @@ typedef struct {
     void* data;
     linked_list items;
     u32 selectedIndex;
+    list_item* selectedItem;
     u32 selectionScroll;
     u64 nextSelectionScrollResetTime;
     float scrollPos;
@@ -21,27 +22,31 @@ typedef struct {
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected);
 } list_data;
 
-static float list_get_item_screen_y(list_data* listData, u32 index) {
+static float list_get_item_screen_y(list_data* listData, list_item* item) {
+    if(item == NULL) {
+        return 0;
+    }
+
     float y = -listData->scrollPos;
 
     linked_list_iter iter;
     linked_list_iterate(&listData->items, &iter);
 
-    int i = 0;
-    while(linked_list_iter_has_next(&iter) && i < index) {
-        list_item* item = (list_item*) linked_list_iter_next(&iter);
+    while(linked_list_iter_has_next(&iter)) {
+        list_item* currItem = (list_item*) linked_list_iter_next(&iter);
+        if(currItem == item) {
+            break;
+        }
 
         float stringHeight;
-        screen_get_string_size(NULL, &stringHeight, item->name, 0.5f, 0.5f);
+        screen_get_string_size(NULL, &stringHeight, currItem->name, 0.5f, 0.5f);
         y += stringHeight;
-
-        i++;
     }
 
     return y;
 }
 
-static int list_get_item_at(list_data* listData, float screenY) {
+static int list_get_item_index_at(list_data* listData, float screenY) {
     float y = -listData->scrollPos;
 
     linked_list_iter iter;
@@ -71,19 +76,48 @@ static void list_validate_pos(list_data* listData, float by1, float by2) {
 
     if(size == 0 || listData->selectedIndex < 0) {
         listData->selectedIndex = 0;
+        listData->selectedItem = NULL;
         listData->scrollPos = 0;
     }
 
     if(size > 0) {
         if(listData->selectedIndex > size - 1) {
             listData->selectedIndex = size - 1;
+            listData->selectedItem = NULL;
             listData->scrollPos = 0;
         }
 
-        float lastItemHeight;
-        screen_get_string_size(NULL, &lastItemHeight, ((list_item*) linked_list_get(&listData->items, size - 1))->name, 0.5f, 0.5f);
+        bool found = false;
+        if(listData->selectedItem != NULL) {
+            int index = linked_list_index_of(&listData->items, listData->selectedItem);
+            if(index != -1) {
+                found = true;
+                listData->selectedIndex = (u32) index;
+            }
+        }
 
-        float lastPageEnd = list_get_item_screen_y(listData, size - 1);
+        if(!found) {
+            listData->selectedItem = linked_list_get(&listData->items, listData->selectedIndex);
+        }
+
+        float itemHeight;
+        screen_get_string_size(NULL, &itemHeight, listData->selectedItem->name, 0.5f, 0.5f);
+
+        float itemY = list_get_item_screen_y(listData, listData->selectedItem);
+        if(itemY + itemHeight > by2 - by1) {
+            listData->scrollPos -= (by2 - by1) - itemY - itemHeight;
+        }
+
+        if(itemY < 0) {
+            listData->scrollPos += itemY;
+        }
+
+        list_item* lastItem = (list_item*) linked_list_get(&listData->items, size - 1);
+
+        float lastItemHeight;
+        screen_get_string_size(NULL, &lastItemHeight, lastItem->name, 0.5f, 0.5f);
+
+        float lastPageEnd = list_get_item_screen_y(listData, lastItem);
         if(lastPageEnd < by2 - by1 - lastItemHeight) {
             listData->scrollPos -= (by2 - by1 - lastItemHeight) - lastPageEnd;
         }
@@ -104,7 +138,7 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
         list_validate_pos(listData, by1, by2);
 
         float itemWidth;
-        screen_get_string_size(&itemWidth, NULL, ((list_item*) linked_list_get(&listData->items, listData->selectedIndex))->name, 0.5f, 0.5f);
+        screen_get_string_size(&itemWidth, NULL, listData->selectedItem->name, 0.5f, 0.5f);
         if(itemWidth > bx2 - bx1) {
             if(listData->selectionScroll == 0 || listData->selectionScroll >= itemWidth - (bx2 - bx1)) {
                 if(listData->nextSelectionScrollResetTime == 0) {
@@ -165,30 +199,13 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_LEFT) ? 500 : 100);
         }
 
-        if(lastSelectedIndex != listData->selectedIndex) {
-            listData->selectionScroll = 0;
-            listData->nextSelectionScrollResetTime = 0;
-
-            float itemHeight;
-            screen_get_string_size(NULL, &itemHeight, ((list_item*) linked_list_get(&listData->items, listData->selectedIndex))->name, 0.5f, 0.5f);
-
-            float itemY = list_get_item_screen_y(listData, listData->selectedIndex);
-            if(itemY + itemHeight > by2 - by1) {
-                listData->scrollPos -= (by2 - by1) - itemY - itemHeight;
-            }
-
-            if(itemY < 0) {
-                listData->scrollPos += itemY;
-            }
-        }
-
         if(hidKeysDown() & KEY_TOUCH) {
             touchPosition pos;
             hidTouchRead(&pos);
 
             listData->lastScrollTouchY = pos.py;
 
-            int index = list_get_item_at(listData, pos.py - by1);
+            int index = list_get_item_index_at(listData, pos.py - by1);
             if(index >= 0) {
                 if(listData->selectedIndex == index) {
                     selectedTouched = true;
@@ -204,11 +221,20 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
             listData->lastScrollTouchY = pos.py;
         }
 
+        if(listData->selectedIndex != lastSelectedIndex) {
+            listData->selectedItem = linked_list_get(&listData->items, listData->selectedIndex);
+
+            listData->selectionScroll = 0;
+            listData->nextSelectionScrollResetTime = 0;
+        }
+
         list_validate_pos(listData, by1, by2);
     }
 
     if(listData->update != NULL) {
-        listData->update(view, listData->data, &listData->items, linked_list_get(&listData->items, listData->selectedIndex), selectedTouched);
+        listData->update(view, listData->data, &listData->items, listData->selectedItem, selectedTouched);
+
+        list_validate_pos(listData, by1, by2);
     }
 }
 
@@ -216,7 +242,7 @@ static void list_draw_top(ui_view* view, void* data, float x1, float y1, float x
     list_data* listData = (list_data*) data;
 
     if(listData->drawTop != NULL) {
-        listData->drawTop(view, listData->data, x1, y1, x2, y2, linked_list_get(&listData->items, listData->selectedIndex));
+        listData->drawTop(view, listData->data, x1, y1, x2, y2, listData->selectedItem);
     }
 }
 
@@ -230,7 +256,6 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
     linked_list_iter iter;
     linked_list_iterate(&listData->items, &iter);
 
-    u32 i = 0;
     while(linked_list_iter_has_next(&iter)) {
         if(y > y2) {
             break;
@@ -243,13 +268,13 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
 
         if(y > y1 - stringHeight) {
             float x = x1 + 2;
-            if(i == listData->selectedIndex) {
+            if(item == listData->selectedItem) {
                 x -= listData->selectionScroll;
             }
 
             screen_draw_string(item->name, x, y, 0.5f, 0.5f, item->color, true);
 
-            if(i == listData->selectedIndex) {
+            if(item == listData->selectedItem) {
                 u32 selectionOverlayWidth = 0;
                 u32 selectionOverlayHeight = 0;
                 screen_get_texture_size(&selectionOverlayWidth, &selectionOverlayHeight, TEXTURE_SELECTION_OVERLAY);
@@ -258,16 +283,16 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
         }
 
         y += stringHeight;
-
-        i++;
     }
 
     u32 size = linked_list_size(&listData->items);
     if(size > 0) {
-        float lastItemHeight;
-        screen_get_string_size(NULL, &lastItemHeight, ((list_item*) linked_list_get(&listData->items, size - 1))->name, 0.5f, 0.5f);
+        list_item* lastItem = (list_item*) linked_list_get(&listData->items, size - 1);
 
-        float totalHeight = list_get_item_screen_y(listData, size - 1) + listData->scrollPos + lastItemHeight;
+        float lastItemHeight;
+        screen_get_string_size(NULL, &lastItemHeight, lastItem->name, 0.5f, 0.5f);
+
+        float totalHeight = list_get_item_screen_y(listData, lastItem) + listData->scrollPos + lastItemHeight;
 
         float viewHeight = y2 - y1;
 
@@ -297,6 +322,7 @@ ui_view* list_display(const char* name, const char* info, void* data, void (*upd
     listData->data = data;
     linked_list_init(&listData->items);
     listData->selectedIndex = 0;
+    listData->selectedItem = NULL;
     listData->selectionScroll = 0;
     listData->nextSelectionScrollResetTime = 0;
     listData->scrollPos = 0;

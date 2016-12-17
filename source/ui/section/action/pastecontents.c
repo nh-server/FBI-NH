@@ -255,7 +255,7 @@ static void action_paste_contents_update(ui_view* view, void* data, float* progr
     if(pasteData->pasteInfo.finished) {
         FSUSER_ControlArchive(pasteData->target->archive, ARCHIVE_ACTION_COMMIT_SAVE_DATA, NULL, 0, NULL, 0);
 
-        linked_list_sort(pasteData->items, util_compare_file_infos);
+        linked_list_sort(pasteData->items, NULL, util_compare_file_infos);
 
         ui_pop();
         info_destroy(view);

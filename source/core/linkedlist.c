@@ -31,16 +31,22 @@ void linked_list_clear(linked_list* list) {
 }
 
 bool linked_list_contains(linked_list* list, void* value) {
+    return linked_list_index_of(list, value) != -1;
+}
+
+int linked_list_index_of(linked_list* list, void* value) {
+    int i = 0;
     linked_list_node* node = list->first;
     while(node != NULL) {
         if(node->value == value) {
-            return true;
+            return i;
         }
 
+        i++;
         node = node->next;
     }
 
-    return false;
+    return -1;
 }
 
 static linked_list_node* linked_list_get_node(linked_list* list, unsigned int index) {
@@ -186,27 +192,28 @@ bool linked_list_remove_at(linked_list* list, unsigned int index) {
     return true;
 }
 
-void linked_list_sort(linked_list* list, int (*compare)(const void** p1, const void** p2)) {
-    unsigned int count = list->size;
+void linked_list_sort(linked_list* list, void* userData, int (*compare)(void* userData, const void* p1, const void* p2)) {
+    bool swapped = true;
+    while(swapped) {
+        swapped = false;
 
-    void** elements = (void**) calloc(count, sizeof(void*));
-    if(elements != NULL) {
-        unsigned int num = 0;
-        linked_list_node* node = list->first;
-        while(node != NULL && num < count) {
-            elements[num++] = node->value;
-            node = node->next;
+        linked_list_node* curr = list->first;
+        if(curr == NULL) {
+            return;
         }
 
-        linked_list_clear(list);
+        linked_list_node* next = NULL;
+        while((next = curr->next) != NULL) {
+            if(compare(userData, curr->value, next->value) > 0) {
+                void* temp = curr->value;
+                curr->value = next->value;
+                next->value = temp;
 
-        qsort(elements, num, sizeof(void*), (int (*)(const void* p1, const void* p2)) compare);
+                swapped = true;
+            }
 
-        for(unsigned int i = 0; i < num; i++) {
-            linked_list_add(list, elements[i]);
+            curr = next;
         }
-
-        free(elements);
     }
 }
 
@@ -225,17 +232,23 @@ void linked_list_iter_restart(linked_list_iter* iter) {
 }
 
 bool linked_list_iter_has_next(linked_list_iter* iter) {
-    return iter->next != NULL;
+    return iter->next != NULL && iter->next->value != NULL;
 }
 
 void* linked_list_iter_next(linked_list_iter* iter) {
-    if(iter->next == NULL) {
+    linked_list_node* next = iter->next;
+    if(next == NULL) {
         return NULL;
     }
 
-    iter->curr = iter->next;
-    iter->next = iter->next->next;
-    return iter->curr->value;
+    void* value = next->value;
+    if(value == NULL) {
+        return NULL;
+    }
+
+    iter->curr = next;
+    iter->next = next->next;
+    return value;
 }
 
 void linked_list_iter_remove(linked_list_iter* iter) {

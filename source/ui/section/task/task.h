@@ -75,7 +75,7 @@ typedef struct titledb_info_s {
     meta_info meta;
 } titledb_info;
 
-typedef struct {
+typedef struct capture_cam_data_s {
     u16* buffer;
     s16 width;
     s16 height;
@@ -140,18 +140,19 @@ typedef struct data_op_info_s {
     Handle cancelEvent;
 } data_op_data;
 
-typedef struct {
+typedef struct populate_ext_save_data_data_s {
     linked_list* items;
 
+    void* userData;
     bool (*filter)(void* data, u64 extSaveDataId, FS_MediaType mediaType);
-    void* filterData;
+    int (*compare)(void* data, const void* p1, const void* p2);
 
     volatile bool finished;
     Result result;
     Handle cancelEvent;
 } populate_ext_save_data_data;
 
-typedef struct {
+typedef struct populate_files_data_s {
     linked_list* items;
 
     FS_Archive archive;
@@ -168,7 +169,7 @@ typedef struct {
     Handle cancelEvent;
 } populate_files_data;
 
-typedef struct {
+typedef struct populate_pending_titles_data_s {
     linked_list* items;
 
     volatile bool finished;
@@ -176,7 +177,7 @@ typedef struct {
     Handle cancelEvent;
 } populate_pending_titles_data;
 
-typedef struct {
+typedef struct populate_system_save_data_data_s {
     linked_list* items;
 
     volatile bool finished;
@@ -184,7 +185,7 @@ typedef struct {
     Handle cancelEvent;
 } populate_system_save_data_data;
 
-typedef struct {
+typedef struct populate_tickets_data_s {
     linked_list* items;
 
     volatile bool finished;
@@ -192,18 +193,19 @@ typedef struct {
     Handle cancelEvent;
 } populate_tickets_data;
 
-typedef struct {
+typedef struct populate_titles_data_s {
     linked_list* items;
 
+    void* userData;
     bool (*filter)(void* data, u64 titleId, FS_MediaType mediaType);
-    void* filterData;
+    int (*compare)(void* data, const void* p1, const void* p2);
 
     volatile bool finished;
     Result result;
     Handle cancelEvent;
 } populate_titles_data;
 
-typedef struct {
+typedef struct populate_titledb_data_s {
     linked_list* items;
 
     volatile bool finished;
