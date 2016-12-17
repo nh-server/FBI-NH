@@ -22,7 +22,7 @@ OUTPUT_DIR := output
 INCLUDE_DIRS := include
 SOURCE_DIRS := source
 
-EXTRA_OUTPUT_FILES :=
+EXTRA_OUTPUT_FILES := servefiles
 
 LIBRARY_DIRS := $(DEVKITPRO)/libctru
 LIBRARIES := citro3d ctru m
