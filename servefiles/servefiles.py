@@ -59,16 +59,20 @@ print("URLS:")
 print(qrData)
 print("")
 
+print("Generating QR code...")
+
+try:
+	qrImage = qrcode.make(qrData, box_size=5)
+except qrcode.exceptions.DataOverflowError:
+	print("Error: URL list too large for a QR code. Try reducing file name lengths or the number of files to send.")
+	sys.exit(1)
+
 print("Opening HTTP server on port 8080...")
 
 server = TCPServer(("", 8080), SimpleHTTPRequestHandler)
 thread = threading.Thread(target=server.serve_forever)
 thread.start()
 atexit.register(server.shutdown)
-
-print("Generating QR code...")
-
-qrImage = qrcode.make(qrData, box_size=5)
 
 print("Displaying QR code...")
 
