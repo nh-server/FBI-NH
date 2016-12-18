@@ -68,7 +68,7 @@ atexit.register(server.shutdown)
 
 print("Generating QR code...")
 
-qrImage = qrcode.make(qrData)
+qrImage = qrcode.make(qrData, box_size=5)
 
 print("Displaying QR code...")
 
