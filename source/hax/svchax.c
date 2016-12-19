@@ -470,59 +470,59 @@ Result svchax_init(bool patch_srv)
    if(!__ctr_svchax) {
       if(__service_ptr) {
          if(kver > SYSTEM_VERSION(2, 51, 2)) {
-            printf("Unsupported firmware version.");
+            printf("Unsupported firmware version.\n");
             return -1;
          } else if(kver > SYSTEM_VERSION(2, 50, 11)) {
             printf("Executing waithax...");
             if(waithax_run()) {
-               printf("Executing k_enable_all_svcs...");
+               printf("Executing k_enable_all_svcs...\n");
                waithax_backdoor(k_enable_all_svcs);
 
-               printf("Cleaning up waithax...");
+               printf("Cleaning up waithax...\n");
                waithax_cleanup();
 
-               printf("waithax complete.");
+               printf("waithax complete.\n");
                __ctr_svchax = 1;
             }
          } else {
             if(kver > SYSTEM_VERSION(2, 46, 0)) {
-               printf("Executing memchunkhax2...");
+               printf("Executing memchunkhax2...\n");
                do_memchunkhax2();
             } else {
-               printf("Executing memchunkhax1...");
+               printf("Executing memchunkhax1...\n");
                do_memchunkhax1();
             }
 
-            printf("Executing k_enable_all_svcs...");
+            printf("Executing k_enable_all_svcs...\n");
             svc_7b((backdoor_fn) k_enable_all_svcs);
 
-            printf("memchunkhax complete.");
+            printf("memchunkhax complete.\n");
             __ctr_svchax = 1;
          }
       } else {
-         printf("Executing k_enable_all_svcs...");
+         printf("Executing k_enable_all_svcs...\n");
          svc_7b((backdoor_fn) k_enable_all_svcs);
 
-         printf("SVC access patch complete.");
+         printf("SVC access patch complete.\n");
          __ctr_svchax = 1;
       }
    }
 
    if (patch_srv && __ctr_svchax && !__ctr_svchax_srv)
    {
-      printf("Patching PID to 0...");
+      printf("Patching PID to 0...\n");
       u32 PID_kaddr = read_kaddr(CURRENT_KPROCESS) + (g_is_new3ds ? 0xBC : (kver > SYSTEM_VERSION(2, 40, 0)) ? 0xB4 : 0xAC);
       u32 old_PID = read_kaddr(PID_kaddr);
       write_kaddr(PID_kaddr, 0);
 
-      printf("Reinitializing srv...");
+      printf("Reinitializing srv...\n");
       srvExit();
       srvInit();
 
-      printf("Restoring PID...");
+      printf("Restoring PID...\n");
       write_kaddr(PID_kaddr, old_PID);
 
-      printf("Service access patch complete.");
+      printf("Service access patch complete.\n");
       __ctr_svchax_srv = 1;
    }
 
