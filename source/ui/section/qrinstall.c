@@ -12,6 +12,7 @@
 #include "../prompt.h"
 #include "../ui.h"
 #include "../../core/screen.h"
+#include "../../core/util.h"
 #include "../../quirc/quirc_internal.h"
 
 #define IMAGE_WIDTH 400
@@ -61,6 +62,48 @@ static void qrinstall_wait_draw_top(ui_view* view, void* data, float x1, float y
 
     if(qrInstallData->tex != 0) {
         screen_draw_texture(qrInstallData->tex, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
+    }
+}
+
+static bool qrinstall_get_last_urls(char* out, size_t size) {
+    if(out == NULL || size == 0) {
+        return false;
+    }
+
+    Handle file = 0;
+    if(R_FAILED(FSUSER_OpenFileDirectly(&file, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), fsMakePath(PATH_ASCII, "/fbi/lasturls"), FS_OPEN_READ, 0))) {
+        return false;
+    }
+
+    u32 bytesRead = 0;
+    FSFILE_Read(file, &bytesRead, 0, out, size - 1);
+    out[bytesRead] = '\0';
+
+    if(bytesRead == 0) {
+        return false;
+    }
+
+    FSFILE_Close(file);
+    return true;
+}
+
+static void qrinstall_set_last_urls(const char* urls) {
+    FS_Archive sdmcArchive = 0;
+    if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
+        FS_Path path = fsMakePath(PATH_ASCII, "/fbi/lasturls");
+        if(urls == NULL || strlen(urls) == 0) {
+            FSUSER_DeleteFile(sdmcArchive, path);
+        } else if(R_SUCCEEDED(util_ensure_dir(sdmcArchive, "/fbi/"))) {
+            Handle file = 0;
+            if(R_SUCCEEDED(FSUSER_OpenFile(&file, sdmcArchive, path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
+                u32 bytesWritten = 0;
+                FSFILE_Write(file, &bytesWritten, 0, urls, strlen(urls), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
+
+                FSFILE_Close(file);
+            }
+        }
+
+        FSUSER_CloseArchive(sdmcArchive);
     }
 }
 
@@ -123,9 +166,22 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
             qrInstallData->capturing = false;
             memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
 
+            qrinstall_set_last_urls(textBuf);
+
             action_url_install("Install from the provided URL(s)?", textBuf);
             return;
         }
+    }
+
+    if(hidKeysDown() & KEY_Y) {
+        char textBuf[4096];
+        if(qrinstall_get_last_urls(textBuf, sizeof(textBuf))) {
+            action_url_install("Install from the last entered URL(s)?", textBuf);
+        } else {
+            error_display(NULL, NULL, "No previously entered URL(s) could be found.");
+        }
+
+        return;
     }
 
     if(qrInstallData->tex != 0) {
@@ -170,6 +226,8 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
 
             qrInstallData->capturing = false;
             memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+
+            qrinstall_set_last_urls((const char*) qrData.payload);
 
             action_url_install("Install from the scanned QR code?", (const char*) qrData.payload);
             return;
@@ -219,5 +277,5 @@ void qrinstall_open() {
         return;
     }
 
-    info_display("QR Code Install", "B: Return, X: Enter URL(s)", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
+    info_display("QR Code Install", "B: Return, X: Enter URL(s), Y: Use Last URL(s)", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
 }
