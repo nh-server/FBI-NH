@@ -53,7 +53,7 @@ static struct {
 static C3D_Tex* glyphSheets;
 
 static FILE* screen_open_resource(const char* path) {
-    u32 realPathSize = strlen(path) + 16;
+    u32 realPathSize = strlen(path) + 17;
     char realPath[realPathSize];
 
     snprintf(realPath, realPathSize, "sdmc:/fbi/theme/%s", path);
