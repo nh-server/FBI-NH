@@ -592,6 +592,10 @@ void screen_draw_texture_crop(u32 id, float x, float y, float width, float heigh
     screen_draw_quad(x, y, x + width, y + height, 0, 0, width / (float) textures[id].pow2Width, height / (float) textures[id].pow2Height);
 }
 
+float screen_get_font_height(float scaleY) {
+    return scaleY * fontGetInfo()->lineFeed;
+}
+
 static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine, bool wrap, float wrapX) {
     float w = 0;
     float h = 0;

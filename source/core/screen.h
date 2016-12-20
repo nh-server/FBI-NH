@@ -72,6 +72,7 @@ void screen_select(gfxScreen_t screen);
 void screen_set_scissor(bool enabled, u32 x, u32 y, u32 width, u32 height);
 void screen_draw_texture(u32 id, float x, float y, float width, float height);
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height);
+float screen_get_font_height(float scaleY);
 void screen_get_string_size(float* width, float* height, const char* text, float scaleX, float scaleY);
 void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapX);
 void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines);
