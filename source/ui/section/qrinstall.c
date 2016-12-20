@@ -79,32 +79,39 @@ static bool qrinstall_get_last_urls(char* out, size_t size) {
     FSFILE_Read(file, &bytesRead, 0, out, size - 1);
     out[bytesRead] = '\0';
 
-    if(bytesRead == 0) {
-        return false;
-    }
-
     FSFILE_Close(file);
-    return true;
+
+    return bytesRead != 0;
 }
 
-static void qrinstall_set_last_urls(const char* urls) {
+static Result qrinstall_set_last_urls(const char* urls) {
+    Result res = 0;
+
     FS_Archive sdmcArchive = 0;
-    if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
+    if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
         FS_Path path = fsMakePath(PATH_ASCII, "/fbi/lasturls");
         if(urls == NULL || strlen(urls) == 0) {
-            FSUSER_DeleteFile(sdmcArchive, path);
-        } else if(R_SUCCEEDED(util_ensure_dir(sdmcArchive, "/fbi/"))) {
+            res = FSUSER_DeleteFile(sdmcArchive, path);
+        } else if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/"))) {
             Handle file = 0;
-            if(R_SUCCEEDED(FSUSER_OpenFile(&file, sdmcArchive, path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
+            if(R_SUCCEEDED(res = FSUSER_OpenFile(&file, sdmcArchive, path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
                 u32 bytesWritten = 0;
-                FSFILE_Write(file, &bytesWritten, 0, urls, strlen(urls), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
+                res = FSFILE_Write(file, &bytesWritten, 0, urls, strlen(urls), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);
 
-                FSFILE_Close(file);
+                Result closeRes = FSFILE_Close(file);
+                if(R_SUCCEEDED(res)) {
+                    res = closeRes;
+                }
             }
         }
 
-        FSUSER_CloseArchive(sdmcArchive);
+        Result closeRes = FSUSER_CloseArchive(sdmcArchive);
+        if(R_SUCCEEDED(res)) {
+            res = closeRes;
+        }
     }
+
+    return res;
 }
 
 static void qrinstall_wait_update(ui_view* view, void* data, float* progress, char* text) {
@@ -147,7 +154,7 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         return;
     }
 
-    if(hidKeysDown() & KEY_X) {
+    if(hidKeysDown() & KEY_A) {
         SwkbdState swkbd;
         swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, -1);
         swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY, 0, 0);
@@ -173,12 +180,23 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         }
     }
 
-    if(hidKeysDown() & KEY_Y) {
+    if(hidKeysDown() & KEY_X) {
         char textBuf[4096];
         if(qrinstall_get_last_urls(textBuf, sizeof(textBuf))) {
             action_url_install("Install from the last entered URL(s)?", textBuf);
         } else {
-            error_display(NULL, NULL, "No previously entered URL(s) could be found.");
+            prompt_display("Failure", "No previously entered URL(s) could be found.", COLOR_TEXT, false, NULL, NULL, NULL);
+        }
+
+        return;
+    }
+
+    if(hidKeysDown() & KEY_Y) {
+        Result forgetRes = qrinstall_set_last_urls(NULL);
+        if(R_SUCCEEDED(forgetRes)) {
+            prompt_display("Success", "Last URL(s) forgotten.", COLOR_TEXT, false, NULL, NULL, NULL);
+        } else {
+            error_display_res(NULL, NULL, forgetRes, "Failed to forget last URL(s).");
         }
 
         return;
@@ -277,5 +295,5 @@ void qrinstall_open() {
         return;
     }
 
-    info_display("QR Code Install", "B: Return, X: Enter URL(s), Y: Use Last URL(s)", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
+    info_display("QR Code Install", "B: Return, A: Enter URL(s), X: Repeat, Y: Forget", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
 }
