@@ -53,10 +53,14 @@ bool khax_execute() {
         } else if(kver > SYSTEM_VERSION(2, 50, 11)) {
             printf("khax: Executing waithax...\n");
 
+            osSetSpeedupEnable(true);
+
             if(!waithax_run()) {
                 printf("khax: waithax failed.\n");
                 return false;
             }
+
+            osSetSpeedupEnable(false);
 
             khax_backdoor = waithax_backdoor;
             khax_cleanup = NULL;
