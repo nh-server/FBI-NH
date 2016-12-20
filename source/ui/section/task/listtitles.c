@@ -75,7 +75,7 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
 
                 item->data = titleInfo;
 
-                linked_list_add(data->items, item);
+                linked_list_add_sorted(data->items, item, data->userData, data->compare);
             } else {
                 free(item);
 
@@ -206,7 +206,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                 item->color = COLOR_DS_TITLE;
                 item->data = titleInfo;
 
-                linked_list_add(data->items, item);
+                linked_list_add_sorted(data->items, item, data->userData, data->compare);
             } else {
                 free(item);
 
@@ -256,9 +256,7 @@ static Result task_populate_titles_from(populate_titles_data* data, FS_MediaType
                                 continue;
                             }
 
-                            if(R_SUCCEEDED(res = dsiWare ? task_populate_titles_add_twl(data, mediaType, titleIds[i]) : task_populate_titles_add_ctr(data, mediaType, titleIds[i])) && data->compare != NULL) {
-                                linked_list_sort(data->items, data->userData, data->compare);
-                            }
+                            res = dsiWare ? task_populate_titles_add_twl(data, mediaType, titleIds[i]) : task_populate_titles_add_ctr(data, mediaType, titleIds[i]);
                         }
                     }
                 }

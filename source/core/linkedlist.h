@@ -30,6 +30,7 @@ int linked_list_index_of(linked_list* list, void* value);
 void* linked_list_get(linked_list* list, unsigned int index);
 bool linked_list_add(linked_list* list, void* value);
 bool linked_list_add_at(linked_list* list, unsigned int index, void* value);
+void linked_list_add_sorted(linked_list* list, void* value, void* userData, int (*compare)(void* userData, const void* p1, const void* p2));
 bool linked_list_remove(linked_list* list, void* value);
 bool linked_list_remove_at(linked_list* list, unsigned int index);
 void linked_list_sort(linked_list* list, void* userData, int (*compare)(void* userData, const void* p1, const void* p2));
