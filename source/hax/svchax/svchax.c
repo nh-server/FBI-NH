@@ -377,16 +377,13 @@ static void do_memchunkhax2(void)
 
 static void gspwn(u32 dst, u32 src, u32 size, u8* flush_buffer)
 {
-   extern Handle gspEvents[GSPGPU_EVENT_MAX];
-
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
    GSPGPU_InvalidateDataCache((void*)dst, size);
    GSPGPU_FlushDataCache((void*)src, size);
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
 
-   svcClearEvent(gspEvents[GSPGPU_EVENT_PPF]);
    GX_TextureCopy((void*)src, 0, (void*)dst, 0, size, 8);
-   svcWaitSynchronization(gspEvents[GSPGPU_EVENT_PPF], U64_MAX);
+   gspWaitForPPF();
 
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
 }
