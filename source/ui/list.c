@@ -90,24 +90,31 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
 
     u32 size = linked_list_size(&listData->items);
 
+    list_validate(listData, by1, by2);
+
     bool selectedTouched = false;
     if(size > 0) {
-        list_validate(listData, by1, by2);
+        bool scrolls = false;
+        if(listData->selectedItem != NULL) {
+            float itemWidth;
+            screen_get_string_size(&itemWidth, NULL, listData->selectedItem->name, 0.5f, 0.5f);
+            if(itemWidth > bx2 - bx1) {
+                scrolls = true;
 
-        float itemWidth;
-        screen_get_string_size(&itemWidth, NULL, listData->selectedItem->name, 0.5f, 0.5f);
-        if(itemWidth > bx2 - bx1) {
-            if(listData->selectionScroll == 0 || listData->selectionScroll >= itemWidth - (bx2 - bx1)) {
-                if(listData->nextSelectionScrollResetTime == 0) {
-                    listData->nextSelectionScrollResetTime = osGetTime() + 2000;
-                } else if(osGetTime() >= listData->nextSelectionScrollResetTime) {
-                    listData->selectionScroll = listData->selectionScroll == 0 ? 1 : 0;
-                    listData->nextSelectionScrollResetTime = 0;
+                if(listData->selectionScroll == 0 || listData->selectionScroll >= itemWidth - (bx2 - bx1)) {
+                    if(listData->nextSelectionScrollResetTime == 0) {
+                        listData->nextSelectionScrollResetTime = osGetTime() + 2000;
+                    } else if(osGetTime() >= listData->nextSelectionScrollResetTime) {
+                        listData->selectionScroll = listData->selectionScroll == 0 ? 1 : 0;
+                        listData->nextSelectionScrollResetTime = 0;
+                    }
+                } else {
+                    listData->selectionScroll++;
                 }
-            } else {
-                listData->selectionScroll++;
             }
-        } else {
+        }
+
+        if(!scrolls) {
             listData->selectionScroll = 0;
             listData->nextSelectionScrollResetTime = 0;
         }
@@ -188,8 +195,6 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
 
     if(listData->update != NULL) {
         listData->update(view, listData->data, &listData->items, listData->selectedItem, selectedTouched);
-
-        list_validate(listData, by1, by2);
     }
 }
 
