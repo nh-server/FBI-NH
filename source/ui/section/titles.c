@@ -297,7 +297,7 @@ void titles_open() {
     data->showGameCard = true;
     data->showSD = true;
     data->showNAND = true;
-    data->sortByName = true;
+    data->sortByName = false;
 
     list_display("Titles", "A: Select, B: Return, X: Refresh, Select: Options", data, titles_update, titles_draw_top);
 }

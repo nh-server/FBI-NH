@@ -154,7 +154,7 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         return;
     }
 
-    if(hidKeysDown() & KEY_A) {
+    if(hidKeysDown() & KEY_SELECT) {
         SwkbdState swkbd;
         swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, -1);
         swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY, 0, 0);
@@ -295,5 +295,5 @@ void qrinstall_open() {
         return;
     }
 
-    info_display("QR Code Install", "B: Return, A: Enter URL(s), X: Repeat, Y: Forget", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
+    info_display("QR Code Install", "B: Return, X: Repeat, Y: Forget, SELECT: URL(s)", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
 }

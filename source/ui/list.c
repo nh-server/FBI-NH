@@ -22,56 +22,7 @@ typedef struct {
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected);
 } list_data;
 
-static float list_get_item_screen_y(list_data* listData, list_item* item) {
-    if(item == NULL) {
-        return 0;
-    }
-
-    float y = -listData->scrollPos;
-
-    linked_list_iter iter;
-    linked_list_iterate(&listData->items, &iter);
-
-    while(linked_list_iter_has_next(&iter)) {
-        list_item* currItem = (list_item*) linked_list_iter_next(&iter);
-        if(currItem == item) {
-            break;
-        }
-
-        float stringHeight;
-        screen_get_string_size(NULL, &stringHeight, currItem->name, 0.5f, 0.5f);
-        y += stringHeight;
-    }
-
-    return y;
-}
-
-static int list_get_item_index_at(list_data* listData, float screenY) {
-    float y = -listData->scrollPos;
-
-    linked_list_iter iter;
-    linked_list_iterate(&listData->items, &iter);
-
-    int i = 0;
-    while(linked_list_iter_has_next(&iter)) {
-        list_item* item = (list_item*) linked_list_iter_next(&iter);
-
-        float stringHeight;
-        screen_get_string_size(NULL, &stringHeight, item->name, 0.5f, 0.5f);
-
-        if(screenY >= y && screenY < y + stringHeight) {
-            return i;
-        }
-
-        y += stringHeight;
-
-        i++;
-    }
-
-    return -1;
-}
-
-static void list_validate_pos(list_data* listData, float by1, float by2) {
+static void list_validate(list_data* listData, float by1, float by2) {
     u32 size = linked_list_size(&listData->items);
 
     if(size == 0 || listData->selectedIndex < 0) {
@@ -87,39 +38,45 @@ static void list_validate_pos(list_data* listData, float by1, float by2) {
             listData->scrollPos = 0;
         }
 
+        float viewSize = by2 - by1;
+        float fontHeight = screen_get_font_height(0.5f);
+
         bool found = false;
         if(listData->selectedItem != NULL) {
+            u32 oldIndex = listData->selectedIndex;
+
             int index = linked_list_index_of(&listData->items, listData->selectedItem);
             if(index != -1) {
                 found = true;
                 listData->selectedIndex = (u32) index;
+
+                if(listData->selectedIndex != oldIndex) {
+                    listData->scrollPos += (listData->selectedIndex * fontHeight) - (oldIndex * fontHeight);
+                }
             }
         }
 
         if(!found) {
             listData->selectedItem = linked_list_get(&listData->items, listData->selectedIndex);
+
+            listData->selectionScroll = 0;
+            listData->nextSelectionScrollResetTime = 0;
         }
 
-        float itemHeight;
-        screen_get_string_size(NULL, &itemHeight, listData->selectedItem->name, 0.5f, 0.5f);
+        float itemY = listData->selectedIndex * fontHeight;
 
-        float itemY = list_get_item_screen_y(listData, listData->selectedItem);
-        if(itemY + itemHeight > by2 - by1) {
-            listData->scrollPos -= (by2 - by1) - itemY - itemHeight;
+        float minItemScrollPos = itemY - (viewSize - fontHeight);
+        if(listData->scrollPos < minItemScrollPos) {
+            listData->scrollPos = minItemScrollPos;
         }
 
-        if(itemY < 0) {
-            listData->scrollPos += itemY;
+        if(listData->scrollPos > itemY) {
+            listData->scrollPos = itemY;
         }
 
-        list_item* lastItem = (list_item*) linked_list_get(&listData->items, size - 1);
-
-        float lastItemHeight;
-        screen_get_string_size(NULL, &lastItemHeight, lastItem->name, 0.5f, 0.5f);
-
-        float lastPageEnd = list_get_item_screen_y(listData, lastItem);
-        if(lastPageEnd < by2 - by1 - lastItemHeight) {
-            listData->scrollPos -= (by2 - by1 - lastItemHeight) - lastPageEnd;
+        float maxScrollPos = (size * fontHeight) - viewSize;
+        if(listData->scrollPos > maxScrollPos) {
+            listData->scrollPos = maxScrollPos;
         }
 
         if(listData->scrollPos < 0) {
@@ -135,7 +92,7 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
 
     bool selectedTouched = false;
     if(size > 0) {
-        list_validate_pos(listData, by1, by2);
+        list_validate(listData, by1, by2);
 
         float itemWidth;
         screen_get_string_size(&itemWidth, NULL, listData->selectedItem->name, 0.5f, 0.5f);
@@ -157,7 +114,7 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
 
         u32 lastSelectedIndex = listData->selectedIndex;
 
-        if(((hidKeysDown() & KEY_DOWN) || ((hidKeysHeld() & KEY_DOWN) && osGetTime() >= listData->nextActionTime))) {
+        if((hidKeysDown() & KEY_DOWN) || ((hidKeysHeld() & KEY_DOWN) && osGetTime() >= listData->nextActionTime)) {
             if(listData->selectedIndex < size - 1) {
                 listData->selectedIndex++;
             } else {
@@ -167,7 +124,7 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_DOWN) ? 500 : 100);
         }
 
-        if(((hidKeysDown() & KEY_UP) || ((hidKeysHeld() & KEY_UP) && osGetTime() >= listData->nextActionTime))) {
+        if((hidKeysDown() & KEY_UP) || ((hidKeysHeld() & KEY_UP) && osGetTime() >= listData->nextActionTime)) {
             if(listData->selectedIndex > 0) {
                 listData->selectedIndex--;
             } else {
@@ -177,7 +134,7 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_UP) ? 500 : 100);
         }
 
-        if(((hidKeysDown() & KEY_RIGHT) || ((hidKeysHeld() & KEY_RIGHT) && osGetTime() >= listData->nextActionTime))) {
+        if((hidKeysDown() & KEY_RIGHT) || ((hidKeysHeld() & KEY_RIGHT) && osGetTime() >= listData->nextActionTime)) {
             if(listData->selectedIndex < size - 1) {
                 u32 remaining = size - 1 - listData->selectedIndex;
                 listData->selectedIndex += remaining < 13 ? remaining : 13;
@@ -188,7 +145,7 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_RIGHT) ? 500 : 100);
         }
 
-        if(((hidKeysDown() & KEY_LEFT) || ((hidKeysHeld() & KEY_LEFT) && osGetTime() >= listData->nextActionTime))) {
+        if((hidKeysDown() & KEY_LEFT) || ((hidKeysHeld() & KEY_LEFT) && osGetTime() >= listData->nextActionTime)) {
             if(listData->selectedIndex > 0) {
                 u32 remaining = listData->selectedIndex;
                 listData->selectedIndex -= remaining < 13 ? remaining : 13;
@@ -199,25 +156,23 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
             listData->nextActionTime = osGetTime() + ((hidKeysDown() & KEY_LEFT) ? 500 : 100);
         }
 
-        if(hidKeysDown() & KEY_TOUCH) {
+        if((hidKeysDown() | hidKeysHeld()) & KEY_TOUCH) {
             touchPosition pos;
             hidTouchRead(&pos);
 
-            listData->lastScrollTouchY = pos.py;
-
-            int index = list_get_item_index_at(listData, pos.py - by1);
-            if(index >= 0) {
-                if(listData->selectedIndex == index) {
-                    selectedTouched = true;
-                } else {
-                    listData->selectedIndex = (u32) index;
+            if(hidKeysDown() & KEY_TOUCH) {
+                u32 index = (u32) ((listData->scrollPos + (pos.py - by1)) / screen_get_font_height(0.5f));
+                if(index >= 0) {
+                    if(listData->selectedIndex == index) {
+                        selectedTouched = true;
+                    } else {
+                        listData->selectedIndex = (u32) index;
+                    }
                 }
+            } else if(hidKeysHeld() & KEY_TOUCH) {
+                listData->scrollPos += -((int) pos.py - (int) listData->lastScrollTouchY);
             }
-        } else if(hidKeysHeld() & KEY_TOUCH) {
-            touchPosition pos;
-            hidTouchRead(&pos);
 
-            listData->scrollPos += -((int) pos.py - (int) listData->lastScrollTouchY);
             listData->lastScrollTouchY = pos.py;
         }
 
@@ -228,13 +183,13 @@ static void list_update(ui_view* view, void* data, float bx1, float by1, float b
             listData->nextSelectionScrollResetTime = 0;
         }
 
-        list_validate_pos(listData, by1, by2);
+        list_validate(listData, by1, by2);
     }
 
     if(listData->update != NULL) {
         listData->update(view, listData->data, &listData->items, listData->selectedItem, selectedTouched);
 
-        list_validate_pos(listData, by1, by2);
+        list_validate(listData, by1, by2);
     }
 }
 
@@ -242,6 +197,8 @@ static void list_draw_top(ui_view* view, void* data, float x1, float y1, float x
     list_data* listData = (list_data*) data;
 
     if(listData->drawTop != NULL) {
+        list_validate(listData, y1, y2);
+
         listData->drawTop(view, listData->data, x1, y1, x2, y2, listData->selectedItem);
     }
 }
@@ -249,8 +206,9 @@ static void list_draw_top(ui_view* view, void* data, float x1, float y1, float x
 static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     list_data* listData = (list_data*) data;
 
-    list_validate_pos(listData, y1, y2);
+    list_validate(listData, y1, y2);
 
+    float fontHeight = screen_get_font_height(0.5f);
     float y = y1 - listData->scrollPos;
 
     linked_list_iter iter;
@@ -263,10 +221,7 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
 
         list_item* item = linked_list_iter_next(&iter);
 
-        float stringHeight;
-        screen_get_string_size(NULL, &stringHeight, item->name, 0.5f, 0.5f);
-
-        if(y > y1 - stringHeight) {
+        if(y > y1 - fontHeight) {
             float x = x1 + 2;
             if(item == listData->selectedItem) {
                 x -= listData->selectionScroll;
@@ -278,22 +233,16 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
                 u32 selectionOverlayWidth = 0;
                 u32 selectionOverlayHeight = 0;
                 screen_get_texture_size(&selectionOverlayWidth, &selectionOverlayHeight, TEXTURE_SELECTION_OVERLAY);
-                screen_draw_texture(TEXTURE_SELECTION_OVERLAY, (x1 + x2 - selectionOverlayWidth) / 2, y, selectionOverlayWidth, stringHeight);
+                screen_draw_texture(TEXTURE_SELECTION_OVERLAY, (x1 + x2 - selectionOverlayWidth) / 2, y, selectionOverlayWidth, fontHeight);
             }
         }
 
-        y += stringHeight;
+        y += fontHeight;
     }
 
     u32 size = linked_list_size(&listData->items);
     if(size > 0) {
-        list_item* lastItem = (list_item*) linked_list_get(&listData->items, size - 1);
-
-        float lastItemHeight;
-        screen_get_string_size(NULL, &lastItemHeight, lastItem->name, 0.5f, 0.5f);
-
-        float totalHeight = list_get_item_screen_y(listData, lastItem) + listData->scrollPos + lastItemHeight;
-
+        float totalHeight = size * fontHeight;
         float viewHeight = y2 - y1;
 
         if(totalHeight > viewHeight) {

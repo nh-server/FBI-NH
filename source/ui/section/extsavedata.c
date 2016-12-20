@@ -252,7 +252,7 @@ void extsavedata_open() {
 
     data->showSD = true;
     data->showNAND = true;
-    data->sortByName = true;
+    data->sortByName = false;
 
     list_display("Ext Save Data", "A: Select, B: Return, X: Refresh, Select: Options", data, extsavedata_update, extsavedata_draw_top);
 }
