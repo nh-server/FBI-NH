@@ -18,16 +18,6 @@ svcCreateSemaphoreKAddr:
 	str r1, [r3]
 	bx lr
 
-.global svcGetHandleInfo
-.type   svcGetHandleInfo, %function
-svcGetHandleInfo:
-	str r0, [sp, #-0x4]!
-	svc 0x29
-	ldr r3, [sp], #4
-	str r1, [r3]
-	str r2, [r3, #4]
-	bx lr
-
 
 @ Here for debug/dev purposes
 .global svc_7b

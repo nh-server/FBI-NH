@@ -131,6 +131,10 @@ void util_panic(const char* s, ...) {
     gfxFlushBuffers();
     gspWaitForVBlank();
 
+    util_panic_quiet();
+}
+
+void util_panic_quiet() {
     while(aptMainLoop()) {
         hidScanInput();
         if(hidKeysDown() & ~KEY_TOUCH) {

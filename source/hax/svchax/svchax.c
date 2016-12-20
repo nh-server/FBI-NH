@@ -3,7 +3,6 @@
 #include <string.h>
 #include <malloc.h>
 #include "svchax.h"
-#include "waithax.h"
 
 #define CURRENT_KTHREAD          0xFFFF9000
 #define CURRENT_KPROCESS         0xFFFF9004
@@ -46,12 +45,10 @@ static u32 svc_7b(backdoor_fn entry_fn, ...) // can pass up to two arguments to 
    return 0;
 }
 
-static bool g_is_new3ds;
-
-static void k_enable_all_svcs()
+static void k_enable_all_svcs(u32 isNew3DS)
 {
    u32* thread_ACL = *(*(u32***)CURRENT_KTHREAD + 0x22) - 0x6;
-   u32* process_ACL = *(u32**)CURRENT_KPROCESS + (g_is_new3ds ? 0x24 : 0x22);
+   u32* process_ACL = *(u32**)CURRENT_KPROCESS + (isNew3DS ? 0x24 : 0x22);
 
    memset(thread_ACL, 0xFF, 0x10);
    memset(process_ACL, 0xFF, 0x10);
@@ -230,7 +227,7 @@ static void do_memchunkhax2(void)
       if (!mch2.threads[i].keep)
          svcCloseHandle(mch2.threads[i].handle);
 
-   svcCreateEvent(&mch2.dummy_threads_lock, RESET_STICKY);
+   svcCreateEvent(&mch2.dummy_threads_lock, 1);
    svcClearEvent(mch2.dummy_threads_lock);
 
    for (i = 0; i < mch2.threads_limit; i++)
@@ -247,7 +244,7 @@ static void do_memchunkhax2(void)
          svcCloseHandle(mch2.threads[i].handle);
          mch2.threads[i].handle = 0;
       }
-   
+      
    svcSleepThread(40000000LL);
    svcCloseHandle(mch2.dummy_threads_lock);
 
@@ -315,8 +312,8 @@ static void do_memchunkhax2(void)
 
    volatile u32* thread_ACL = &mapped_page[THREAD_PAGE_ACL_OFFSET >> 2];
 
-   svcCreateEvent(&mch2.main_thread_lock, RESET_ONESHOT);
-   svcCreateEvent(&mch2.target_threads_lock, RESET_STICKY);
+   svcCreateEvent(&mch2.main_thread_lock, 0);
+   svcCreateEvent(&mch2.target_threads_lock, 1);
    svcClearEvent(mch2.target_threads_lock);
 
    for (i = 0; i < mch2.threads_limit; i++)
@@ -380,13 +377,16 @@ static void do_memchunkhax2(void)
 
 static void gspwn(u32 dst, u32 src, u32 size, u8* flush_buffer)
 {
+   extern Handle gspEvents[GSPGPU_EVENT_MAX];
+
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
    GSPGPU_InvalidateDataCache((void*)dst, size);
    GSPGPU_FlushDataCache((void*)src, size);
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
 
+   svcClearEvent(gspEvents[GSPGPU_EVENT_PPF]);
    GX_TextureCopy((void*)src, 0, (void*)dst, 0, size, 8);
-   gspWaitForPPF();
+   svcWaitSynchronization(gspEvents[GSPGPU_EVENT_PPF], U64_MAX);
 
    memcpy(flush_buffer, flush_buffer + 0x4000, 0x4000);
 }
@@ -463,66 +463,37 @@ static void do_memchunkhax1(void)
 
 Result svchax_init(bool patch_srv)
 {
-   APT_CheckNew3DS(&g_is_new3ds);
+   bool isNew3DS;
+   APT_CheckNew3DS(&isNew3DS);
 
    u32 kver = osGetKernelVersion();
 
-   if(!__ctr_svchax) {
-      if(__service_ptr) {
-         if(kver > SYSTEM_VERSION(2, 51, 2)) {
-            printf("Unsupported firmware version.\n");
+   if (!__ctr_svchax)
+   {
+      if (__service_ptr)
+      {
+         if (kver > SYSTEM_VERSION(2, 50, 11))
             return -1;
-         } else if(kver > SYSTEM_VERSION(2, 50, 11)) {
-            printf("Executing waithax...");
-            if(waithax_run()) {
-               printf("Executing k_enable_all_svcs...\n");
-               waithax_backdoor(k_enable_all_svcs);
-
-               printf("Cleaning up waithax...\n");
-               waithax_cleanup();
-
-               printf("waithax complete.\n");
-               __ctr_svchax = 1;
-            }
-         } else {
-            if(kver > SYSTEM_VERSION(2, 46, 0)) {
-               printf("Executing memchunkhax2...\n");
-               do_memchunkhax2();
-            } else {
-               printf("Executing memchunkhax1...\n");
-               do_memchunkhax1();
-            }
-
-            printf("Executing k_enable_all_svcs...\n");
-            svc_7b((backdoor_fn) k_enable_all_svcs);
-
-            printf("memchunkhax complete.\n");
-            __ctr_svchax = 1;
-         }
-      } else {
-         printf("Executing k_enable_all_svcs...\n");
-         svc_7b((backdoor_fn) k_enable_all_svcs);
-
-         printf("SVC access patch complete.\n");
-         __ctr_svchax = 1;
+         else if (kver > SYSTEM_VERSION(2, 46, 0))
+            do_memchunkhax2();
+         else
+            do_memchunkhax1();
       }
+
+      svc_7b((backdoor_fn)k_enable_all_svcs, isNew3DS);
+
+      __ctr_svchax = 1;
    }
 
-   if (patch_srv && __ctr_svchax && !__ctr_svchax_srv)
+   if (patch_srv && !__ctr_svchax_srv)
    {
-      printf("Patching PID to 0...\n");
-      u32 PID_kaddr = read_kaddr(CURRENT_KPROCESS) + (g_is_new3ds ? 0xBC : (kver > SYSTEM_VERSION(2, 40, 0)) ? 0xB4 : 0xAC);
+      u32 PID_kaddr = read_kaddr(CURRENT_KPROCESS) + (isNew3DS ? 0xBC : (kver > SYSTEM_VERSION(2, 40, 0)) ? 0xB4 : 0xAC);
       u32 old_PID = read_kaddr(PID_kaddr);
       write_kaddr(PID_kaddr, 0);
-
-      printf("Reinitializing srv...\n");
       srvExit();
       srvInit();
-
-      printf("Restoring PID...\n");
       write_kaddr(PID_kaddr, old_PID);
 
-      printf("Service access patch complete.\n");
       __ctr_svchax_srv = 1;
    }
 

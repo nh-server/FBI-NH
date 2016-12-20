@@ -7,7 +7,7 @@
 #include "core/clipboard.h"
 #include "core/screen.h"
 #include "core/util.h"
-#include "hax/svchax.h"
+#include "hax/khax.h"
 #include "ui/error.h"
 #include "ui/mainmenu.h"
 #include "ui/ui.h"
@@ -94,19 +94,18 @@ void init() {
         consoleInit(GFX_TOP, NULL);
         util_store_console_std();
 
-        printf("Attempting to acquire kernel access...");
-        svchax_init(true);
+        if(!khax_execute()) {
+            printf("Press any key to exit.\n");
+
+            util_panic_quiet();
+            return;
+        }
 
         devoptab_list[STD_OUT] = oldStdOut;
         devoptab_list[STD_ERR] = oldStdErr;
 
         gfxSetScreenFormat(GFX_TOP, GSP_BGR8_OES);
         gfxSetDoubleBuffering(GFX_TOP, true);
-
-        if(!__ctr_svchax || !__ctr_svchax_srv) {
-            util_panic("Failed to acquire kernel access.");
-            return;
-        }
 
         Result initRes = init_services();
         if(R_FAILED(initRes)) {
