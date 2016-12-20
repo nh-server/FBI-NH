@@ -16,6 +16,8 @@ static volatile u32 khax_write32_kernel_addr;
 static volatile u32 khax_write32_kernel_value;
 
 static void khax_read32_kernel_priv() {
+    asm volatile("cpsid aif");
+
     khax_read32_kernel_result = *(u32*) khax_read32_kernel_addr;
 }
 
@@ -26,6 +28,8 @@ static u32 khax_read32_kernel(u32 addr) {
 }
 
 static void khax_write32_kernel_priv() {
+    asm volatile("cpsid aif");
+
     *(u32*) khax_write32_kernel_addr = khax_write32_kernel_value;
 }
 
@@ -63,7 +67,7 @@ bool khax_execute() {
             osSetSpeedupEnable(false);
 
             khax_backdoor = waithax_backdoor;
-            khax_cleanup = NULL;
+            khax_cleanup = waithax_cleanup;
         } else {
             printf("khax: Executing svchax...\n");
 
@@ -75,7 +79,7 @@ bool khax_execute() {
             }
 
             khax_backdoor = (void (*)(void (*func)())) svcBackdoor;
-            khax_cleanup = waithax_cleanup;
+            khax_cleanup = NULL;
         }
 
         printf("khax: Kernel exploit executed successfully.\n");
