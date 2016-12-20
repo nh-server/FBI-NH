@@ -81,11 +81,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
 
                         item->data = extSaveDataInfo;
 
-                        linked_list_add(data->items, item);
-
-                        if(data->compare != NULL) {
-                            linked_list_sort(data->items, data->userData, data->compare);
-                        }
+                        linked_list_add_sorted(data->items, item, data->userData, data->compare);
                     } else {
                         free(item);
 

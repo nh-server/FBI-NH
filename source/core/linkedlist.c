@@ -141,6 +141,24 @@ bool linked_list_add_at(linked_list* list, unsigned int index, void* value) {
     return true;
 }
 
+void linked_list_add_sorted(linked_list* list, void* value, void* userData, int (*compare)(void* userData, const void* p1, const void* p2)) {
+    if(compare != NULL) {
+        unsigned int i = 0;
+        linked_list_node* node = list->first;
+        while(node != NULL) {
+            if(compare(userData, value, node->value) < 0) {
+                linked_list_add_at(list, i, value);
+                return;
+            }
+
+            i++;
+            node = node->next;
+        }
+    }
+
+    linked_list_add(list, value);
+}
+
 static void linked_list_remove_node(linked_list* list, linked_list_node* node) {
     if(node->prev != NULL) {
         node->prev->next = node->next;
