@@ -56,7 +56,7 @@ static FILE* screen_open_resource(const char* path) {
     u32 realPathSize = strlen(path) + 16;
     char realPath[realPathSize];
 
-    snprintf(realPath, realPathSize, "sdmc:/fbitheme/%s", path);
+    snprintf(realPath, realPathSize, "sdmc:/fbi/theme/%s", path);
     FILE* fd = fopen(realPath, "rb");
 
     if(fd != NULL) {
