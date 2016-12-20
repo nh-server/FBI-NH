@@ -17,6 +17,9 @@ static int ui_stack_top = -1;
 
 static Handle ui_stack_mutex = 0;
 
+static u64 ui_free_space_last_update = 0;
+static char ui_free_space_buffer[128];
+
 void ui_init() {
     if(ui_stack_mutex == 0) {
         svcCreateMutex(&ui_stack_mutex, false);
@@ -189,58 +192,61 @@ static void ui_draw_top(ui_view* ui) {
     float wifiY = topScreenTopBarY + (topScreenTopBarHeight - wifiHeight) / 2;
     screen_draw_texture(wifiIcon, wifiX, wifiY, wifiWidth, wifiHeight);
 
-    char buffer[128];
-    char* currBuffer = buffer;
-    FS_ArchiveResource resource = {0};
+    if(osGetTime() >= ui_free_space_last_update + 1000) {
+        char* currBuffer = ui_free_space_buffer;
+        FS_ArchiveResource resource = {0};
 
-    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_SD)) && currBuffer < buffer + sizeof(buffer)) {
-        if(currBuffer != buffer) {
-            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+        if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_SD)) && currBuffer < ui_free_space_buffer + sizeof(ui_free_space_buffer)) {
+            if(currBuffer != ui_free_space_buffer) {
+                snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), ", ");
+                currBuffer += strlen(currBuffer);
+            }
+
+            u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "SD: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
-        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "SD: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
-        currBuffer += strlen(currBuffer);
-    }
+        if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_CTR_NAND)) && currBuffer < ui_free_space_buffer + sizeof(ui_free_space_buffer)) {
+            if(currBuffer != ui_free_space_buffer) {
+                snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), ", ");
+                currBuffer += strlen(currBuffer);
+            }
 
-    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_CTR_NAND)) && currBuffer < buffer + sizeof(buffer)) {
-        if(currBuffer != buffer) {
-            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+            u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "CTR NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
-        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "CTR NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
-        currBuffer += strlen(currBuffer);
-    }
+        if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_TWL_NAND)) && currBuffer < ui_free_space_buffer + sizeof(ui_free_space_buffer)) {
+            if(currBuffer != ui_free_space_buffer) {
+                snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), ", ");
+                currBuffer += strlen(currBuffer);
+            }
 
-    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_TWL_NAND)) && currBuffer < buffer + sizeof(buffer)) {
-        if(currBuffer != buffer) {
-            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+            u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
-        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
-        currBuffer += strlen(currBuffer);
-    }
+        if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_TWL_PHOTO)) && currBuffer < ui_free_space_buffer + sizeof(ui_free_space_buffer)) {
+            if(currBuffer != ui_free_space_buffer) {
+                snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), ", ");
+                currBuffer += strlen(currBuffer);
+            }
 
-    if(R_SUCCEEDED(FSUSER_GetArchiveResource(&resource, SYSTEM_MEDIATYPE_TWL_PHOTO)) && currBuffer < buffer + sizeof(buffer)) {
-        if(currBuffer != buffer) {
-            snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), ", ");
+            u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL Photo: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
-        u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-        snprintf(currBuffer, sizeof(buffer) - (currBuffer - buffer), "TWL Photo: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
-        currBuffer += strlen(currBuffer);
+        ui_free_space_last_update = osGetTime();
     }
 
     float freeSpaceHeight;
-    screen_get_string_size(NULL, &freeSpaceHeight, buffer, 0.35f, 0.35f);
+    screen_get_string_size(NULL, &freeSpaceHeight, ui_free_space_buffer, 0.35f, 0.35f);
 
-    screen_draw_string(buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.35f, 0.35f, COLOR_TEXT, true);
+    screen_draw_string(ui_free_space_buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.35f, 0.35f, COLOR_TEXT, true);
 }
 
 static void ui_draw_bottom(ui_view* ui) {
