@@ -161,6 +161,8 @@ static void action_delete_tickets_loading_update(ui_view* view, void* data, floa
                 for(FS_MediaType mediaType = MEDIATYPE_NAND; mediaType != MEDIATYPE_GAME_CARD; mediaType++) {
                     if(R_SUCCEEDED(AM_GetTitleInfo(mediaType, 1, &info->titleId, &entry))) {
                         linked_list_iter_remove(&iter);
+                        task_free_ticket(item);
+
                         break;
                     }
                 }
