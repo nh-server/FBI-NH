@@ -160,7 +160,7 @@ static Result action_install_cias_close_dst(void* data, u32 index, bool succeede
 
         Result res = 0;
         if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-            util_import_seed(installData->currTitleId);
+            util_import_seed(NULL, installData->currTitleId);
 
             if(installData->currTitleId == 0x0004013800000002 || installData->currTitleId == 0x0004013820000002) {
                 res = AM_InstallFirm(installData->currTitleId);

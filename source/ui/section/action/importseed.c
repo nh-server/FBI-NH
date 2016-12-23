@@ -16,7 +16,8 @@
 static void action_import_seed_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
 
-    Result res = util_import_seed(info->titleId);
+    u32 responseCode = 0;
+    Result res = util_import_seed(&responseCode, info->titleId);
 
     ui_pop();
     info_destroy(view);
@@ -24,7 +25,7 @@ static void action_import_seed_update(ui_view* view, void* data, float* progress
     if(R_SUCCEEDED(res)) {
         prompt_display("Success", "Seed imported.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
-        error_display(NULL, NULL, "Failed to import seed.\nHTTP server returned response code %d", util_get_seed_response_code());
+        error_display(NULL, NULL, "Failed to import seed.\nHTTP server returned response code %d", responseCode);
     } else {
         error_display_res(info, ui_draw_title_info, res, "Failed to import seed.");
     }

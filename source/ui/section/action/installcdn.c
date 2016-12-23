@@ -59,21 +59,9 @@ static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
             snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->titleId, installData->contentIds[index - 1]);
         }
 
-        if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, url, 1))) {
-            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &installData->responseCode))) {
-                if(installData->responseCode == 200) {
-                    *handle = (u32) context;
-                } else {
-                    res = R_FBI_HTTP_RESPONSE_CODE;
-                }
-            }
-
-            if(R_FAILED(res)) {
-                httpcCloseContext(context);
-            }
-        }
-
-        if(R_FAILED(res)) {
+        if(R_SUCCEEDED(res = util_http_open(context, &installData->responseCode, url, false))) {
+            *handle = (u32) context;
+        } else {
             free(context);
         }
     } else {
@@ -84,20 +72,19 @@ static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
 }
 
 static Result action_install_cdn_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    return httpcCloseContext((httpcContext*) handle);
+    return util_http_close((httpcContext*) handle);
 }
 
 static Result action_install_cdn_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
-    Result res = httpcGetDownloadSizeState((httpcContext*) handle, NULL, &downloadSize);
+    Result res = util_http_get_size((httpcContext*) handle, &downloadSize);
 
     *size = downloadSize;
     return res;
 }
 
 static Result action_install_cdn_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    Result res = httpcDownloadData((httpcContext*) handle, buffer, size, bytesRead);
-    return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
+    return util_http_read((httpcContext*) handle, bytesRead, buffer, size);
 }
 
 static Result action_install_cdn_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
@@ -222,7 +209,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
         if(R_SUCCEEDED(installData->installInfo.result)) {
             if(R_SUCCEEDED(res = AM_InstallTitleFinish())
                && R_SUCCEEDED(res = AM_CommitImportTitles(util_get_title_destination(installData->ticket->titleId), 1, false, &installData->ticket->titleId))) {
-                util_import_seed(installData->ticket->titleId);
+                util_import_seed(NULL, installData->ticket->titleId);
 
                 if(installData->ticket->titleId == 0x0004013800000002 || installData->ticket->titleId == 0x0004013820000002) {
                     res = AM_InstallFirm(installData->ticket->titleId);

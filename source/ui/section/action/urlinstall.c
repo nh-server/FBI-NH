@@ -58,32 +58,9 @@ static Result action_url_install_open_src(void* data, u32 index, u32* handle) {
 
     httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
     if(context != NULL) {
-        if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, installData->urls[index], 1))) {
-            char userAgent[128];
-            snprintf(userAgent, sizeof(userAgent), "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-
-            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", userAgent)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &installData->responseCode))) {
-                if(installData->responseCode == 200) {
-                    *handle = (u32) context;
-                } else if(installData->responseCode == 301 || installData->responseCode == 302 || installData->responseCode == 303) {
-                    memset(installData->urls[index], '\0', URL_MAX);
-                    if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", installData->urls[index], URL_MAX))) {
-                        httpcCloseContext(context);
-                        free(context);
-
-                        return action_url_install_open_src(data, index, handle);
-                    }
-                } else {
-                    res = R_FBI_HTTP_RESPONSE_CODE;
-                }
-            }
-
-            if(R_FAILED(res)) {
-                httpcCloseContext(context);
-            }
-        }
-
-        if(R_FAILED(res)) {
+        if(R_SUCCEEDED(res = util_http_open(context, &installData->responseCode, installData->urls[index], true))) {
+            *handle = (u32) context;
+        } else {
             free(context);
         }
     } else {
@@ -94,20 +71,19 @@ static Result action_url_install_open_src(void* data, u32 index, u32* handle) {
 }
 
 static Result action_url_install_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    return httpcCloseContext((httpcContext*) handle);
+    return util_http_close((httpcContext*) handle);
 }
 
 static Result action_url_install_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
-    Result res = httpcGetDownloadSizeState((httpcContext*) handle, NULL, &downloadSize);
+    Result res = util_http_get_size((httpcContext*) handle, &downloadSize);
 
     *size = downloadSize;
     return res;
 }
 
 static Result action_url_install_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    Result res = httpcDownloadData((httpcContext*) handle, buffer, size, bytesRead);
-    return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
+    return util_http_read((httpcContext*) handle, bytesRead, buffer, size);
 }
 
 static Result action_url_install_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
@@ -190,7 +166,7 @@ static Result action_url_install_close_dst(void* data, u32 index, bool succeeded
             }
         } else {
             if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-                util_import_seed(installData->currTitleId);
+                util_import_seed(NULL, installData->currTitleId);
 
                 if(installData->currTitleId == 0x0004013800000002 || installData->currTitleId == 0x0004013820000002) {
                     res = AM_InstallFirm(installData->currTitleId);

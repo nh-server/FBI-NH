@@ -291,9 +291,7 @@ static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
     return ret;
 }
 
-static u32 import_response_code = 0;
-
-Result util_import_seed(u64 titleId) {
+Result util_import_seed(u32* responseCode, u64 titleId) {
     char pathBuf[64];
     snprintf(pathBuf, 64, "/fbi/seed/%016llX.dat", titleId);
 
@@ -324,17 +322,14 @@ Result util_import_seed(u64 titleId) {
                 snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
 
                 httpcContext context;
-                if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
-                    if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(&context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &import_response_code))) {
-                        if(import_response_code == 200) {
-                            u32 bytesRead = 0;
-                            res = httpcDownloadData(&context, seed, sizeof(seed), &bytesRead);
-                        } else {
-                            res = R_FBI_HTTP_RESPONSE_CODE;
-                        }
-                    }
+                if(R_SUCCEEDED(res = util_http_open(&context, responseCode, url, false))) {
+                    u32 bytesRead = 0;
+                    res = util_http_read(&context, &bytesRead, seed, sizeof(seed));
 
-                    httpcCloseContext(&context);
+                    Result closeRes = util_http_close(&context);
+                    if(R_SUCCEEDED(res)) {
+                        res = closeRes;
+                    }
                 }
             } else {
                 res = R_FBI_OUT_OF_RANGE;
@@ -349,10 +344,6 @@ Result util_import_seed(u64 titleId) {
     }
 
     return res;
-}
-
-u32 util_get_seed_response_code() {
-    return import_response_code;
 }
 
 FS_MediaType util_get_title_destination(u64 titleId) {
@@ -647,4 +638,81 @@ void util_smdh_region_to_string(char* out, u32 region, size_t size) {
             }
         }
     }
+}
+
+static char util_http_redirect_buffer[1024];
+
+Result util_http_open(httpcContext* context, u32* responseCode, const char* url, bool userAgent) {
+    return util_http_open_ranged(context, responseCode, url, userAgent, 0, 0);
+}
+
+Result util_http_open_ranged(httpcContext* context, u32* responseCode, const char* url, bool userAgent, u32 rangeStart, u32 rangeEnd) {
+    if(context == NULL || url == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    Result res = 0;
+
+    if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, url, 1))) {
+        char agent[128];
+        snprintf(agent, sizeof(agent), "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+
+        char range[64];
+        if(rangeEnd > rangeStart) {
+            snprintf(range, sizeof(range), "%lu-%lu", rangeStart, rangeEnd);
+        } else {
+            snprintf(range, sizeof(range), "%lu-", rangeStart);
+        }
+
+        u32 response = 0;
+        if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && (!userAgent || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", agent))) && (rangeStart == 0 || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Range", range))) && R_SUCCEEDED(res = httpcSetKeepAlive(context, HTTPC_KEEPALIVE_ENABLED)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &response))) {
+            if(response == 301 || response == 302 || response == 303) {
+                memset(util_http_redirect_buffer, '\0', sizeof(util_http_redirect_buffer));
+                if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", util_http_redirect_buffer, sizeof(util_http_redirect_buffer)))) {
+                    httpcCloseContext(context);
+
+                    return util_http_open_ranged(context, responseCode, util_http_redirect_buffer, userAgent, rangeStart, rangeEnd);
+                }
+            } else {
+                if(responseCode != NULL) {
+                    *responseCode = response;
+                }
+
+                if(response != 200) {
+                    res = R_FBI_HTTP_RESPONSE_CODE;
+                }
+            }
+        }
+
+        if(R_FAILED(res)) {
+            httpcCloseContext(context);
+        }
+    }
+
+    return res;
+}
+
+Result util_http_get_size(httpcContext* context, u32* size) {
+    if(context == NULL || size == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    return httpcGetDownloadSizeState(context, NULL, size);
+}
+
+Result util_http_read(httpcContext* context, u32* bytesRead, void* buffer, u32 size) {
+    if(context == NULL || buffer == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    Result res = httpcDownloadData(context, buffer, size, bytesRead);
+    return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
+}
+
+Result util_http_close(httpcContext* context) {
+    if(context == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    return httpcCloseContext(context);
 }
