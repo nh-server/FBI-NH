@@ -39,28 +39,9 @@ static Result update_open_src(void* data, u32 index, u32* handle) {
 
     httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
     if(context != NULL) {
-        if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, updateData->url, 1))) {
-            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &updateData->responseCode))) {
-                if(updateData->responseCode == 200) {
-                    *handle = (u32) context;
-                } else if(updateData->responseCode == 301 || updateData->responseCode == 302 || updateData->responseCode == 303) {
-                    if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", updateData->url, URL_MAX))) {
-                        httpcCloseContext(context);
-                        free(context);
-
-                        return update_open_src(data, index, handle);
-                    }
-                } else {
-                    res = R_FBI_HTTP_RESPONSE_CODE;
-                }
-            }
-
-            if(R_FAILED(res)) {
-                httpcCloseContext(context);
-            }
-        }
-
-        if(R_FAILED(res)) {
+        if(R_SUCCEEDED(res = util_http_open(context, &updateData->responseCode, updateData->url, true))) {
+            *handle = (u32) context;
+        } else {
             free(context);
         }
     } else {
@@ -71,20 +52,19 @@ static Result update_open_src(void* data, u32 index, u32* handle) {
 }
 
 static Result update_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    return httpcCloseContext((httpcContext*) handle);
+    return util_http_close((httpcContext*) handle);
 }
 
 static Result update_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
-    Result res = httpcGetDownloadSizeState((httpcContext*) handle, NULL, &downloadSize);
+    Result res = util_http_get_size((httpcContext*) handle, &downloadSize);
 
     *size = downloadSize;
     return res;
 }
 
 static Result update_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    Result res = httpcDownloadData((httpcContext*) handle, buffer, size, bytesRead);
-    return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
+    return util_http_read((httpcContext*) handle, bytesRead, buffer, size);
 }
 
 static Result update_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
@@ -183,96 +163,87 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     u32 responseCode = 0;
 
     httpcContext context;
-    if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, "https://api.github.com/repos/Steveice10/FBI/releases/latest", 1))) {
-        char userAgent[128];
-        snprintf(userAgent, sizeof(userAgent), "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    if(R_SUCCEEDED(res = util_http_open(&context, &responseCode, "https://api.github.com/repos/Steveice10/FBI/releases/latest", true))) {
+        u32 size = 0;
+        if(R_SUCCEEDED(res = util_http_get_size(&context, &size))) {
+            char* jsonText = (char*) calloc(sizeof(char), size);
+            if(jsonText != NULL) {
+                u32 bytesRead = 0;
+                if(R_SUCCEEDED(res = util_http_read(&context, &bytesRead, (u8*) jsonText, size))) {
+                    json_value* json = json_parse(jsonText, size);
+                    if(json != NULL) {
+                        if(json->type == json_object) {
+                            json_value* name = NULL;
+                            json_value* assets = NULL;
 
-        if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify))
-           && R_SUCCEEDED(res = httpcAddRequestHeaderField(&context, "User-Agent", userAgent))
-           && R_SUCCEEDED(res = httpcBeginRequest(&context))
-           && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode))) {
-            if(responseCode == 200) {
-                u32 size = 0;
-                if(R_SUCCEEDED(res = httpcGetDownloadSizeState(&context, NULL, &size))) {
-                    char* jsonText = (char*) calloc(sizeof(char), size);
-                    if(jsonText != NULL) {
-                        u32 bytesRead = 0;
-                        if(R_SUCCEEDED(res = httpcDownloadData(&context, (u8*) jsonText, size, &bytesRead))) {
-                            json_value* json = json_parse(jsonText, size);
-                            if(json != NULL) {
-                                if(json->type == json_object) {
-                                    json_value* name = NULL;
-                                    json_value* assets = NULL;
+                            for(u32 i = 0; i < json->u.object.length; i++) {
+                                json_value* val = json->u.object.values[i].value;
+                                if(strncmp(json->u.object.values[i].name, "name", json->u.object.values[i].name_length) == 0 && val->type == json_string) {
+                                    name = val;
+                                } else if(strncmp(json->u.object.values[i].name, "assets", json->u.object.values[i].name_length) == 0 && val->type == json_array) {
+                                    assets = val;
+                                }
+                            }
 
-                                    for(u32 i = 0; i < json->u.object.length; i++) {
-                                        json_value* val = json->u.object.values[i].value;
-                                        if(strncmp(json->u.object.values[i].name, "name", json->u.object.values[i].name_length) == 0 && val->type == json_string) {
-                                            name = val;
-                                        } else if(strncmp(json->u.object.values[i].name, "assets", json->u.object.values[i].name_length) == 0 && val->type == json_array) {
-                                            assets = val;
-                                        }
-                                    }
+                            if(name != NULL && assets != NULL) {
+                                char versionString[16];
+                                snprintf(versionString, sizeof(versionString), "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
-                                    if(name != NULL && assets != NULL) {
-                                        char versionString[16];
-                                        snprintf(versionString, sizeof(versionString), "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+                                if(strncmp(name->u.string.ptr, versionString, name->u.string.length) != 0) {
+                                    char* url = NULL;
 
-                                        if(strncmp(name->u.string.ptr, versionString, name->u.string.length) != 0) {
-                                            char* url = NULL;
+                                    for(u32 i = 0; i < assets->u.array.length; i++) {
+                                        json_value* val = assets->u.array.values[i];
+                                        if(val->type == json_object) {
+                                            json_value* assetName = NULL;
+                                            json_value* assetUrl = NULL;
 
-                                            for(u32 i = 0; i < assets->u.array.length; i++) {
-                                                json_value* val = assets->u.array.values[i];
-                                                if(val->type == json_object) {
-                                                    json_value* assetName = NULL;
-                                                    json_value* assetUrl = NULL;
-
-                                                    for(u32 j = 0; j < val->u.object.length; j++) {
-                                                        json_value* subVal = val->u.object.values[j].value;
-                                                        if(strncmp(val->u.object.values[j].name, "name", val->u.object.values[j].name_length) == 0 && subVal->type == json_string) {
-                                                            assetName = subVal;
-                                                        } else if(strncmp(val->u.object.values[j].name, "browser_download_url", val->u.object.values[j].name_length) == 0 && subVal->type == json_string) {
-                                                            assetUrl = subVal;
-                                                        }
-                                                    }
-
-                                                    if(assetName != NULL && assetUrl != NULL) {
-                                                        if(strncmp(assetName->u.string.ptr, util_get_3dsx_path() != NULL ? "FBI.3dsx" : "FBI.cia", assetName->u.string.length) == 0) {
-                                                            url = assetUrl->u.string.ptr;
-                                                            break;
-                                                        }
-                                                    }
+                                            for(u32 j = 0; j < val->u.object.length; j++) {
+                                                json_value* subVal = val->u.object.values[j].value;
+                                                if(strncmp(val->u.object.values[j].name, "name", val->u.object.values[j].name_length) == 0 && subVal->type == json_string) {
+                                                    assetName = subVal;
+                                                } else if(strncmp(val->u.object.values[j].name, "browser_download_url", val->u.object.values[j].name_length) == 0 && subVal->type == json_string) {
+                                                    assetUrl = subVal;
                                                 }
                                             }
 
-                                            if(url != NULL) {
-                                                strncpy(updateData->url, url, URL_MAX);
-                                                hasUpdate = true;
-                                            } else {
-                                                res = R_FBI_BAD_DATA;
+                                            if(assetName != NULL && assetUrl != NULL) {
+                                                if(strncmp(assetName->u.string.ptr, util_get_3dsx_path() != NULL ? "FBI.3dsx" : "FBI.cia", assetName->u.string.length) == 0) {
+                                                    url = assetUrl->u.string.ptr;
+                                                    break;
+                                                }
                                             }
                                         }
+                                    }
+
+                                    if(url != NULL) {
+                                        strncpy(updateData->url, url, URL_MAX);
+                                        hasUpdate = true;
                                     } else {
                                         res = R_FBI_BAD_DATA;
                                     }
-                                } else {
-                                    res = R_FBI_BAD_DATA;
                                 }
                             } else {
-                                res = R_FBI_PARSE_FAILED;
+                                res = R_FBI_BAD_DATA;
                             }
+                        } else {
+                            res = R_FBI_BAD_DATA;
                         }
-
-                        free(jsonText);
                     } else {
-                        res = R_FBI_OUT_OF_MEMORY;
+                        res = R_FBI_PARSE_FAILED;
                     }
                 }
+
+                free(jsonText);
             } else {
-                res = R_FBI_HTTP_RESPONSE_CODE;
+                res = R_FBI_OUT_OF_MEMORY;
             }
         }
 
-        httpcCloseContext(&context);
+        Result closeRes = util_http_close(&context);
+        if(R_SUCCEEDED(res)) {
+            res = closeRes;
+        }
     }
 
     ui_pop();

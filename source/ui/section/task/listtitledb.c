@@ -17,39 +17,14 @@
 static Result task_populate_titledb_download(u32* downloadSize, void* buffer, u32 maxSize, const char* url) {
     Result res = 0;
 
-    if(downloadSize != NULL) {
-        *downloadSize = 0;
-    }
-
     httpcContext context;
-    if(R_SUCCEEDED(res = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1))) {
-        char userAgent[128];
-        snprintf(userAgent, sizeof(userAgent), "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    if(R_SUCCEEDED(res = util_http_open(&context, NULL, url, true))) {
+        res = util_http_read(&context, downloadSize, buffer, maxSize);
 
-        u32 responseCode = 0;
-        if(R_SUCCEEDED(res = httpcSetSSLOpt(&context, SSLCOPT_DisableVerify))
-           && R_SUCCEEDED(res = httpcAddRequestHeaderField(&context, "User-Agent", userAgent))
-           && R_SUCCEEDED(res = httpcAddRequestHeaderField(&context, "Connection", "Keep-Alive"))
-           && R_SUCCEEDED(res = httpcBeginRequest(&context))
-           && R_SUCCEEDED(res = httpcGetResponseStatusCode(&context, &responseCode))) {
-            if(responseCode == 200) {
-                u32 size = 0;
-                u32 bytesRead = 0;
-                while(size < maxSize && (res = httpcDownloadData(&context, &((u8*) buffer)[size], maxSize - size < 0x1000 ? maxSize - size : 0x1000, &bytesRead)) == HTTPC_RESULTCODE_DOWNLOADPENDING) {
-                    size += bytesRead;
-                }
-
-                size += bytesRead;
-
-                if(R_SUCCEEDED(res) && downloadSize != NULL) {
-                    *downloadSize = size;
-                }
-            } else {
-                res = R_FBI_HTTP_RESPONSE_CODE;
-            }
+        Result closeRes = util_http_close(&context);
+        if(R_SUCCEEDED(res)) {
+            res = closeRes;
         }
-
-        httpcCloseContext(&context);
     }
 
     return res;
