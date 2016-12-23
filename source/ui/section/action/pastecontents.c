@@ -274,7 +274,7 @@ static void action_paste_contents_update(ui_view* view, void* data, float* progr
     }
 
     *progress = pasteData->pasteInfo.currTotal != 0 ? (float) ((double) pasteData->pasteInfo.currProcessed / (double) pasteData->pasteInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", pasteData->pasteInfo.processed, pasteData->pasteInfo.total, util_get_display_size(pasteData->pasteInfo.currProcessed), util_get_display_size_units(pasteData->pasteInfo.currProcessed), util_get_display_size(pasteData->pasteInfo.currTotal), util_get_display_size_units(pasteData->pasteInfo.currTotal));
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s", pasteData->pasteInfo.processed, pasteData->pasteInfo.total, util_get_display_size(pasteData->pasteInfo.currProcessed), util_get_display_size_units(pasteData->pasteInfo.currProcessed), util_get_display_size(pasteData->pasteInfo.currTotal), util_get_display_size_units(pasteData->pasteInfo.currTotal), util_get_display_size(pasteData->pasteInfo.copyBytesPerSecond), util_get_display_size_units(pasteData->pasteInfo.copyBytesPerSecond));
 }
 
 static void action_paste_contents_onresponse(ui_view* view, void* data, bool response) {

@@ -171,7 +171,7 @@ static void update_install_update(ui_view* view, void* data, float* progress, ch
     }
 
     *progress = updateData->installInfo.currTotal != 0 ? (float) ((double) updateData->installInfo.currProcessed / (double) updateData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s", util_get_display_size(updateData->installInfo.currProcessed), util_get_display_size_units(updateData->installInfo.currProcessed), util_get_display_size(updateData->installInfo.currTotal), util_get_display_size_units(updateData->installInfo.currTotal));
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s", util_get_display_size(updateData->installInfo.currProcessed), util_get_display_size_units(updateData->installInfo.currProcessed), util_get_display_size(updateData->installInfo.currTotal), util_get_display_size_units(updateData->installInfo.currTotal), util_get_display_size(updateData->installInfo.copyBytesPerSecond), util_get_display_size_units(updateData->installInfo.copyBytesPerSecond));
 }
 
 static void update_check_update(ui_view* view, void* data, float* progress, char* text) {
@@ -321,7 +321,7 @@ void update_open() {
 
     data->installInfo.op = DATAOP_COPY;
 
-    data->installInfo.copyBufferSize = 256 * 1024;
+    data->installInfo.copyBufferSize = 128 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.total = 1;

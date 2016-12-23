@@ -29,7 +29,7 @@ typedef struct {
     capture_cam_data captureInfo;
 } qr_install_data;
 
-static void qrinstall_free_data(qr_install_data* data) {
+static void qrinstall_stop_capture(qr_install_data* data) {
     if(!data->captureInfo.finished) {
         svcSignalEvent(data->captureInfo.cancelEvent);
         while(!data->captureInfo.finished) {
@@ -38,6 +38,14 @@ static void qrinstall_free_data(qr_install_data* data) {
     }
 
     data->capturing = false;
+
+    if(data->captureInfo.buffer != NULL) {
+        memset(data->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+    }
+}
+
+static void qrinstall_free_data(qr_install_data* data) {
+    qrinstall_stop_capture(data);
 
     if(data->captureInfo.buffer != NULL) {
         free(data->captureInfo.buffer);
@@ -65,7 +73,7 @@ static void qrinstall_wait_draw_top(ui_view* view, void* data, float x1, float y
     }
 }
 
-static bool qrinstall_get_last_urls(char* out, size_t size) {
+static bool qrinstall_wait_get_last_urls(char* out, size_t size) {
     if(out == NULL || size == 0) {
         return false;
     }
@@ -84,7 +92,7 @@ static bool qrinstall_get_last_urls(char* out, size_t size) {
     return bytesRead != 0;
 }
 
-static Result qrinstall_set_last_urls(const char* urls) {
+static Result qrinstall_wait_set_last_urls(const char* urls) {
     Result res = 0;
 
     FS_Archive sdmcArchive = 0;
@@ -163,17 +171,9 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
 
         char textBuf[1024];
         if(swkbdInputText(&swkbd, textBuf, sizeof(textBuf)) == SWKBD_BUTTON_CONFIRM) {
-            if(!qrInstallData->captureInfo.finished) {
-                svcSignalEvent(qrInstallData->captureInfo.cancelEvent);
-                while(!qrInstallData->captureInfo.finished) {
-                    svcSleepThread(1000000);
-                }
-            }
+            qrinstall_stop_capture(qrInstallData);
 
-            qrInstallData->capturing = false;
-            memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
-
-            qrinstall_set_last_urls(textBuf);
+            qrinstall_wait_set_last_urls(textBuf);
 
             action_url_install("Install from the provided URL(s)?", textBuf);
             return;
@@ -182,7 +182,9 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
 
     if(hidKeysDown() & KEY_X) {
         char textBuf[4096];
-        if(qrinstall_get_last_urls(textBuf, sizeof(textBuf))) {
+        if(qrinstall_wait_get_last_urls(textBuf, sizeof(textBuf))) {
+            qrinstall_stop_capture(qrInstallData);
+
             action_url_install("Install from the last entered URL(s)?", textBuf);
         } else {
             prompt_display("Failure", "No previously entered URL(s) could be found.", COLOR_TEXT, false, NULL, NULL, NULL);
@@ -192,7 +194,7 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
     }
 
     if(hidKeysDown() & KEY_Y) {
-        Result forgetRes = qrinstall_set_last_urls(NULL);
+        Result forgetRes = qrinstall_wait_set_last_urls(NULL);
         if(R_SUCCEEDED(forgetRes)) {
             prompt_display("Success", "Last URL(s) forgotten.", COLOR_TEXT, false, NULL, NULL, NULL);
         } else {
@@ -235,17 +237,9 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
         quirc_decode_error_t err = quirc_decode(&qrCode, &qrData);
 
         if(err == 0) {
-            if(!qrInstallData->captureInfo.finished) {
-                svcSignalEvent(qrInstallData->captureInfo.cancelEvent);
-                while(!qrInstallData->captureInfo.finished) {
-                    svcSleepThread(1000000);
-                }
-            }
+            qrinstall_stop_capture(qrInstallData);
 
-            qrInstallData->capturing = false;
-            memset(qrInstallData->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
-
-            qrinstall_set_last_urls((const char*) qrData.payload);
+            qrinstall_wait_set_last_urls((const char*) qrData.payload);
 
             action_url_install("Install from the scanned QR code?", (const char*) qrData.payload);
             return;

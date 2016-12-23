@@ -114,6 +114,8 @@ void init() {
         }
     }
 
+    osSetSpeedupEnable(true);
+
     APT_GetAppCpuTimeLimit(&old_time_limit);
     Result cpuRes = APT_SetAppCpuTimeLimit(30);
     if(R_FAILED(cpuRes)) {

@@ -280,7 +280,7 @@ static void action_url_install_install_update(ui_view* view, void* data, float* 
     }
 
     *progress = installData->installInfo.currTotal != 0 ? (float) ((double) installData->installInfo.currProcessed / (double) installData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal));
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal), util_get_display_size(installData->installInfo.copyBytesPerSecond), util_get_display_size_units(installData->installInfo.copyBytesPerSecond));
 }
 
 static void action_url_install_confirm_onresponse(ui_view* view, void* data, bool response) {
@@ -350,7 +350,7 @@ void action_url_install(const char* confirmMessage, const char* urls) {
 
     data->installInfo.op = DATAOP_COPY;
 
-    data->installInfo.copyBufferSize = 256 * 1024;
+    data->installInfo.copyBufferSize = 128 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.isSrcDirectory = action_url_install_is_src_directory;
