@@ -92,7 +92,7 @@ typedef enum data_op_e {
     DATAOP_DELETE
 } data_op;
 
-typedef struct data_op_info_s {
+typedef struct data_op_data_s {
     void* data;
 
     data_op op;
@@ -100,6 +100,8 @@ typedef struct data_op_info_s {
     // Copy
     u32 copyBufferSize;
     bool copyEmpty;
+
+    u32 copyBytesPerSecond;
 
     u32 processed;
     u32 total;

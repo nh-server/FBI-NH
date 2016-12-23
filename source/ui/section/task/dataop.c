@@ -43,6 +43,8 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
     data->currProcessed = 0;
     data->currTotal = 0;
 
+    data->copyBytesPerSecond = 0;
+
     Result res = 0;
 
     bool isDir = false;
@@ -66,20 +68,17 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                     if(buffer != NULL) {
                         u32 dstHandle = 0;
 
+                        u64 lastBytesPerSecondUpdate = osGetTime();
+                        u32 bytesSinceUpdate = 0;
+
                         bool firstRun = true;
                         while(data->currProcessed < data->currTotal) {
                             if(R_FAILED(res = task_data_op_check_running(data, data->processed, &srcHandle, &dstHandle))) {
                                 break;
                             }
 
-                            u32 currSize = data->copyBufferSize;
-                            if((u64) currSize > data->currTotal - data->currProcessed) {
-                                currSize = (u32) (data->currTotal - data->currProcessed);
-                            }
-
                             u32 bytesRead = 0;
-                            u32 bytesWritten = 0;
-                            if(R_FAILED(res = data->readSrc(data->data, srcHandle, &bytesRead, buffer, data->currProcessed, currSize))) {
+                            if(R_FAILED(res = data->readSrc(data->data, srcHandle, &bytesRead, buffer, data->currProcessed, data->copyBufferSize))) {
                                 break;
                             }
 
@@ -91,11 +90,22 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                                 }
                             }
 
-                            if(R_FAILED(res = data->writeDst(data->data, dstHandle, &bytesWritten, buffer, data->currProcessed, currSize))) {
+                            u32 bytesWritten = 0;
+                            if(R_FAILED(res = data->writeDst(data->data, dstHandle, &bytesWritten, buffer, data->currProcessed, bytesRead))) {
                                 break;
                             }
 
                             data->currProcessed += bytesWritten;
+                            bytesSinceUpdate += bytesWritten;
+
+                            u64 time = osGetTime();
+                            u64 elapsed = time - lastBytesPerSecondUpdate;
+                            if(elapsed >= 1000) {
+                                data->copyBytesPerSecond = (u32) (bytesSinceUpdate / (elapsed / 1000.0f));
+
+                                bytesSinceUpdate = 0;
+                                lastBytesPerSecondUpdate = time;
+                            }
                         }
 
                         if(dstHandle != 0) {
