@@ -1,79 +1,27 @@
+#include <arpa/inet.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <3ds.h>
+#include <unistd.h>
 
 #include "section.h"
 #include "action/action.h"
 #include "task/task.h"
 #include "../error.h"
 #include "../info.h"
+#include "../list.h"
 #include "../prompt.h"
 #include "../ui.h"
+#include "../../core/linkedlist.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
 #include "../../quirc/quirc_internal.h"
 
-#define IMAGE_WIDTH 400
-#define IMAGE_HEIGHT 240
-
-#define URL_MAX 1024
-#define URLS_MAX 128
-
-typedef struct {
-    struct quirc* qrContext;
-    u32 tex;
-
-    bool capturing;
-    capture_cam_data captureInfo;
-} qr_install_data;
-
-static void qrinstall_stop_capture(qr_install_data* data) {
-    if(!data->captureInfo.finished) {
-        svcSignalEvent(data->captureInfo.cancelEvent);
-        while(!data->captureInfo.finished) {
-            svcSleepThread(1000000);
-        }
-    }
-
-    data->capturing = false;
-
-    if(data->captureInfo.buffer != NULL) {
-        memset(data->captureInfo.buffer, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
-    }
-}
-
-static void qrinstall_free_data(qr_install_data* data) {
-    qrinstall_stop_capture(data);
-
-    if(data->captureInfo.buffer != NULL) {
-        free(data->captureInfo.buffer);
-        data->captureInfo.buffer = NULL;
-    }
-
-    if(data->tex != 0) {
-        screen_unload_texture(data->tex);
-        data->tex = 0;
-    }
-
-    if(data->qrContext != NULL) {
-        quirc_destroy(data->qrContext);
-        data->qrContext = NULL;
-    }
-
-    free(data);
-}
-
-static void qrinstall_wait_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
-
-    if(qrInstallData->tex != 0) {
-        screen_draw_texture(qrInstallData->tex, 0, 0, IMAGE_WIDTH, IMAGE_HEIGHT);
-    }
-}
-
-static bool qrinstall_wait_get_last_urls(char* out, size_t size) {
+static bool remoteinstall_get_last_urls(char* out, size_t size) {
     if(out == NULL || size == 0) {
         return false;
     }
@@ -92,7 +40,7 @@ static bool qrinstall_wait_get_last_urls(char* out, size_t size) {
     return bytesRead != 0;
 }
 
-static Result qrinstall_wait_set_last_urls(const char* urls) {
+static Result remoteinstall_set_last_urls(const char* urls) {
     Result res = 0;
 
     FS_Archive sdmcArchive = 0;
@@ -122,124 +70,137 @@ static Result qrinstall_wait_set_last_urls(const char* urls) {
     return res;
 }
 
-static void qrinstall_wait_update(ui_view* view, void* data, float* progress, char* text) {
-    qr_install_data* qrInstallData = (qr_install_data*) data;
+#define QR_IMAGE_WIDTH 400
+#define QR_IMAGE_HEIGHT 240
+
+typedef struct {
+    struct quirc* qrContext;
+    u32 tex;
+
+    bool capturing;
+    capture_cam_data captureInfo;
+} remoteinstall_qr_data;
+
+static void remoteinstall_qr_stop_capture(remoteinstall_qr_data* data) {
+    if(!data->captureInfo.finished) {
+        svcSignalEvent(data->captureInfo.cancelEvent);
+        while(!data->captureInfo.finished) {
+            svcSleepThread(1000000);
+        }
+    }
+
+    data->capturing = false;
+
+    if(data->captureInfo.buffer != NULL) {
+        memset(data->captureInfo.buffer, 0, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16));
+    }
+}
+
+static void remoteinstall_qr_free_data(remoteinstall_qr_data* data) {
+    remoteinstall_qr_stop_capture(data);
+
+    if(data->captureInfo.buffer != NULL) {
+        free(data->captureInfo.buffer);
+        data->captureInfo.buffer = NULL;
+    }
+
+    if(data->tex != 0) {
+        screen_unload_texture(data->tex);
+        data->tex = 0;
+    }
+
+    if(data->qrContext != NULL) {
+        quirc_destroy(data->qrContext);
+        data->qrContext = NULL;
+    }
+
+    free(data);
+}
+
+static void remoteinstall_qr_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    remoteinstall_qr_data* installData = (remoteinstall_qr_data*) data;
+
+    if(installData->tex != 0) {
+        screen_draw_texture(installData->tex, 0, 0, QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT);
+    }
+}
+
+static void remoteinstall_qr_update(ui_view* view, void* data, float* progress, char* text) {
+    remoteinstall_qr_data* installData = (remoteinstall_qr_data*) data;
 
     if(hidKeysDown() & KEY_B) {
         ui_pop();
         info_destroy(view);
 
-        qrinstall_free_data(qrInstallData);
+        remoteinstall_qr_free_data(installData);
 
         return;
     }
 
-    if(!qrInstallData->capturing) {
-        Result capRes = task_capture_cam(&qrInstallData->captureInfo);
+    if(!installData->capturing) {
+        Result capRes = task_capture_cam(&installData->captureInfo);
         if(R_FAILED(capRes)) {
             ui_pop();
             info_destroy(view);
 
             error_display_res(NULL, NULL, capRes, "Failed to start camera capture.");
 
-            qrinstall_free_data(qrInstallData);
+            remoteinstall_qr_free_data(installData);
             return;
         } else {
-            qrInstallData->capturing = true;
+            installData->capturing = true;
         }
     }
 
-    if(qrInstallData->captureInfo.finished) {
+    if(installData->captureInfo.finished) {
         ui_pop();
         info_destroy(view);
 
-        if(R_FAILED(qrInstallData->captureInfo.result)) {
-            error_display_res(NULL, NULL, qrInstallData->captureInfo.result, "Error while capturing camera frames.");
+        if(R_FAILED(installData->captureInfo.result)) {
+            error_display_res(NULL, NULL, installData->captureInfo.result, "Error while capturing camera frames.");
         }
 
-        qrinstall_free_data(qrInstallData);
+        remoteinstall_qr_free_data(installData);
 
         return;
     }
 
-    if(hidKeysDown() & KEY_SELECT) {
-        SwkbdState swkbd;
-        swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, -1);
-        swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY, 0, 0);
-        swkbdSetFeatures(&swkbd, SWKBD_MULTILINE);
-        swkbdSetHintText(&swkbd, "Enter URL(s)");
-
-        char textBuf[1024];
-        if(swkbdInputText(&swkbd, textBuf, sizeof(textBuf)) == SWKBD_BUTTON_CONFIRM) {
-            qrinstall_stop_capture(qrInstallData);
-
-            qrinstall_wait_set_last_urls(textBuf);
-
-            action_url_install("Install from the provided URL(s)?", textBuf);
-            return;
-        }
-    }
-
-    if(hidKeysDown() & KEY_X) {
-        char textBuf[4096];
-        if(qrinstall_wait_get_last_urls(textBuf, sizeof(textBuf))) {
-            qrinstall_stop_capture(qrInstallData);
-
-            action_url_install("Install from the last entered URL(s)?", textBuf);
-        } else {
-            prompt_display("Failure", "No previously entered URL(s) could be found.", COLOR_TEXT, false, NULL, NULL, NULL);
-        }
-
-        return;
-    }
-
-    if(hidKeysDown() & KEY_Y) {
-        Result forgetRes = qrinstall_wait_set_last_urls(NULL);
-        if(R_SUCCEEDED(forgetRes)) {
-            prompt_display("Success", "Last URL(s) forgotten.", COLOR_TEXT, false, NULL, NULL, NULL);
-        } else {
-            error_display_res(NULL, NULL, forgetRes, "Failed to forget last URL(s).");
-        }
-
-        return;
-    }
-
-    if(qrInstallData->tex != 0) {
-        screen_unload_texture(qrInstallData->tex);
-        qrInstallData->tex = 0;
+    if(installData->tex != 0) {
+        screen_unload_texture(installData->tex);
+        installData->tex = 0;
     }
 
     int w = 0;
     int h = 0;
-    uint8_t* qrBuf = quirc_begin(qrInstallData->qrContext, &w, &h);
+    uint8_t* qrBuf = quirc_begin(installData->qrContext, &w, &h);
 
-    svcWaitSynchronization(qrInstallData->captureInfo.mutex, U64_MAX);
+    svcWaitSynchronization(installData->captureInfo.mutex, U64_MAX);
 
-    qrInstallData->tex = screen_load_texture_auto(qrInstallData->captureInfo.buffer, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16), IMAGE_WIDTH, IMAGE_HEIGHT, GPU_RGB565, false);
+    installData->tex = screen_load_texture_auto(installData->captureInfo.buffer, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16), QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT, GPU_RGB565, false);
 
     for(int x = 0; x < w; x++) {
         for(int y = 0; y < h; y++) {
-            u16 px = qrInstallData->captureInfo.buffer[y * IMAGE_WIDTH + x];
+            u16 px = installData->captureInfo.buffer[y * QR_IMAGE_WIDTH + x];
             qrBuf[y * w + x] = (u8) (((((px >> 11) & 0x1F) << 3) + (((px >> 5) & 0x3F) << 2) + ((px & 0x1F) << 3)) / 3);
         }
     }
 
-    svcReleaseMutex(qrInstallData->captureInfo.mutex);
+    svcReleaseMutex(installData->captureInfo.mutex);
 
-    quirc_end(qrInstallData->qrContext);
+    quirc_end(installData->qrContext);
 
-    int qrCount = quirc_count(qrInstallData->qrContext);
+    int qrCount = quirc_count(installData->qrContext);
     for(int i = 0; i < qrCount; i++) {
         struct quirc_code qrCode;
-        quirc_extract(qrInstallData->qrContext, i, &qrCode);
+        quirc_extract(installData->qrContext, i, &qrCode);
 
         struct quirc_data qrData;
         quirc_decode_error_t err = quirc_decode(&qrCode, &qrData);
 
         if(err == 0) {
-            qrinstall_stop_capture(qrInstallData);
+            remoteinstall_qr_stop_capture(installData);
 
-            qrinstall_wait_set_last_urls((const char*) qrData.payload);
+            remoteinstall_set_last_urls((const char*) qrData.payload);
 
             action_url_install("Install from the scanned QR code?", (const char*) qrData.payload);
             return;
@@ -249,8 +210,8 @@ static void qrinstall_wait_update(ui_view* view, void* data, float* progress, ch
     snprintf(text, PROGRESS_TEXT_MAX, "Waiting for QR code...");
 }
 
-void qrinstall_open() {
-    qr_install_data* data = (qr_install_data*) calloc(1, sizeof(qr_install_data));
+void remoteinstall_scan_qr_code() {
+    remoteinstall_qr_data* data = (remoteinstall_qr_data*) calloc(1, sizeof(remoteinstall_qr_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate QR install data.");
 
@@ -261,8 +222,8 @@ void qrinstall_open() {
 
     data->capturing = false;
 
-    data->captureInfo.width = IMAGE_WIDTH;
-    data->captureInfo.height = IMAGE_HEIGHT;
+    data->captureInfo.width = QR_IMAGE_WIDTH;
+    data->captureInfo.height = QR_IMAGE_HEIGHT;
 
     data->captureInfo.finished = true;
 
@@ -270,24 +231,219 @@ void qrinstall_open() {
     if(data->qrContext == NULL) {
         error_display(NULL, NULL, "Failed to create QR context.");
 
-        qrinstall_free_data(data);
+        remoteinstall_qr_free_data(data);
         return;
     }
 
-    if(quirc_resize(data->qrContext, IMAGE_WIDTH, IMAGE_HEIGHT) != 0) {
+    if(quirc_resize(data->qrContext, QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT) != 0) {
         error_display(NULL, NULL, "Failed to resize QR context.");
 
-        qrinstall_free_data(data);
+        remoteinstall_qr_free_data(data);
         return;
     }
 
-    data->captureInfo.buffer = (u16*) calloc(1, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(u16));
+    data->captureInfo.buffer = (u16*) calloc(1, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16));
     if(data->captureInfo.buffer == NULL) {
         error_display(NULL, NULL, "Failed to create image buffer.");
 
-        qrinstall_free_data(data);
+        remoteinstall_qr_free_data(data);
         return;
     }
 
-    info_display("QR Code Install", "B: Return, X: Repeat, Y: Forget, SELECT: URL(s)", false, data, qrinstall_wait_update, qrinstall_wait_draw_top);
+    info_display("QR Code Install", "B: Return", false, data, remoteinstall_qr_update, remoteinstall_qr_draw_top);
+}
+
+typedef struct {
+    int serverSocket;
+} remoteinstall_network_data;
+
+static int remoteinstall_network_recvwait(int sockfd, void* buf, size_t len, int flags) {
+    errno = 0;
+
+    int ret = 0;
+    size_t read = 0;
+    while(((ret = recv(sockfd, buf + read, len - read, flags)) >= 0 && (read += ret) < len) || errno == EAGAIN) {
+        errno = 0;
+    }
+
+    return ret < 0 ? ret : (int) read;
+}
+
+static void remoteinstall_network_free_data(remoteinstall_network_data* data) {
+    if(data->serverSocket != 0) {
+        close(data->serverSocket);
+        data->serverSocket = 0;
+    }
+
+    free(data);
+}
+
+static void remoteinstall_network_update(ui_view* view, void* data, float* progress, char* text) {
+    remoteinstall_network_data* networkData = (remoteinstall_network_data*) data;
+
+    if(hidKeysDown() & KEY_B) {
+        ui_pop();
+        info_destroy(view);
+
+        remoteinstall_network_free_data(networkData);
+
+        return;
+    }
+
+    struct sockaddr_in client;
+    socklen_t clientLen = sizeof(client);
+
+    int sock = accept(networkData->serverSocket, (struct sockaddr*) &client, &clientLen);
+    if(sock >= 0) {
+        u32 size = 0;
+        if(remoteinstall_network_recvwait(sock, &size, sizeof(size), 0) == sizeof(size)) {
+            if(size < 128 * 1024) {
+                char* urls = (char*) calloc(size, sizeof(char));
+                if(urls != NULL) {
+                    if(remoteinstall_network_recvwait(sock, urls, size, 0) == size) {
+                        action_url_install("Install from the received URL(s)?", urls);
+                    } else {
+                        error_display_errno(NULL, NULL, errno, "Failed to read URL(s).");
+                    }
+
+                    free(urls);
+                } else {
+                    error_display(NULL, NULL, "Failed to allocate URL buffer.");
+                }
+            } else {
+                error_display(NULL, NULL, "Payload too large.");
+            }
+        } else {
+            error_display_errno(NULL, NULL, errno, "Failed to read payload length.");
+        }
+
+        close(sock);
+    } else if(errno != EAGAIN) {
+        if(errno == 22 || errno == 115) {
+            ui_pop();
+            info_destroy(view);
+        }
+
+        error_display_errno(NULL, NULL, errno, "Failed to open socket.");
+
+        if(errno == 22 || errno == 115) {
+            remoteinstall_network_free_data(networkData);
+
+            return;
+        }
+    }
+
+    struct in_addr addr = {(in_addr_t) gethostid()};
+    snprintf(text, PROGRESS_TEXT_MAX, "Waiting for connection...\nIP: %s\nPort: 5000", inet_ntoa(addr));
+}
+
+void remoteinstall_receive_urls_network() {
+    remoteinstall_network_data* data = (remoteinstall_network_data*) calloc(1, sizeof(remoteinstall_network_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, "Failed to allocate network install data.");
+
+        return;
+    }
+
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    if(sock < 0) {
+        error_display_errno(NULL, NULL, errno, "Failed to open server socket.");
+
+        remoteinstall_network_free_data(data);
+        return;
+    }
+
+    data->serverSocket = sock;
+
+    int bufSize = 1024 * 32;
+    setsockopt(data->serverSocket, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
+
+    struct sockaddr_in server;
+    server.sin_family = AF_INET;
+    server.sin_port = htons(5000);
+    server.sin_addr.s_addr = (in_addr_t) gethostid();
+
+    if(bind(data->serverSocket, (struct sockaddr*) &server, sizeof(server)) < 0) {
+        error_display_errno(NULL, NULL, errno, "Failed to bind server socket.");
+
+        remoteinstall_network_free_data(data);
+        return;
+    }
+
+    fcntl(data->serverSocket, F_SETFL, fcntl(data->serverSocket, F_GETFL, 0) | O_NONBLOCK);
+
+    if(listen(data->serverSocket, 5) < 0) {
+        error_display_errno(NULL, NULL, errno, "Failed to listen on server socket.");
+
+        remoteinstall_network_free_data(data);
+        return;
+    }
+
+    info_display("Receive URL(s)", "B: Return", false, data, remoteinstall_network_update, NULL);
+}
+
+void remoteinstall_manually_enter_urls() {
+    SwkbdState swkbd;
+    swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, -1);
+    swkbdSetValidation(&swkbd, SWKBD_NOTEMPTY, 0, 0);
+    swkbdSetFeatures(&swkbd, SWKBD_MULTILINE);
+    swkbdSetHintText(&swkbd, "Enter URL(s)");
+
+    char textBuf[1024];
+    if(swkbdInputText(&swkbd, textBuf, sizeof(textBuf)) == SWKBD_BUTTON_CONFIRM) {
+        remoteinstall_set_last_urls(textBuf);
+
+        action_url_install("Install from the entered URL(s)?", textBuf);
+        return;
+    }
+}
+
+void remoteinstall_repeat_last_request() {
+    char textBuf[4096];
+    if(remoteinstall_get_last_urls(textBuf, sizeof(textBuf))) {
+        action_url_install("Install from the last requested URL(s)?", textBuf);
+    } else {
+        prompt_display("Failure", "No previously requested URL(s) could be found.", COLOR_TEXT, false, NULL, NULL, NULL);
+    }
+}
+
+void remoteinstall_forget_last_request() {
+    Result forgetRes = remoteinstall_set_last_urls(NULL);
+    if(R_SUCCEEDED(forgetRes)) {
+        prompt_display("Success", "Last requested URL(s) forgotten.", COLOR_TEXT, false, NULL, NULL, NULL);
+    } else {
+        error_display_res(NULL, NULL, forgetRes, "Failed to forget last requested URL(s).");
+    }
+}
+
+static list_item scan_qr_code = {"Scan QR Code", COLOR_TEXT, remoteinstall_scan_qr_code};
+static list_item receive_urls_network = {"Receive URLs over the network", COLOR_TEXT, remoteinstall_receive_urls_network};
+static list_item manually_enter_urls = {"Manually enter URLs", COLOR_TEXT, remoteinstall_manually_enter_urls};
+static list_item repeat_last_request = {"Repeat last request", COLOR_TEXT, remoteinstall_repeat_last_request};
+static list_item forget_last_request = {"Forget last request", COLOR_TEXT, remoteinstall_forget_last_request};
+
+static void remoteinstall_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
+    if(hidKeysDown() & KEY_B) {
+        ui_pop();
+        list_destroy(view);
+
+        return;
+    }
+
+    if(selected != NULL && (selectedTouched || hidKeysDown() & KEY_A) && selected->data != NULL) {
+        ((void(*)()) selected->data)();
+        return;
+    }
+
+    if(linked_list_size(items) == 0) {
+        linked_list_add(items, &scan_qr_code);
+        linked_list_add(items, &receive_urls_network);
+        linked_list_add(items, &manually_enter_urls);
+        linked_list_add(items, &repeat_last_request);
+        linked_list_add(items, &forget_last_request);
+    }
+}
+
+void remoteinstall_open() {
+    list_display("Remote Install", "A: Select, B: Return", NULL, remoteinstall_update, NULL);
 }
