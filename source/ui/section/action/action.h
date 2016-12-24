@@ -49,5 +49,6 @@ void action_import_secure_value(linked_list* items, list_item* selected);
 void action_export_secure_value(linked_list* items, list_item* selected);
 void action_delete_secure_value(linked_list* items, list_item* selected);
 
-void action_url_install(const char* confirmMessage, const char* urls);
+void action_url_install(const char* confirmMessage, const char* urls, void* finishedData, void (*finished)(void* data));
+
 void action_install_titledb(linked_list* items, list_item* selected);
