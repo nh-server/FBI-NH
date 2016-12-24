@@ -67,6 +67,7 @@ try:
 	print("Sending URL(s) to " + ip + ":5000...")
 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	sock.settimeout(10)
 	sock.connect((ip, 5000))
 	sock.sendall(struct.pack('!L', len(payloadBytes)) + payloadBytes)
 	while len(sock.recv(1)) < 1:
