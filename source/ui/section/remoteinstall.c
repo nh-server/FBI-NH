@@ -70,6 +70,174 @@ static Result remoteinstall_set_last_urls(const char* urls) {
     return res;
 }
 
+typedef struct {
+    int serverSocket;
+    int clientSocket;
+} remoteinstall_network_data;
+
+static int remoteinstall_network_recvwait(int sockfd, void* buf, size_t len, int flags) {
+    errno = 0;
+
+    int ret = 0;
+    size_t read = 0;
+    while(((ret = recv(sockfd, buf + read, len - read, flags)) >= 0 && (read += ret) < len) || errno == EAGAIN) {
+        errno = 0;
+    }
+
+    return ret < 0 ? ret : (int) read;
+}
+
+static int remoteinstall_network_sendwait(int sockfd, void* buf, size_t len, int flags) {
+    errno = 0;
+
+    int ret = 0;
+    size_t written = 0;
+    while(((ret = send(sockfd, buf + written, len - written, flags)) >= 0 && (written += ret) < len) || errno == EAGAIN) {
+        errno = 0;
+    }
+
+    return ret < 0 ? ret : (int) written;
+}
+
+static void remoteinstall_network_close_client(void* data) {
+    remoteinstall_network_data* networkData = (remoteinstall_network_data*) data;
+
+    if(networkData->clientSocket != 0) {
+        u8 ack = 0;
+        remoteinstall_network_sendwait(networkData->clientSocket, &ack, sizeof(ack), 0);
+
+        close(networkData->clientSocket);
+        networkData->clientSocket = 0;
+    }
+}
+
+static void remoteinstall_network_free_data(remoteinstall_network_data* data) {
+    remoteinstall_network_close_client(data);
+
+    if(data->serverSocket != 0) {
+        close(data->serverSocket);
+        data->serverSocket = 0;
+    }
+
+    free(data);
+}
+
+static void remoteinstall_network_update(ui_view* view, void* data, float* progress, char* text) {
+    remoteinstall_network_data* networkData = (remoteinstall_network_data*) data;
+
+    if(hidKeysDown() & KEY_B) {
+        ui_pop();
+        info_destroy(view);
+
+        remoteinstall_network_free_data(networkData);
+
+        return;
+    }
+
+    struct sockaddr_in client;
+    socklen_t clientLen = sizeof(client);
+
+    int sock = accept(networkData->serverSocket, (struct sockaddr*) &client, &clientLen);
+    if(sock >= 0) {
+        networkData->clientSocket = sock;
+
+        u32 size = 0;
+        if(remoteinstall_network_recvwait(networkData->clientSocket, &size, sizeof(size), 0) != sizeof(size)) {
+            error_display_errno(NULL, NULL, errno, "Failed to read payload length.");
+
+            remoteinstall_network_close_client(data);
+            return;
+        }
+
+        size = ntohl(size);
+        if(size >= 128 * 1024) {
+            error_display(NULL, NULL, "Payload too large.");
+
+            remoteinstall_network_close_client(data);
+            return;
+        }
+
+        char* urls = (char*) calloc(size, sizeof(char));
+        if(urls == NULL) {
+            error_display(NULL, NULL, "Failed to allocate URL buffer.");
+
+            remoteinstall_network_close_client(data);
+            return;
+        }
+
+        if(remoteinstall_network_recvwait(networkData->clientSocket, urls, size, 0) != size) {
+            error_display_errno(NULL, NULL, errno, "Failed to read URL(s).");
+
+            free(urls);
+            remoteinstall_network_close_client(data);
+            return;
+        }
+
+        remoteinstall_set_last_urls(urls);
+        action_url_install("Install from the received URL(s)?", urls, data, remoteinstall_network_close_client);
+
+        free(urls);
+    } else if(errno != EAGAIN) {
+        if(errno == 22 || errno == 115) {
+            ui_pop();
+            info_destroy(view);
+        }
+
+        error_display_errno(NULL, NULL, errno, "Failed to open socket.");
+
+        if(errno == 22 || errno == 115) {
+            remoteinstall_network_free_data(networkData);
+
+            return;
+        }
+    }
+
+    struct in_addr addr = {(in_addr_t) gethostid()};
+    snprintf(text, PROGRESS_TEXT_MAX, "Waiting for connection...\nIP: %s\nPort: 5000", inet_ntoa(addr));
+}
+
+void remoteinstall_receive_urls_network() {
+    remoteinstall_network_data* data = (remoteinstall_network_data*) calloc(1, sizeof(remoteinstall_network_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, "Failed to allocate network install data.");
+
+        return;
+    }
+
+    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
+    if(sock < 0) {
+        error_display_errno(NULL, NULL, errno, "Failed to open server socket.");
+
+        remoteinstall_network_free_data(data);
+        return;
+    }
+
+    data->serverSocket = sock;
+
+    struct sockaddr_in server;
+    server.sin_family = AF_INET;
+    server.sin_port = htons(5000);
+    server.sin_addr.s_addr = (in_addr_t) gethostid();
+
+    if(bind(data->serverSocket, (struct sockaddr*) &server, sizeof(server)) < 0) {
+        error_display_errno(NULL, NULL, errno, "Failed to bind server socket.");
+
+        remoteinstall_network_free_data(data);
+        return;
+    }
+
+    fcntl(data->serverSocket, F_SETFL, fcntl(data->serverSocket, F_GETFL, 0) | O_NONBLOCK);
+
+    if(listen(data->serverSocket, 5) < 0) {
+        error_display_errno(NULL, NULL, errno, "Failed to listen on server socket.");
+
+        remoteinstall_network_free_data(data);
+        return;
+    }
+
+    info_display("Receive URL(s)", "B: Return", false, data, remoteinstall_network_update, NULL);
+}
+
 #define QR_IMAGE_WIDTH 400
 #define QR_IMAGE_HEIGHT 240
 
@@ -253,174 +421,6 @@ void remoteinstall_scan_qr_code() {
     info_display("QR Code Install", "B: Return", false, data, remoteinstall_qr_update, remoteinstall_qr_draw_top);
 }
 
-typedef struct {
-    int serverSocket;
-    int clientSocket;
-} remoteinstall_network_data;
-
-static int remoteinstall_network_recvwait(int sockfd, void* buf, size_t len, int flags) {
-    errno = 0;
-
-    int ret = 0;
-    size_t read = 0;
-    while(((ret = recv(sockfd, buf + read, len - read, flags)) >= 0 && (read += ret) < len) || errno == EAGAIN) {
-        errno = 0;
-    }
-
-    return ret < 0 ? ret : (int) read;
-}
-
-static int remoteinstall_network_sendwait(int sockfd, void* buf, size_t len, int flags) {
-    errno = 0;
-
-    int ret = 0;
-    size_t written = 0;
-    while(((ret = send(sockfd, buf + written, len - written, flags)) >= 0 && (written += ret) < len) || errno == EAGAIN) {
-        errno = 0;
-    }
-
-    return ret < 0 ? ret : (int) written;
-}
-
-static void remoteinstall_network_close_client(void* data) {
-    remoteinstall_network_data* networkData = (remoteinstall_network_data*) data;
-
-    if(networkData->clientSocket != 0) {
-        u8 ack = 0;
-        remoteinstall_network_sendwait(networkData->clientSocket, &ack, sizeof(ack), 0);
-
-        close(networkData->clientSocket);
-        networkData->clientSocket = 0;
-    }
-}
-
-static void remoteinstall_network_free_data(remoteinstall_network_data* data) {
-    remoteinstall_network_close_client(data);
-
-    if(data->serverSocket != 0) {
-        close(data->serverSocket);
-        data->serverSocket = 0;
-    }
-
-    free(data);
-}
-
-static void remoteinstall_network_update(ui_view* view, void* data, float* progress, char* text) {
-    remoteinstall_network_data* networkData = (remoteinstall_network_data*) data;
-
-    if(hidKeysDown() & KEY_B) {
-        ui_pop();
-        info_destroy(view);
-
-        remoteinstall_network_free_data(networkData);
-
-        return;
-    }
-
-    struct sockaddr_in client;
-    socklen_t clientLen = sizeof(client);
-
-    int sock = accept(networkData->serverSocket, (struct sockaddr*) &client, &clientLen);
-    if(sock >= 0) {
-        networkData->clientSocket = sock;
-
-        u32 size = 0;
-        if(remoteinstall_network_recvwait(networkData->clientSocket, &size, sizeof(size), 0) != sizeof(size)) {
-            error_display_errno(NULL, NULL, errno, "Failed to read payload length.");
-
-            remoteinstall_network_close_client(data);
-            return;
-        }
-
-        size = ntohl(size);
-        if(size >= 128 * 1024) {
-            error_display(NULL, NULL, "Payload too large.");
-
-            remoteinstall_network_close_client(data);
-            return;
-        }
-
-        char* urls = (char*) calloc(size, sizeof(char));
-        if(urls == NULL) {
-            error_display(NULL, NULL, "Failed to allocate URL buffer.");
-
-            remoteinstall_network_close_client(data);
-            return;
-        }
-
-        if(remoteinstall_network_recvwait(networkData->clientSocket, urls, size, 0) != size) {
-            error_display_errno(NULL, NULL, errno, "Failed to read URL(s).");
-
-            free(urls);
-            remoteinstall_network_close_client(data);
-            return;
-        }
-
-        remoteinstall_set_last_urls(urls);
-        action_url_install("Install from the received URL(s)?", urls, data, remoteinstall_network_close_client);
-
-        free(urls);
-    } else if(errno != EAGAIN) {
-        if(errno == 22 || errno == 115) {
-            ui_pop();
-            info_destroy(view);
-        }
-
-        error_display_errno(NULL, NULL, errno, "Failed to open socket.");
-
-        if(errno == 22 || errno == 115) {
-            remoteinstall_network_free_data(networkData);
-
-            return;
-        }
-    }
-
-    struct in_addr addr = {(in_addr_t) gethostid()};
-    snprintf(text, PROGRESS_TEXT_MAX, "Waiting for connection...\nIP: %s\nPort: 5000", inet_ntoa(addr));
-}
-
-void remoteinstall_receive_urls_network() {
-    remoteinstall_network_data* data = (remoteinstall_network_data*) calloc(1, sizeof(remoteinstall_network_data));
-    if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate network install data.");
-
-        return;
-    }
-
-    int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    if(sock < 0) {
-        error_display_errno(NULL, NULL, errno, "Failed to open server socket.");
-
-        remoteinstall_network_free_data(data);
-        return;
-    }
-
-    data->serverSocket = sock;
-
-    struct sockaddr_in server;
-    server.sin_family = AF_INET;
-    server.sin_port = htons(5000);
-    server.sin_addr.s_addr = (in_addr_t) gethostid();
-
-    if(bind(data->serverSocket, (struct sockaddr*) &server, sizeof(server)) < 0) {
-        error_display_errno(NULL, NULL, errno, "Failed to bind server socket.");
-
-        remoteinstall_network_free_data(data);
-        return;
-    }
-
-    fcntl(data->serverSocket, F_SETFL, fcntl(data->serverSocket, F_GETFL, 0) | O_NONBLOCK);
-
-    if(listen(data->serverSocket, 5) < 0) {
-        error_display_errno(NULL, NULL, errno, "Failed to listen on server socket.");
-
-        remoteinstall_network_free_data(data);
-        return;
-    }
-
-    info_display("Receive URL(s)", "B: Return", false, data, remoteinstall_network_update, NULL);
-}
-
 void remoteinstall_manually_enter_urls() {
     SwkbdState swkbd;
     swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 2, -1);
@@ -455,8 +455,8 @@ void remoteinstall_forget_last_request() {
     }
 }
 
-static list_item scan_qr_code = {"Scan QR Code", COLOR_TEXT, remoteinstall_scan_qr_code};
 static list_item receive_urls_network = {"Receive URLs over the network", COLOR_TEXT, remoteinstall_receive_urls_network};
+static list_item scan_qr_code = {"Scan QR Code", COLOR_TEXT, remoteinstall_scan_qr_code};
 static list_item manually_enter_urls = {"Manually enter URLs", COLOR_TEXT, remoteinstall_manually_enter_urls};
 static list_item repeat_last_request = {"Repeat last request", COLOR_TEXT, remoteinstall_repeat_last_request};
 static list_item forget_last_request = {"Forget last request", COLOR_TEXT, remoteinstall_forget_last_request};
@@ -475,8 +475,8 @@ static void remoteinstall_update(ui_view* view, void* data, linked_list* items, 
     }
 
     if(linked_list_size(items) == 0) {
-        linked_list_add(items, &scan_qr_code);
         linked_list_add(items, &receive_urls_network);
+        linked_list_add(items, &scan_qr_code);
         linked_list_add(items, &manually_enter_urls);
         linked_list_add(items, &repeat_last_request);
         linked_list_add(items, &forget_last_request);

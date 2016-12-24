@@ -424,16 +424,28 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     list_display("Files", "A: Select, B: Back, X: Refresh, Select: Options", data, files_update, files_draw_top);
 }
 
+static void files_open_nand_warning_onresponse(ui_view* view, void* data, bool response) {
+    FS_ArchiveID archive = (FS_ArchiveID) data;
+
+    if(response) {
+        files_open(archive, fsMakePath(PATH_EMPTY, ""));
+    }
+}
+
+void files_open_nand_warning(FS_ArchiveID archive) {
+    prompt_display("Confirmation", "Modifying the NAND is dangerous and can render\n the system inoperable.\nMake sure you know what you are doing.\n\nProceed?", COLOR_TEXT, true, (void*) archive, NULL, files_open_nand_warning_onresponse);
+}
+
 void files_open_sd() {
     files_open(ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""));
 }
 
 void files_open_ctr_nand() {
-    files_open(ARCHIVE_NAND_CTR_FS, fsMakePath(PATH_EMPTY, ""));
+    files_open_nand_warning(ARCHIVE_NAND_CTR_FS);
 }
 
 void files_open_twl_nand() {
-    files_open(ARCHIVE_NAND_TWL_FS, fsMakePath(PATH_EMPTY, ""));
+    files_open_nand_warning(ARCHIVE_NAND_TWL_FS);
 }
 
 void files_open_twl_photo() {
