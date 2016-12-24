@@ -19,6 +19,9 @@
 typedef struct {
     char urls[URLS_MAX][URL_MAX];
 
+    void* finishedData;
+    void (*finished)(void* data);
+
     bool cdn;
     bool cdnDecided;
 
@@ -30,6 +33,14 @@ typedef struct {
 
     data_op_data installInfo;
 } url_install_data;
+
+static void action_url_install_free_data(url_install_data* data) {
+    if(data->finished != NULL) {
+        data->finished(data->finishedData);
+    }
+
+    free(data);
+}
 
 static void action_url_install_cdn_check_onresponse(ui_view* view, void* data, bool response) {
     url_install_data* installData = (url_install_data*) data;
@@ -248,6 +259,8 @@ static void action_url_install_install_update(ui_view* view, void* data, float* 
             prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
         }
 
+        action_url_install_free_data(installData);
+
         return;
     }
 
@@ -268,14 +281,18 @@ static void action_url_install_confirm_onresponse(ui_view* view, void* data, boo
             info_display("Installing From URL(s)", "Press B to cancel.", true, data, action_url_install_install_update, NULL);
         } else {
             error_display_res(NULL, NULL, res, "Failed to initiate installation.");
+
+            action_url_install_free_data(installData);
         }
+    } else {
+        action_url_install_free_data(installData);
     }
 }
 
-void action_url_install(const char* confirmMessage, const char* urls) {
+void action_url_install(const char* confirmMessage, const char* urls, void* finishedData, void (*finished)(void* data)) {
     url_install_data* data = (url_install_data*) calloc(1, sizeof(url_install_data));
     if(data == NULL) {
-        error_display(NULL, NULL, "Failed to allocate QR install data.");
+        error_display(NULL, NULL, "Failed to allocate URL install data.");
 
         return;
     }
@@ -312,6 +329,9 @@ void action_url_install(const char* confirmMessage, const char* urls) {
             currStart = currEnd + 1;
         }
     }
+
+    data->finishedData = finishedData;
+    data->finished = finished;
 
     data->cdn = false;
     data->cdnDecided = false;
