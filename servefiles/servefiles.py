@@ -1,3 +1,4 @@
+#!/bin/python
 import os
 import socket
 import struct
