@@ -103,6 +103,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                                     if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, dataOffsets[sigType] + titleIdOffset, &titleId, sizeof(titleId))) && bytesRead == sizeof(titleId)) {
                                         fileInfo->isTicket = true;
                                         fileInfo->ticketInfo.titleId = __builtin_bswap64(titleId);
+                                        fileInfo->ticketInfo.inUse = false;
                                     }
                                 }
                             }

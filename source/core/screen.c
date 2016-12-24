@@ -211,6 +211,10 @@ void screen_init() {
                 colorConfig[COLOR_INSTALLED] = color;
             } else if(strcasecmp(key, "notinstalled") == 0) {
                 colorConfig[COLOR_NOT_INSTALLED] = color;
+            } else if(strcasecmp(key, "ticketinuse") == 0) {
+                colorConfig[COLOR_TICKET_IN_USE] = color;
+            } else if(strcasecmp(key, "ticketnotinuse") == 0) {
+                colorConfig[COLOR_TICKET_NOT_IN_USE] = color;
             }
         }
     }

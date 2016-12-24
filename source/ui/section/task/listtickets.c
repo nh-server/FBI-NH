@@ -41,9 +41,18 @@ static void task_populate_tickets_thread(void* arg) {
                         ticket_info* ticketInfo = (ticket_info*) calloc(1, sizeof(ticket_info));
                         if(ticketInfo != NULL) {
                             ticketInfo->titleId = ticketIds[i];
+                            ticketInfo->inUse = false;
+
+                            AM_TitleEntry entry;
+                            for(FS_MediaType mediaType = MEDIATYPE_NAND; mediaType != MEDIATYPE_GAME_CARD; mediaType++) {
+                                if(R_SUCCEEDED(AM_GetTitleInfo(mediaType, 1, &ticketInfo->titleId, &entry))) {
+                                    ticketInfo->inUse = true;
+                                    break;
+                                }
+                            }
 
                             snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", ticketIds[i]);
-                            item->color = COLOR_TEXT;
+                            item->color = ticketInfo->inUse ? COLOR_TICKET_IN_USE : COLOR_TICKET_NOT_IN_USE;
                             item->data = ticketInfo;
 
                             linked_list_add(data->items, item);

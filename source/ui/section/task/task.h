@@ -33,6 +33,7 @@ typedef struct pending_title_info_s {
 
 typedef struct ticket_info_s {
     u64 titleId;
+    bool inUse;
 } ticket_info;
 
 typedef struct ext_save_data_info_s {
