@@ -47,6 +47,8 @@ if len(payload) == 0:
 	print("No files to serve.")
 	sys.exit(1)
 
+payloadBytes = payload.encode("ascii")
+
 if not directory == "":
 	os.chdir(directory)
 
@@ -66,11 +68,7 @@ try:
 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.connect((ip, 5000))
-
-	payloadBytes = payload.encode("ascii")
-
 	sock.sendall(struct.pack('!L', len(payloadBytes)) + payloadBytes)
-
 	while len(sock.recv(1)) < 1:
 		time.sleep(0.05)
 
