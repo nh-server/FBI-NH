@@ -9,7 +9,7 @@ void files_open_twl_nand();
 void files_open_twl_photo();
 void files_open_twl_sound();
 void pendingtitles_open();
-void qrinstall_open();
+void remoteinstall_open();
 void systemsavedata_open();
 void tickets_open();
 void titles_open();
