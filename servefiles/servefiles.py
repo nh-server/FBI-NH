@@ -66,7 +66,11 @@ try:
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.connect((ip, 5000))
 
-	payloadBytes = bytes(payload, "ascii")
+	try:
+		payloadBytes = bytes(payload, "ascii")
+	except:
+		payloadBytes = payload.encode("ascii")
+
 	networkPayload = struct.pack('!L', len(payloadBytes)) + payloadBytes
 
 	sentLength = 0
