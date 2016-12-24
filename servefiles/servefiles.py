@@ -67,20 +67,9 @@ try:
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	sock.connect((ip, 5000))
 
-	try:
-		payloadBytes = bytes(payload, "ascii")
-	except:
-		payloadBytes = payload.encode("ascii")
+	payloadBytes = payload.encode("ascii")
 
-	networkPayload = struct.pack('!L', len(payloadBytes)) + payloadBytes
-
-	sentLength = 0
-	while sentLength < len(networkPayload):
-		sent = sock.send(networkPayload[sentLength:])
-		if sent == 0:
-			raise RuntimeError("Socket connection broken.")
-	
-		sentLength += sent
+	sock.sendall(struct.pack('!L', len(payloadBytes)) + payloadBytes)
 
 	while len(sock.recv(1)) < 1:
 		time.sleep(0.05)

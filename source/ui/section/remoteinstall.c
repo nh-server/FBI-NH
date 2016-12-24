@@ -80,7 +80,7 @@ static int remoteinstall_network_recvwait(int sockfd, void* buf, size_t len, int
 
     int ret = 0;
     size_t read = 0;
-    while(((ret = recv(sockfd, buf + read, len - read, flags)) >= 0 && (read += ret) < len) || errno == EAGAIN) {
+    while((((ret = recv(sockfd, buf + read, len - read, flags)) > 0 && (read += ret) < len) || errno == EAGAIN) && !(hidKeysDown() & KEY_B)) {
         errno = 0;
     }
 
@@ -92,7 +92,7 @@ static int remoteinstall_network_sendwait(int sockfd, void* buf, size_t len, int
 
     int ret = 0;
     size_t written = 0;
-    while(((ret = send(sockfd, buf + written, len - written, flags)) >= 0 && (written += ret) < len) || errno == EAGAIN) {
+    while((((ret = send(sockfd, buf + written, len - written, flags)) > 0 && (written += ret) < len) || errno == EAGAIN) && !(hidKeysDown() & KEY_B)) {
         errno = 0;
     }
 
