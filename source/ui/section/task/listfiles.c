@@ -233,6 +233,8 @@ static void task_populate_files_thread(void* arg) {
             }
         }
 
+        linked_list_destroy(&queue);
+
         if(!data->includeBase) {
             task_free_file(baseItem);
         }
