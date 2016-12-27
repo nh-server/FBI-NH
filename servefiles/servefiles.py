@@ -35,9 +35,7 @@ baseUrl = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in 
 payload = ""
 
 if os.path.isfile(directory):
-	if directory.endswith(('.cia', '.tik')):
-		payload += baseUrl + quote(os.path.basename(directory))
-
+	payload += baseUrl + quote(os.path.basename(directory))
 	directory = os.path.dirname(directory)
 else:
 	for file in [ file for file in next(os.walk(directory))[2] if file.endswith(('.cia', '.tik')) ]:
@@ -67,7 +65,6 @@ try:
 	print("Sending URL(s) to " + ip + ":5000...")
 
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	sock.settimeout(10)
 	sock.connect((ip, 5000))
 	sock.sendall(struct.pack('!L', len(payloadBytes)) + payloadBytes)
 	while len(sock.recv(1)) < 1:
