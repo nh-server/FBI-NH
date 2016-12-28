@@ -13,22 +13,57 @@
 #include "ui/ui.h"
 #include "ui/section/task/task.h"
 
+static bool am_initialized = false;
+static bool cfgu_initialized = false;
+static bool ac_initialized = false;
+static bool ptmu_initialized = false;
+static bool pxidev_initialized = false;
+static bool httpc_initialized = false;
+static bool soc_initialized = false;
+
 static void* soc_buffer = NULL;
 static u32 old_time_limit = UINT32_MAX;
 
 void cleanup_services() {
-    socExit();
-    if(soc_buffer != NULL) {
-        free(soc_buffer);
-        soc_buffer = NULL;
+    if(soc_initialized) {
+        socExit();
+        if(soc_buffer != NULL) {
+            free(soc_buffer);
+            soc_buffer = NULL;
+        }
+
+        soc_initialized = false;
     }
 
-    httpcExit();
-    pxiDevExit();
-    ptmuExit();
-    acExit();
-    cfguExit();
-    amExit();
+    if(httpc_initialized) {
+        httpcExit();
+        httpc_initialized = false;
+    }
+
+    if(pxidev_initialized) {
+        pxiDevExit();
+        pxidev_initialized = false;
+    }
+
+    if(ptmu_initialized) {
+        ptmuExit();
+        ptmu_initialized = false;
+    }
+
+    if(ac_initialized) {
+        acExit();
+        ac_initialized = false;
+    }
+
+    if(cfgu_initialized) {
+        cfguExit();
+        cfgu_initialized = false;
+    }
+
+    if(am_initialized) {
+        amExit();
+        am_initialized = false;
+    }
 }
 
 Result init_services() {
@@ -38,15 +73,17 @@ Result init_services() {
     if(R_SUCCEEDED(res = srvGetServiceHandle(&tempAM, "am:net"))) {
         svcCloseHandle(tempAM);
 
-        if(R_SUCCEEDED(res = amInit())
-           && R_SUCCEEDED(res = cfguInit())
-           && R_SUCCEEDED(res = acInit())
-           && R_SUCCEEDED(res = ptmuInit())
-           && R_SUCCEEDED(res = pxiDevInit())
-           && R_SUCCEEDED(res = httpcInit(0))) {
+        if(R_SUCCEEDED(res = amInit()) && (am_initialized = true)
+           && R_SUCCEEDED(res = cfguInit()) && (cfgu_initialized = true)
+           && R_SUCCEEDED(res = acInit()) && (ac_initialized = true)
+           && R_SUCCEEDED(res = ptmuInit()) && (ptmu_initialized = true)
+           && R_SUCCEEDED(res = pxiDevInit()) && (pxidev_initialized = true)
+           && R_SUCCEEDED(res = httpcInit(0)) && (httpc_initialized = true)) {
             soc_buffer = memalign(0x1000, 0x100000);
             if(soc_buffer != NULL) {
-                res = socInit(soc_buffer, 0x100000);
+                if(R_SUCCEEDED(res = socInit(soc_buffer, 0x100000))) {
+                    soc_initialized = true;
+                }
             } else {
                 res = R_FBI_OUT_OF_MEMORY;
             }
