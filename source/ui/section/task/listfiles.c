@@ -33,7 +33,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                 item->color = COLOR_DIRECTORY;
 
                 size_t len = strlen(path);
-                if(len > 1 && path[len - 1] != '/') {
+                if(len == 0 || path[len - 1] != '/') {
                     snprintf(fileInfo->path, FILE_PATH_MAX, "%s/", path);
                 } else {
                     strncpy(fileInfo->path, path, FILE_PATH_MAX);
