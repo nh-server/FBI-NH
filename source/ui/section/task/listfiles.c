@@ -51,8 +51,8 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                 if(fileFsPath != NULL) {
                     Handle fileHandle;
                     if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, archive, *fileFsPath, FS_OPEN_READ, 0))) {
-                        if(attributes == UINT32_MAX) {
-                            FSFILE_GetAttributes(fileHandle, &fileInfo->attributes);
+                        if(attributes == UINT32_MAX && R_FAILED(FSFILE_GetAttributes(fileHandle, &fileInfo->attributes))) {
+                            fileInfo->attributes = 0;
                         }
 
                         FSFILE_GetSize(fileHandle, &fileInfo->size);
