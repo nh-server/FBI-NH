@@ -18,6 +18,8 @@
 
 typedef struct {
     linked_list* items;
+
+    list_item* targetItem;
     file_info* target;
 
     linked_list contents;
@@ -31,7 +33,7 @@ static void action_paste_contents_draw_top(ui_view* view, void* data, float x1, 
     u32 curr = pasteData->pasteInfo.processed;
     if(curr < pasteData->pasteInfo.total) {
         ui_draw_file_info(view, ((list_item*) linked_list_get(&pasteData->contents, curr))->data, x1, y1, x2, y2);
-    } else if(pasteData->target != NULL) {
+    } else {
         ui_draw_file_info(view, pasteData->target, x1, y1, x2, y2);
     }
 }
@@ -246,6 +248,13 @@ static bool action_paste_contents_error(void* data, u32 index, Result res) {
 static void action_paste_contents_free_data(paste_contents_data* data) {
     task_clear_files(&data->contents);
     linked_list_destroy(&data->contents);
+
+    if(data->targetItem != NULL) {
+        task_free_file(data->targetItem);
+        data->targetItem = NULL;
+        data->target = NULL;
+    }
+
     free(data);
 }
 
@@ -284,7 +293,7 @@ static void action_paste_contents_onresponse(ui_view* view, void* data, bool res
         if(R_SUCCEEDED(res)) {
             info_display("Pasting Contents", "Press B to cancel.", true, data, action_paste_contents_update, action_paste_contents_draw_top);
         } else {
-            error_display_res(pasteData->target, ui_draw_file_info, res, "Failed to initiate paste operation.");
+            error_display_res(NULL, NULL, res, "Failed to initiate paste operation.");
 
             action_paste_contents_free_data(pasteData);
         }
@@ -346,7 +355,10 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     }
 
     data->items = items;
-    data->target = (file_info*) selected->data;
+
+    file_info* targetInfo = (file_info*) selected->data;
+    task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes);
+    data->target = (file_info*) data->targetItem->data;
 
     data->pasteInfo.data = data;
 
