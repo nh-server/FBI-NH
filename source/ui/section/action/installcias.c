@@ -17,6 +17,8 @@
 
 typedef struct {
     linked_list* items;
+
+    list_item* targetItem;
     file_info* target;
 
     linked_list contents;
@@ -39,7 +41,7 @@ static void action_install_cias_draw_top(ui_view* view, void* data, float x1, fl
     u32 curr = installData->installInfo.processed;
     if(curr < installData->installInfo.total) {
         ui_draw_file_info(view, ((list_item*) linked_list_get(&installData->contents, curr))->data, x1, y1, x2, y2);
-    } else if(installData->target != NULL) {
+    } else {
         ui_draw_file_info(view, installData->target, x1, y1, x2, y2);
     }
 }
@@ -212,6 +214,13 @@ bool action_install_cias_error(void* data, u32 index, Result res) {
 static void action_install_cias_free_data(install_cias_data* data) {
     task_clear_files(&data->contents);
     linked_list_destroy(&data->contents);
+
+    if(data->targetItem != NULL) {
+        task_free_file(data->targetItem);
+        data->targetItem = NULL;
+        data->target = NULL;
+    }
+
     free(data);
 }
 
@@ -310,7 +319,10 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     }
 
     data->items = items;
-    data->target = (file_info*) selected->data;
+
+    file_info* targetInfo = (file_info*) selected->data;
+    task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes);
+    data->target = (file_info*) data->targetItem->data;
 
     data->delete = delete;
 
