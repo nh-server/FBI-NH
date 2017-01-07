@@ -29,9 +29,14 @@ if not os.path.exists(directory):
 	print(directory + ": No such file or directory.")
 	sys.exit(1)
 
+if len(sys.argv) >= 4:
+	hostIp = sys.argv[3]
+else:
+	hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
+
 print("Preparing data...")
 
-baseUrl = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1] + ":8080/"
+baseUrl = hostIp + ":8080/"
 payload = ""
 
 if os.path.isfile(directory):
