@@ -53,23 +53,7 @@ static int util_get_lines(PrintConsole* console, const char* str) {
     return lines;
 }
 
-static const devoptab_t* consoleStdOut = NULL;
-static const devoptab_t* consoleStdErr = NULL;
-
-void util_store_console_std() {
-    consoleStdOut = devoptab_list[STD_OUT];
-    consoleStdErr = devoptab_list[STD_ERR];
-}
-
 void util_panic(const char* s, ...) {
-    if(consoleStdOut != NULL) {
-        devoptab_list[STD_OUT] = consoleStdOut;
-    }
-
-    if(consoleStdErr != NULL) {
-        devoptab_list[STD_ERR] = consoleStdErr;
-    }
-
     va_list list;
     va_start(list, s);
 
@@ -131,10 +115,6 @@ void util_panic(const char* s, ...) {
     gfxFlushBuffers();
     gspWaitForVBlank();
 
-    util_panic_quiet();
-}
-
-void util_panic_quiet() {
     while(aptMainLoop()) {
         hidScanInput();
         if(hidKeysDown() & ~KEY_TOUCH) {

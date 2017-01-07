@@ -38,9 +38,7 @@ typedef struct {
     u16 animationSequence[0x40];
 } BNR;
 
-void util_store_console_std();
 void util_panic(const char* s, ...);
-void util_panic_quiet();
 
 FS_Path* util_make_path_utf8(const char* path);
 void util_free_path_utf8(FS_Path* path);
