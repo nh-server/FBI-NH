@@ -1,93 +1,108 @@
 #include <sys/iosupport.h>
 #include <malloc.h>
-#include <stdio.h>
 
 #include <3ds.h>
 
 #include "core/clipboard.h"
 #include "core/screen.h"
 #include "core/util.h"
-#include "hax/khax.h"
 #include "ui/error.h"
 #include "ui/mainmenu.h"
 #include "ui/ui.h"
 #include "ui/section/task/task.h"
 
-static bool am_initialized = false;
-static bool cfgu_initialized = false;
-static bool ac_initialized = false;
-static bool ptmu_initialized = false;
-static bool pxidev_initialized = false;
-static bool httpc_initialized = false;
-static bool soc_initialized = false;
+#define CURRENT_KPROCESS (*(void**) 0xFFFF9004)
+
+#define KPROCESS_PID_OFFSET_OLD (0xB4)
+#define KPROCESS_PID_OFFSET_NEW (0xBC)
+
+static bool backdoor_ran = false;
+static bool n3ds = false;
+static u32 old_pid = 0;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+static __attribute__((naked)) Result svcGlobalBackdoor(s32 (*callback)()) {
+    asm volatile(
+            "svc 0x30\n"
+            "bx lr"
+    );
+}
+#pragma GCC diagnostic pop
+
+static s32 patch_pid_kernel() {
+    u32 *pidPtr = (u32*) (CURRENT_KPROCESS + (n3ds ? KPROCESS_PID_OFFSET_NEW : KPROCESS_PID_OFFSET_OLD));
+
+    old_pid = *pidPtr;
+    *pidPtr = 0;
+
+    backdoor_ran = true;
+    return 0;
+}
+
+static s32 restore_pid_kernel() {
+    u32 *pidPtr = (u32*) (CURRENT_KPROCESS + (n3ds ? KPROCESS_PID_OFFSET_NEW : KPROCESS_PID_OFFSET_OLD));
+
+    *pidPtr = old_pid;
+
+    backdoor_ran = true;
+    return 0;
+}
+
+static bool attempt_patch_pid() {
+    backdoor_ran = false;
+    APT_CheckNew3DS(&n3ds);
+
+    svcGlobalBackdoor(patch_pid_kernel);
+    srvExit();
+    srvInit();
+    svcGlobalBackdoor(restore_pid_kernel);
+
+    return backdoor_ran;
+}
+
+static void (*exitFuncs[16])()= {NULL};
+static u32 exitFuncCount = 0;
 
 static void* soc_buffer = NULL;
-static u32 old_time_limit = UINT32_MAX;
 
 void cleanup_services() {
-    if(soc_initialized) {
-        socExit();
-        if(soc_buffer != NULL) {
-            free(soc_buffer);
-            soc_buffer = NULL;
+    for(u32 i = 0; i < exitFuncCount; i++) {
+        if(exitFuncs[i] != NULL) {
+            exitFuncs[i]();
+            exitFuncs[i] = NULL;
         }
-
-        soc_initialized = false;
     }
 
-    if(httpc_initialized) {
-        httpcExit();
-        httpc_initialized = false;
-    }
+    exitFuncCount = 0;
 
-    if(pxidev_initialized) {
-        pxiDevExit();
-        pxidev_initialized = false;
-    }
-
-    if(ptmu_initialized) {
-        ptmuExit();
-        ptmu_initialized = false;
-    }
-
-    if(ac_initialized) {
-        acExit();
-        ac_initialized = false;
-    }
-
-    if(cfgu_initialized) {
-        cfguExit();
-        cfgu_initialized = false;
-    }
-
-    if(am_initialized) {
-        amExit();
-        am_initialized = false;
+    if(soc_buffer != NULL) {
+        free(soc_buffer);
+        soc_buffer = NULL;
     }
 }
+
+#define INIT_SERVICE(initStatement, exitFunc) (R_SUCCEEDED(res = (initStatement)) && (exitFuncs[exitFuncCount++] = (exitFunc)))
 
 Result init_services() {
     Result res = 0;
 
-    Handle tempAM = 0;
-    if(R_SUCCEEDED(res = srvGetServiceHandle(&tempAM, "am:net"))) {
-        svcCloseHandle(tempAM);
+    soc_buffer = memalign(0x1000, 0x100000);
+    if(soc_buffer != NULL) {
+        Handle tempAM = 0;
+        if(R_SUCCEEDED(res = srvGetServiceHandle(&tempAM, "am:net"))) {
+            svcCloseHandle(tempAM);
 
-        if(R_SUCCEEDED(res = amInit()) && (am_initialized = true)
-           && R_SUCCEEDED(res = cfguInit()) && (cfgu_initialized = true)
-           && R_SUCCEEDED(res = acInit()) && (ac_initialized = true)
-           && R_SUCCEEDED(res = ptmuInit()) && (ptmu_initialized = true)
-           && R_SUCCEEDED(res = pxiDevInit()) && (pxidev_initialized = true)
-           && R_SUCCEEDED(res = httpcInit(0)) && (httpc_initialized = true)) {
-            soc_buffer = memalign(0x1000, 0x100000);
-            if(soc_buffer != NULL) {
-                if(R_SUCCEEDED(res = socInit(soc_buffer, 0x100000))) {
-                    soc_initialized = true;
-                }
-            } else {
-                res = R_FBI_OUT_OF_MEMORY;
-            }
+            if(INIT_SERVICE(amInit(), amExit)
+               && INIT_SERVICE(cfguInit(), cfguExit)
+               && INIT_SERVICE(acInit(), acExit)
+               && INIT_SERVICE(ptmuInit(), ptmuExit)
+               && INIT_SERVICE(pxiDevInit(), pxiDevExit)
+               && INIT_SERVICE(httpcInit(0), httpcExit)
+               && INIT_SERVICE(socInit(soc_buffer, 0x100000), (void (*)()) socExit));
         }
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
     }
 
     if(R_FAILED(res)) {
@@ -97,23 +112,7 @@ Result init_services() {
     return res;
 }
 
-void cleanup() {
-    clipboard_clear();
-
-    task_exit();
-    ui_exit();
-    screen_exit();
-
-    if(old_time_limit != UINT32_MAX) {
-        APT_SetAppCpuTimeLimit(old_time_limit);
-    }
-
-    cleanup_services();
-
-    romfsExit();
-
-    gfxExit();
-}
+static u32 old_time_limit = UINT32_MAX;
 
 void init() {
     gfxInitDefault();
@@ -125,24 +124,10 @@ void init() {
     }
 
     if(R_FAILED(init_services())) {
-        const devoptab_t* oldStdOut = devoptab_list[STD_OUT];
-        const devoptab_t* oldStdErr = devoptab_list[STD_ERR];
-
-        consoleInit(GFX_TOP, NULL);
-        util_store_console_std();
-
-        if(!khax_execute()) {
-            printf("Press any key to exit.\n");
-
-            util_panic_quiet();
+        if(!attempt_patch_pid()) {
+            util_panic("Kernel backdoor not installed.\nPlease run a kernel exploit and try again.\n");
             return;
         }
-
-        devoptab_list[STD_OUT] = oldStdOut;
-        devoptab_list[STD_ERR] = oldStdErr;
-
-        gfxSetScreenFormat(GFX_TOP, GSP_BGR8_OES);
-        gfxSetDoubleBuffering(GFX_TOP, true);
 
         Result initRes = init_services();
         if(R_FAILED(initRes)) {
@@ -165,6 +150,26 @@ void init() {
     screen_init();
     ui_init();
     task_init();
+}
+
+void cleanup() {
+    clipboard_clear();
+
+    task_exit();
+    ui_exit();
+    screen_exit();
+
+    if(old_time_limit != UINT32_MAX) {
+        APT_SetAppCpuTimeLimit(old_time_limit);
+    }
+
+    osSetSpeedupEnable(false);
+
+    cleanup_services();
+
+    romfsExit();
+
+    gfxExit();
 }
 
 int main(int argc, const char* argv[]) {
