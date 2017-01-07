@@ -321,7 +321,14 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     data->items = items;
 
     file_info* targetInfo = (file_info*) selected->data;
-    task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes);
+    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes);
+    if(R_FAILED(targetCreateRes)) {
+        error_display_res(NULL, NULL, targetCreateRes, "Failed to create target file item.");
+
+        action_install_cias_free_data(data);
+        return;
+    }
+
     data->target = (file_info*) data->targetItem->data;
 
     data->delete = delete;
