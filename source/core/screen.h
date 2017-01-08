@@ -60,6 +60,7 @@
 
 void screen_init();
 void screen_exit();
+void screen_set_base_alpha(u8 alpha);
 void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
 u32 screen_load_texture_auto(void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
 void screen_load_texture_file(u32 id, const char* path, bool linearFilter);

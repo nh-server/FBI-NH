@@ -173,7 +173,7 @@ void cleanup() {
 }
 
 int main(int argc, const char* argv[]) {
-    if(argc > 0) {
+    if(argc > 0 && envIsHomebrew()) {
         util_set_3dsx_path(argv[0]);
     }
 
