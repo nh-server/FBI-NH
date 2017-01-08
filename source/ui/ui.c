@@ -20,10 +20,15 @@ static Handle ui_stack_mutex = 0;
 static u64 ui_free_space_last_update = 0;
 static char ui_free_space_buffer[128];
 
+static u64 ui_fade_begin_time = 0;
+static u8 ui_fade_in_alpha = 0;
+
 void ui_init() {
     if(ui_stack_mutex == 0) {
         svcCreateMutex(&ui_stack_mutex, false);
     }
+
+    ui_fade_begin_time = osGetTime();
 }
 
 void ui_exit() {
@@ -140,6 +145,8 @@ static void ui_draw_top(ui_view* ui) {
     screen_draw_texture(TEXTURE_TOP_SCREEN_BOTTOM_BAR, topScreenBottomBarX, topScreenBottomBarY, topScreenBottomBarWidth, topScreenBottomBarHeight);
     screen_draw_texture(TEXTURE_TOP_SCREEN_BOTTOM_BAR_SHADOW, topScreenBottomBarX, topScreenBottomBarY - topScreenBottomBarShadowHeight, topScreenBottomBarShadowWidth, topScreenBottomBarShadowHeight);
 
+    screen_set_base_alpha(ui_fade_in_alpha);
+
     char verText[64];
     snprintf(verText, 64, "Ver. %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
 
@@ -247,6 +254,8 @@ static void ui_draw_top(ui_view* ui) {
     screen_get_string_size(NULL, &freeSpaceHeight, ui_free_space_buffer, 0.35f, 0.35f);
 
     screen_draw_string(ui_free_space_buffer, topScreenBottomBarX + 2, topScreenBottomBarY + (topScreenBottomBarHeight - freeSpaceHeight) / 2, 0.35f, 0.35f, COLOR_TEXT, true);
+
+    screen_set_base_alpha(0xFF);
 }
 
 static void ui_draw_bottom(ui_view* ui) {
@@ -273,9 +282,13 @@ static void ui_draw_bottom(ui_view* ui) {
     screen_select(GFX_BOTTOM);
     screen_draw_texture(TEXTURE_BOTTOM_SCREEN_BG, (BOTTOM_SCREEN_WIDTH - bottomScreenBgWidth) / 2, (BOTTOM_SCREEN_HEIGHT - bottomScreenBgHeight) / 2, bottomScreenBgWidth, bottomScreenBgHeight);
 
+    screen_set_base_alpha(ui_fade_in_alpha);
+
     if(ui->drawBottom != NULL) {
         ui->drawBottom(ui, ui->data, 0, bottomScreenTopBarHeight, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT - bottomScreenBottomBarHeight);
     }
+
+    screen_set_base_alpha(0xFF);
 
     float bottomScreenTopBarX = (BOTTOM_SCREEN_WIDTH - bottomScreenTopBarWidth) / 2;
     float bottomScreenTopBarY = 0;
@@ -286,6 +299,8 @@ static void ui_draw_bottom(ui_view* ui) {
     float bottomScreenBottomBarY = BOTTOM_SCREEN_HEIGHT - bottomScreenBottomBarHeight;
     screen_draw_texture(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR, bottomScreenBottomBarX, bottomScreenBottomBarY, bottomScreenBottomBarWidth, bottomScreenBottomBarHeight);
     screen_draw_texture(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR_SHADOW, bottomScreenBottomBarX, bottomScreenBottomBarY - bottomScreenBottomBarShadowHeight, bottomScreenBottomBarShadowWidth, bottomScreenBottomBarShadowHeight);
+
+    screen_set_base_alpha(ui_fade_in_alpha);
 
     if(ui->name != NULL) {
         float nameWidth;
@@ -300,6 +315,8 @@ static void ui_draw_bottom(ui_view* ui) {
         screen_get_string_size(&infoWidth, &infoHeight, ui->info, 0.5f, 0.5f);
         screen_draw_string(ui->info, (BOTTOM_SCREEN_WIDTH - infoWidth) / 2, BOTTOM_SCREEN_HEIGHT - (bottomScreenBottomBarHeight + infoHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
     }
+
+    screen_set_base_alpha(0xFF);
 }
 
 bool ui_update() {
@@ -324,6 +341,13 @@ bool ui_update() {
         ui_draw_top(ui);
         ui_draw_bottom(ui);
         screen_end_frame();
+    }
+
+    u64 time = osGetTime();
+    if(!envIsHomebrew() && time - ui_fade_begin_time < 500) {
+        ui_fade_in_alpha = (u8) (((time - ui_fade_begin_time) / 500.0f) * 0xFF);
+    } else {
+        ui_fade_in_alpha = 0xFF;
     }
 
     return ui != NULL;

@@ -19,7 +19,7 @@ except ImportError:
 	from urllib.request import pathname2url
 
 if len(sys.argv) < 3:
-	print("Usage: " + sys.argv[0] + " <ip> <file/directory>")
+	print("Usage: " + sys.argv[0] + " <ip> <file/directory> [host ip]")
 	sys.exit(1)
 
 ip = sys.argv[1]

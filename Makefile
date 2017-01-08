@@ -66,7 +66,7 @@ ifeq ($(TARGET),3DS)
     BANNER_AUDIO := meta/audio_3ds.wav
     BANNER_IMAGE := meta/banner_3ds.cgfx
     ICON := meta/icon_3ds.png
-    LOGO :=
+    LOGO := meta/logo_3ds.bcma.lz
 endif
 
 # Wii U CONFIGURATION #
