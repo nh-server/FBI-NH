@@ -157,7 +157,7 @@ static void remoteinstall_network_update(ui_view* view, void* data, float* progr
             return;
         }
 
-        char* urls = (char*) calloc(size, sizeof(char));
+        char* urls = (char*) calloc(size + 1, sizeof(char));
         if(urls == NULL) {
             error_display(NULL, NULL, "Failed to allocate URL buffer.");
 
