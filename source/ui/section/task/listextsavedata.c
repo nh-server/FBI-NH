@@ -62,7 +62,8 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                                     utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(extSaveDataInfo->meta.longDescription) - 1);
                                     utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(extSaveDataInfo->meta.publisher) - 1);
                                     extSaveDataInfo->meta.region = smdh->region;
-                                    extSaveDataInfo->meta.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
+                                    extSaveDataInfo->meta.texture = screen_allocate_free_texture();
+                                    screen_load_texture_tiled(extSaveDataInfo->meta.texture, smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
                                 }
                             }
 

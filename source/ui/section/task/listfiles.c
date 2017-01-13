@@ -84,7 +84,8 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                                                 utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription) - 1);
                                                 utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(fileInfo->ciaInfo.meta.publisher) - 1);
                                                 fileInfo->ciaInfo.meta.region = smdh->region;
-                                                fileInfo->ciaInfo.meta.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
+                                                fileInfo->ciaInfo.meta.texture = screen_allocate_free_texture();
+                                                screen_load_texture_tiled(fileInfo->ciaInfo.meta.texture, smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
                                             }
                                         }
 

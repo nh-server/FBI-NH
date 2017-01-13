@@ -333,18 +333,13 @@ static void remoteinstall_qr_update(ui_view* view, void* data, float* progress, 
         return;
     }
 
-    if(installData->tex != 0) {
-        screen_unload_texture(installData->tex);
-        installData->tex = 0;
-    }
-
     int w = 0;
     int h = 0;
     uint8_t* qrBuf = quirc_begin(installData->qrContext, &w, &h);
 
     svcWaitSynchronization(installData->captureInfo.mutex, U64_MAX);
 
-    installData->tex = screen_load_texture_auto(installData->captureInfo.buffer, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16), QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT, GPU_RGB565, false);
+    screen_load_texture(installData->tex, installData->captureInfo.buffer, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16), QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT, GPU_RGB565, false);
 
     for(int x = 0; x < w; x++) {
         for(int y = 0; y < h; y++) {
@@ -417,6 +412,8 @@ void remoteinstall_scan_qr_code() {
         remoteinstall_qr_free_data(data);
         return;
     }
+
+    data->tex = screen_allocate_free_texture();
 
     info_display("QR Code Install", "B: Return", false, data, remoteinstall_qr_update, remoteinstall_qr_draw_top);
 }

@@ -236,8 +236,7 @@ static void list_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
 
             if(item == listData->selectedItem) {
                 u32 selectionOverlayWidth = 0;
-                u32 selectionOverlayHeight = 0;
-                screen_get_texture_size(&selectionOverlayWidth, &selectionOverlayHeight, TEXTURE_SELECTION_OVERLAY);
+                screen_get_texture_size(&selectionOverlayWidth, NULL, TEXTURE_SELECTION_OVERLAY);
                 screen_draw_texture(TEXTURE_SELECTION_OVERLAY, (x1 + x2 - selectionOverlayWidth) / 2, y, selectionOverlayWidth, fontHeight);
             }
         }

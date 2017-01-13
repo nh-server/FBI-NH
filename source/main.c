@@ -61,20 +61,20 @@ static bool attempt_patch_pid() {
     return backdoor_ran;
 }
 
-static void (*exitFuncs[16])()= {NULL};
-static u32 exitFuncCount = 0;
+static void (*exit_funcs[16])()= {NULL};
+static u32 exit_func_count = 0;
 
 static void* soc_buffer = NULL;
 
 void cleanup_services() {
-    for(u32 i = 0; i < exitFuncCount; i++) {
-        if(exitFuncs[i] != NULL) {
-            exitFuncs[i]();
-            exitFuncs[i] = NULL;
+    for(u32 i = 0; i < exit_func_count; i++) {
+        if(exit_funcs[i] != NULL) {
+            exit_funcs[i]();
+            exit_funcs[i] = NULL;
         }
     }
 
-    exitFuncCount = 0;
+    exit_func_count = 0;
 
     if(soc_buffer != NULL) {
         free(soc_buffer);
@@ -82,7 +82,7 @@ void cleanup_services() {
     }
 }
 
-#define INIT_SERVICE(initStatement, exitFunc) (R_SUCCEEDED(res = (initStatement)) && (exitFuncs[exitFuncCount++] = (exitFunc)))
+#define INIT_SERVICE(initStatement, exitFunc) (R_SUCCEEDED(res = (initStatement)) && (exit_funcs[exit_func_count++] = (exitFunc)))
 
 Result init_services() {
     Result res = 0;
@@ -125,7 +125,7 @@ void init() {
 
     if(R_FAILED(init_services())) {
         if(!attempt_patch_pid()) {
-            util_panic("Kernel backdoor not installed.\nPlease run a kernel exploit and try again.\n");
+            util_panic("Kernel backdoor not installed.\nPlease run a kernel exploit and try again.");
             return;
         }
 

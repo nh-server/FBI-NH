@@ -12,7 +12,7 @@
 
 #include "default_shbin.h"
 
-GX_TRANSFER_FORMAT gpu_to_gx_format[13] = {
+static GX_TRANSFER_FORMAT gpu_to_gx_format[13] = {
         GX_TRANSFER_FMT_RGBA8,
         GX_TRANSFER_FMT_RGB8,
         GX_TRANSFER_FMT_RGB5A1,
@@ -28,8 +28,6 @@ GX_TRANSFER_FORMAT gpu_to_gx_format[13] = {
         GX_TRANSFER_FMT_RGBA8  // Unsupported
 };
 
-static u32 color_config[NUM_COLORS] = {0xFF000000};
-
 static bool c3d_initialized;
 
 static bool shader_initialized;
@@ -41,18 +39,18 @@ static C3D_RenderTarget* target_bottom;
 static C3D_Mtx projection_top;
 static C3D_Mtx projection_bottom;
 
-static struct {
-    bool initialized;
-    C3D_Tex tex;
-    u32 width;
-    u32 height;
-    u32 pow2Width;
-    u32 pow2Height;
-} textures[MAX_TEXTURES];
-
 static C3D_Tex* glyph_sheets;
 
 static u8 base_alpha = 0xFF;
+
+static u32 color_config[MAX_COLORS] = {0xFF000000};
+
+static struct {
+    bool allocated;
+    C3D_Tex tex;
+    u32 width;
+    u32 height;
+} textures[MAX_TEXTURES];
 
 static FILE* screen_open_resource(const char* path) {
     u32 realPathSize = strlen(path) + 17;
@@ -70,6 +68,32 @@ static FILE* screen_open_resource(const char* path) {
     }
 }
 
+static void screen_set_blend(u32 color, bool rgb, bool alpha) {
+    C3D_TexEnv* env = C3D_GetTexEnv(0);
+    if(env == NULL) {
+        util_panic("Failed to retrieve combiner settings.");
+        return;
+    }
+
+    if(rgb) {
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+    } else {
+        C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
+    }
+
+    if(alpha) {
+        C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_CONSTANT, GPU_PRIMARY_COLOR);
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
+    } else {
+        C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
+        C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
+    }
+
+    C3D_TexEnvColor(env, color);
+}
+
 void screen_init() {
     if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4)) {
         util_panic("Failed to initialize the GPU.");
@@ -78,25 +102,28 @@ void screen_init() {
 
     c3d_initialized = true;
 
-    target_top = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+    u32 displayFlags = GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO);
+
+    target_top = C3D_RenderTargetCreate(TOP_SCREEN_HEIGHT, TOP_SCREEN_WIDTH, GPU_RB_RGB8, 0);
     if(target_top == NULL) {
         util_panic("Failed to initialize the top screen target.");
         return;
     }
 
-    u32 displayFlags = GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO);
-
-    C3D_RenderTargetSetClear(target_top, C3D_CLEAR_ALL, 0, 0);
     C3D_RenderTargetSetOutput(target_top, GFX_TOP, GFX_LEFT, displayFlags);
+    C3D_RenderTargetSetClear(target_top, C3D_CLEAR_ALL, 0, 0);
 
-    target_bottom = C3D_RenderTargetCreate(240, 320, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
+    target_bottom = C3D_RenderTargetCreate(BOTTOM_SCREEN_HEIGHT, BOTTOM_SCREEN_WIDTH, GPU_RB_RGB8, 0);
     if(target_bottom == NULL) {
         util_panic("Failed to initialize the bottom screen target.");
         return;
     }
 
-    C3D_RenderTargetSetClear(target_bottom, C3D_CLEAR_ALL, 0, 0);
     C3D_RenderTargetSetOutput(target_bottom, GFX_BOTTOM, GFX_LEFT, displayFlags);
+    C3D_RenderTargetSetClear(target_bottom, C3D_CLEAR_ALL, 0, 0);
+
+    Mtx_OrthoTilt(&projection_top, 0.0, TOP_SCREEN_WIDTH, TOP_SCREEN_HEIGHT, 0.0, 0.0, 1.0, true);
+    Mtx_OrthoTilt(&projection_bottom, 0.0, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT, 0.0, 0.0, 1.0, true);
 
     dvlb = DVLB_ParseFile((u32*) default_shbin, default_shbin_len);
     if(dvlb == NULL) {
@@ -130,20 +157,9 @@ void screen_init() {
     AttrInfo_AddLoader(attrInfo, 0, GPU_FLOAT, 3);
     AttrInfo_AddLoader(attrInfo, 1, GPU_FLOAT, 2);
 
-    C3D_TexEnv* env = C3D_GetTexEnv(0);
-    if(env == NULL) {
-        util_panic("Failed to retrieve combiner settings.");
-        return;
-    }
-
-    C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-    C3D_TexEnvOp(env, C3D_Both, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR, GPU_TEVOP_RGB_SRC_COLOR);
-    C3D_TexEnvFunc(env, C3D_Both, GPU_REPLACE);
-
     C3D_DepthTest(true, GPU_GEQUAL, GPU_WRITE_ALL);
 
-    Mtx_OrthoTilt(&projection_top, 0.0, 400.0, 240.0, 0.0, 0.0, 1.0, true);
-    Mtx_OrthoTilt(&projection_bottom, 0.0, 320.0, 240.0, 0.0, 0.0, 1.0, true);
+    screen_set_blend(0, false, false);
 
     Result fontMapRes = fontEnsureMapped();
     if(R_FAILED(fontMapRes)) {
@@ -308,6 +324,25 @@ static u32 screen_next_pow_2(u32 i) {
     return i;
 }
 
+u32 screen_allocate_free_texture() {
+    u32 id = 0;
+    for(u32 i = 1; i < MAX_TEXTURES; i++) {
+        if(!textures[i].allocated) {
+            textures[i].allocated = true;
+
+            id = i;
+            break;
+        }
+    }
+
+    if(id == 0) {
+        util_panic("Out of free textures.");
+        return 0;
+    }
+
+    return id;
+}
+
 void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
         util_panic("Attempted to load buffer to invalid texture ID \"%lu\".", id);
@@ -345,47 +380,31 @@ void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GP
         }
     }
 
-    textures[id].initialized = true;
-    textures[id].width = width;
-    textures[id].height = height;
-    textures[id].pow2Width = pow2Width;
-    textures[id].pow2Height = pow2Height;
+    if(textures[id].tex.data != NULL && (textures[id].tex.size != size || textures[id].tex.width != pow2Width || textures[id].tex.height != pow2Height || textures[id].tex.fmt != format)) {
+        C3D_TexDelete(&textures[id].tex);
+    }
 
-    if(!C3D_TexInit(&textures[id].tex, (int) pow2Width, (int) pow2Height, format)) {
-        util_panic("Failed to initialize texture.");
+    if(textures[id].tex.data == NULL && !C3D_TexInit(&textures[id].tex, (int) pow2Width, (int) pow2Height, format)) {
+        util_panic("Failed to initialize texture with ID \"%lu\".", id);
         return;
     }
 
     C3D_TexSetFilter(&textures[id].tex, linearFilter ? GPU_LINEAR : GPU_NEAREST, GPU_NEAREST);
 
-    Result flushRes = GSPGPU_FlushDataCache(pow2Tex, pow2Width * pow2Height * 4);
+    Result flushRes = GSPGPU_FlushDataCache(pow2Tex, pow2Width * pow2Height * pixelSize);
     if(R_FAILED(flushRes)) {
-        util_panic("Failed to flush texture buffer: 0x%08lX", flushRes);
+        util_panic("Failed to flush buffer for texture ID \"%lu\": 0x%08lX", id, flushRes);
         return;
     }
 
     C3D_SafeDisplayTransfer((u32*) pow2Tex, GX_BUFFER_DIM(pow2Width, pow2Height), (u32*) textures[id].tex.data, GX_BUFFER_DIM(pow2Width, pow2Height), GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) | GX_TRANSFER_RAW_COPY(0) | GX_TRANSFER_IN_FORMAT((u32) gpu_to_gx_format[format]) | GX_TRANSFER_OUT_FORMAT((u32) gpu_to_gx_format[format]) | GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     gspWaitForPPF();
 
+    textures[id].allocated = true;
+    textures[id].width = width;
+    textures[id].height = height;
+
     linearFree(pow2Tex);
-}
-
-u32 screen_load_texture_auto(void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
-    int id = -1;
-    for(int i = TEXTURE_AUTO_START; i < MAX_TEXTURES; i++) {
-        if(!textures[i].initialized) {
-            id = i;
-            break;
-        }
-    }
-
-    if(id == -1) {
-        util_panic("Attempted to load auto texture from buffer without free textures.");
-        return 0;
-    }
-
-    screen_load_texture((u32) id, tiledData, size, width, height, format, linearFilter);
-    return (u32) id;
 }
 
 void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
@@ -432,24 +451,6 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
     free(image);
 }
 
-u32 screen_load_texture_file_auto(const char* path, bool linearFilter) {
-    int id = -1;
-    for(int i = TEXTURE_AUTO_START; i < MAX_TEXTURES; i++) {
-        if(!textures[i].initialized) {
-            id = i;
-            break;
-        }
-    }
-
-    if(id == -1) {
-        util_panic("Attempted to load auto texture from path \"%s\" without free textures.", path);
-        return 0;
-    }
-
-    screen_load_texture_file((u32) id, path, linearFilter);
-    return (u32) id;
-}
-
 static u32 screen_tiled_texture_index(u32 x, u32 y, u32 w, u32 h) {
     return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) | ((x & 4) << 2) | ((y & 4) << 3));
 }
@@ -460,7 +461,7 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
         return;
     }
 
-    u8* untiledData = (u8*) calloc(1, size);
+    u8* untiledData = (u8*) calloc(size, sizeof(u8));
     if(untiledData == NULL) {
         util_panic("Failed to allocate buffer for texture untiling.");
         return;
@@ -484,43 +485,21 @@ void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32
     free(untiledData);
 }
 
-u32 screen_load_texture_tiled_auto(void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
-    int id = -1;
-    for(int i = TEXTURE_AUTO_START; i < MAX_TEXTURES; i++) {
-        if(!textures[i].initialized) {
-            id = i;
-            break;
-        }
-    }
-
-    if(id == -1) {
-        util_panic("Attempted to load auto texture from tiled data without free textures.");
-        return 0;
-    }
-
-    screen_load_texture_tiled((u32) id, tiledData, size, width, height, format, linearFilter);
-    return (u32) id;
-}
-
 void screen_unload_texture(u32 id) {
     if(id >= MAX_TEXTURES) {
         util_panic("Attempted to unload invalid texture ID \"%lu\".", id);
         return;
     }
 
-    if(textures[id].initialized) {
-        C3D_TexDelete(&textures[id].tex);
+    C3D_TexDelete(&textures[id].tex);
 
-        textures[id].initialized = false;
-        textures[id].width = 0;
-        textures[id].height = 0;
-        textures[id].pow2Width = 0;
-        textures[id].pow2Height = 0;
-    }
+    textures[id].allocated = false;
+    textures[id].width = 0;
+    textures[id].height = 0;
 }
 
 void screen_get_texture_size(u32* width, u32* height, u32 id) {
-    if(id >= MAX_TEXTURES || !textures[id].initialized) {
+    if(id >= MAX_TEXTURES) {
         util_panic("Attempted to get size of invalid texture ID \"%lu\".", id);
         return;
     }
@@ -532,56 +511,6 @@ void screen_get_texture_size(u32* width, u32* height, u32 id) {
     if(height) {
         *height = textures[id].height;
     }
-}
-
-void screen_begin_frame() {
-    if(!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) {
-        util_panic("Failed to begin frame.");
-        return;
-    }
-}
-
-void screen_end_frame() {
-    C3D_FrameEnd(0);
-}
-
-void screen_select(gfxScreen_t screen) {
-    if(!C3D_FrameDrawOn(screen == GFX_TOP ? target_top : target_bottom)) {
-        util_panic("Failed to select render target.");
-        return;
-    }
-
-    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, shaderInstanceGetUniformLocation(program.vertexShader, "projection"), screen == GFX_TOP ? &projection_top : &projection_bottom);
-}
-
-void screen_set_scissor(bool enabled, u32 x, u32 y, u32 width, u32 height) {
-    C3D_SetScissor(enabled ? GPU_SCISSOR_NORMAL : GPU_SCISSOR_DISABLE, 240 - (y + height), x, 240 - y, x + width);
-}
-
-static void screen_set_blend(u32 color, bool rgb, bool alpha) {
-    C3D_TexEnv* env = C3D_GetTexEnv(0);
-    if(env == NULL) {
-        util_panic("Failed to retrieve combiner settings.");
-        return;
-    }
-
-    if(rgb) {
-        C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
-    } else {
-        C3D_TexEnvSrc(env, C3D_RGB, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-        C3D_TexEnvFunc(env, C3D_RGB, GPU_REPLACE);
-    }
-
-    if(alpha) {
-        C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_CONSTANT, GPU_PRIMARY_COLOR);
-        C3D_TexEnvFunc(env, C3D_Alpha, GPU_MODULATE);
-    } else {
-        C3D_TexEnvSrc(env, C3D_Alpha, GPU_TEXTURE0, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
-        C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
-    }
-
-    C3D_TexEnvColor(env, color);
 }
 
 static void screen_draw_quad(float x1, float y1, float x2, float y2, float tx1, float ty1, float tx2, float ty2) {
@@ -608,9 +537,33 @@ static void screen_draw_quad(float x1, float y1, float x2, float y2, float tx1, 
     C3D_ImmDrawEnd();
 }
 
+void screen_begin_frame() {
+    if(!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) {
+        util_panic("Failed to begin frame.");
+        return;
+    }
+}
+
+void screen_end_frame() {
+    C3D_FrameEnd(0);
+}
+
+void screen_select(gfxScreen_t screen) {
+    if(!C3D_FrameDrawOn(screen == GFX_TOP ? target_top : target_bottom)) {
+        util_panic("Failed to select render target.");
+        return;
+    }
+
+    C3D_FVUnifMtx4x4(GPU_VERTEX_SHADER, shaderInstanceGetUniformLocation(program.vertexShader, "projection"), screen == GFX_TOP ? &projection_top : &projection_bottom);
+}
+
 void screen_draw_texture(u32 id, float x, float y, float width, float height) {
-    if(id >= MAX_TEXTURES || !textures[id].initialized) {
+    if(id >= MAX_TEXTURES) {
         util_panic("Attempted to draw invalid texture ID \"%lu\".", id);
+        return;
+    }
+
+    if(textures[id].tex.data == NULL) {
         return;
     }
 
@@ -619,7 +572,7 @@ void screen_draw_texture(u32 id, float x, float y, float width, float height) {
     }
 
     C3D_TexBind(0, &textures[id].tex);
-    screen_draw_quad(x, y, x + width, y + height, 0, 0, (float) textures[id].width / (float) textures[id].pow2Width, (float) textures[id].height / (float) textures[id].pow2Height);
+    screen_draw_quad(x, y, x + width, y + height, 0, 0, (float) textures[id].width / (float) textures[id].tex.width, (float) textures[id].height / (float) textures[id].tex.height);
 
     if(base_alpha != 0xFF) {
         screen_set_blend(0, false, false);
@@ -627,8 +580,12 @@ void screen_draw_texture(u32 id, float x, float y, float width, float height) {
 }
 
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height) {
-    if(id >= MAX_TEXTURES || !textures[id].initialized) {
+    if(id >= MAX_TEXTURES) {
         util_panic("Attempted to draw invalid texture ID \"%lu\".", id);
+        return;
+    }
+
+    if(textures[id].tex.data == NULL) {
         return;
     }
 
@@ -637,7 +594,7 @@ void screen_draw_texture_crop(u32 id, float x, float y, float width, float heigh
     }
 
     C3D_TexBind(0, &textures[id].tex);
-    screen_draw_quad(x, y, x + width, y + height, 0, 0, width / (float) textures[id].pow2Width, height / (float) textures[id].pow2Height);
+    screen_draw_quad(x, y, x + width, y + height, 0, 0, width / (float) textures[id].tex.width, height / (float) textures[id].tex.height);
 
     if(base_alpha != 0xFF) {
         screen_set_blend(0, false, false);
@@ -712,6 +669,11 @@ void screen_get_string_size_wrap(float* width, float* height, const char* text, 
 
 static void screen_draw_string_internal(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, bool wrap, float wrapX) {
     if(text == NULL) {
+        return;
+    }
+
+    if(colorId >= MAX_COLORS) {
+        util_panic("Attempted to draw string with invalid color ID \"%lu\".", colorId);
         return;
     }
 
