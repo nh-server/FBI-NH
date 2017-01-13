@@ -176,7 +176,8 @@ static void task_populate_titledb_thread(void* arg) {
                             }
                         }
 
-                        titledbInfo->meta.texture = screen_load_texture_auto(image, (u32) (width * height * 4), (u32) width, (u32) height, GPU_RGBA8, false);
+                        titledbInfo->meta.texture = screen_allocate_free_texture();
+                        screen_load_texture(titledbInfo->meta.texture, image, (u32) (width * height * 4), (u32) width, (u32) height, GPU_RGBA8, false);
 
                         free(image);
                     }

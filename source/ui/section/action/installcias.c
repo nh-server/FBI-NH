@@ -139,7 +139,10 @@ static Result action_install_cias_open_dst(void* data, u32 index, void* initialR
     }
 
     // Deleting FBI before it reinstalls itself causes issues.
-    if(((titleId >> 8) & 0xFFFFF) != 0xF8001) {
+    u64 currTitleId = 0;
+    FS_MediaType currMediaType = MEDIATYPE_NAND;
+
+    if(envIsHomebrew() || R_FAILED(APT_GetAppletInfo((NS_APPID) envGetAptAppId(), &currTitleId, (u8*) &currMediaType, NULL, NULL, NULL)) || titleId != currTitleId || dest != currMediaType) {
         AM_DeleteTitle(dest, titleId);
         AM_DeleteTicket(titleId);
 

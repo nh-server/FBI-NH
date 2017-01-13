@@ -51,7 +51,8 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                                 utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->meta.longDescription) - 1);
                                 utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->meta.publisher) - 1);
                                 titleInfo->meta.region = smdh->region;
-                                titleInfo->meta.texture = screen_load_texture_tiled_auto(smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
+                                titleInfo->meta.texture = screen_allocate_free_texture();
+                                screen_load_texture_tiled(titleInfo->meta.texture, smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
                             }
                         }
 
@@ -193,7 +194,8 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                             titleInfo->meta.region = 0;
                         }
 
-                        titleInfo->meta.texture = screen_load_texture_auto(icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
+                        titleInfo->meta.texture = screen_allocate_free_texture();
+                        screen_load_texture(titleInfo->meta.texture, icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
                     }
 
                     free(bnr);

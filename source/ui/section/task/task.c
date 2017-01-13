@@ -33,14 +33,14 @@ void task_init() {
     Result res = 0;
 
     if(R_FAILED(res = svcCreateEvent(&task_pause_event, RESET_STICKY))) {
-        util_panic("Failed to create task awake event: 0x%08lX", res);
+        util_panic("Failed to create task pause event: 0x%08lX", res);
         return;
     }
 
     if(R_FAILED(res = svcCreateEvent(&task_suspend_event, RESET_STICKY))) {
         svcCloseHandle(task_pause_event);
 
-        util_panic("Failed to create task awake event: 0x%08lX", res);
+        util_panic("Failed to create task suspend event: 0x%08lX", res);
         return;
     }
 

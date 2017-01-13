@@ -40,9 +40,7 @@
 #define TEXTURE_WIFI_2 30
 #define TEXTURE_WIFI_3 31
 
-#define TEXTURE_AUTO_START 32
-
-#define NUM_COLORS 13
+#define MAX_COLORS 13
 
 #define COLOR_TEXT 0
 #define COLOR_NAND 1
@@ -61,18 +59,16 @@
 void screen_init();
 void screen_exit();
 void screen_set_base_alpha(u8 alpha);
+u32 screen_allocate_free_texture();
 void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
-u32 screen_load_texture_auto(void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
 void screen_load_texture_file(u32 id, const char* path, bool linearFilter);
-u32 screen_load_texture_file_auto(const char* path, bool linearFilter);
 void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
-u32 screen_load_texture_tiled_auto(void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
+void screen_load_texture_screenshot(u32 id, gfxScreen_t screen);
 void screen_unload_texture(u32 id);
 void screen_get_texture_size(u32* width, u32* height, u32 id);
 void screen_begin_frame();
 void screen_end_frame();
 void screen_select(gfxScreen_t screen);
-void screen_set_scissor(bool enabled, u32 x, u32 y, u32 width, u32 height);
 void screen_draw_texture(u32 id, float x, float y, float width, float height);
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height);
 float screen_get_font_height(float scaleY);

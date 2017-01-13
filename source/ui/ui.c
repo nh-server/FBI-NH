@@ -21,7 +21,7 @@ static u64 ui_free_space_last_update = 0;
 static char ui_free_space_buffer[128];
 
 static u64 ui_fade_begin_time = 0;
-static u8 ui_fade_in_alpha = 0;
+static u8 ui_fade_alpha = 0;
 
 void ui_init() {
     if(ui_stack_mutex == 0) {
@@ -108,6 +108,8 @@ void ui_pop() {
 }
 
 static void ui_draw_top(ui_view* ui) {
+    screen_select(GFX_TOP);
+
     u32 topScreenBgWidth = 0;
     u32 topScreenBgHeight = 0;
     screen_get_texture_size(&topScreenBgWidth, &topScreenBgHeight, TEXTURE_TOP_SCREEN_BG);
@@ -128,7 +130,6 @@ static void ui_draw_top(ui_view* ui) {
     u32 topScreenBottomBarShadowHeight = 0;
     screen_get_texture_size(&topScreenBottomBarShadowWidth, &topScreenBottomBarShadowHeight, TEXTURE_TOP_SCREEN_BOTTOM_BAR_SHADOW);
 
-    screen_select(GFX_TOP);
     screen_draw_texture(TEXTURE_TOP_SCREEN_BG, (TOP_SCREEN_WIDTH - topScreenBgWidth) / 2, (TOP_SCREEN_HEIGHT - topScreenBgHeight) / 2, topScreenBgWidth, topScreenBgHeight);
 
     if(ui->drawTop != NULL) {
@@ -145,7 +146,7 @@ static void ui_draw_top(ui_view* ui) {
     screen_draw_texture(TEXTURE_TOP_SCREEN_BOTTOM_BAR, topScreenBottomBarX, topScreenBottomBarY, topScreenBottomBarWidth, topScreenBottomBarHeight);
     screen_draw_texture(TEXTURE_TOP_SCREEN_BOTTOM_BAR_SHADOW, topScreenBottomBarX, topScreenBottomBarY - topScreenBottomBarShadowHeight, topScreenBottomBarShadowWidth, topScreenBottomBarShadowHeight);
 
-    screen_set_base_alpha(ui_fade_in_alpha);
+    screen_set_base_alpha(ui_fade_alpha);
 
     char verText[64];
     snprintf(verText, 64, "Ver. %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
@@ -259,6 +260,8 @@ static void ui_draw_top(ui_view* ui) {
 }
 
 static void ui_draw_bottom(ui_view* ui) {
+    screen_select(GFX_BOTTOM);
+
     u32 bottomScreenBgWidth = 0;
     u32 bottomScreenBgHeight = 0;
     screen_get_texture_size(&bottomScreenBgWidth, &bottomScreenBgHeight, TEXTURE_BOTTOM_SCREEN_BG);
@@ -279,10 +282,9 @@ static void ui_draw_bottom(ui_view* ui) {
     u32 bottomScreenBottomBarShadowHeight = 0;
     screen_get_texture_size(&bottomScreenBottomBarShadowWidth, &bottomScreenBottomBarShadowHeight, TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR_SHADOW);
 
-    screen_select(GFX_BOTTOM);
     screen_draw_texture(TEXTURE_BOTTOM_SCREEN_BG, (BOTTOM_SCREEN_WIDTH - bottomScreenBgWidth) / 2, (BOTTOM_SCREEN_HEIGHT - bottomScreenBgHeight) / 2, bottomScreenBgWidth, bottomScreenBgHeight);
 
-    screen_set_base_alpha(ui_fade_in_alpha);
+    screen_set_base_alpha(ui_fade_alpha);
 
     if(ui->drawBottom != NULL) {
         ui->drawBottom(ui, ui->data, 0, bottomScreenTopBarHeight, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT - bottomScreenBottomBarHeight);
@@ -300,7 +302,7 @@ static void ui_draw_bottom(ui_view* ui) {
     screen_draw_texture(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR, bottomScreenBottomBarX, bottomScreenBottomBarY, bottomScreenBottomBarWidth, bottomScreenBottomBarHeight);
     screen_draw_texture(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR_SHADOW, bottomScreenBottomBarX, bottomScreenBottomBarY - bottomScreenBottomBarShadowHeight, bottomScreenBottomBarShadowWidth, bottomScreenBottomBarShadowHeight);
 
-    screen_set_base_alpha(ui_fade_in_alpha);
+    screen_set_base_alpha(ui_fade_alpha);
 
     if(ui->name != NULL) {
         float nameWidth;
@@ -335,19 +337,19 @@ bool ui_update() {
         ui->update(ui, ui->data, 0, bottomScreenTopBarHeight, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT - bottomScreenBottomBarHeight);
     }
 
+    u64 time = osGetTime();
+    if(!envIsHomebrew() && time - ui_fade_begin_time < 500) {
+        ui_fade_alpha = (u8) (((time - ui_fade_begin_time) / 500.0f) * 0xFF);
+    } else {
+        ui_fade_alpha = 0xFF;
+    }
+
     ui = ui_top();
     if(ui != NULL) {
         screen_begin_frame();
         ui_draw_top(ui);
         ui_draw_bottom(ui);
         screen_end_frame();
-    }
-
-    u64 time = osGetTime();
-    if(!envIsHomebrew() && time - ui_fade_begin_time < 500) {
-        ui_fade_in_alpha = (u8) (((time - ui_fade_begin_time) / 500.0f) * 0xFF);
-    } else {
-        ui_fade_in_alpha = 0xFF;
     }
 
     return ui != NULL;
