@@ -249,14 +249,15 @@ static int titles_compare(void* data, const void* p1, const void* p2) {
     title_info* title1 = (title_info*) info1->data;
     title_info* title2 = (title_info*) info2->data;
 
-    if(!title1->twl && title2->twl) {
+
+    if(title1->mediaType > title2->mediaType) {
         return -1;
-    } else if(title1->twl && !title2->twl) {
+    } else if(title1->mediaType < title2->mediaType) {
         return 1;
     } else {
-        if(title1->mediaType > title2->mediaType) {
+        if(!title1->twl && title2->twl) {
             return -1;
-        } else if(title1->mediaType < title2->mediaType) {
+        } else if(title1->twl && !title2->twl) {
             return 1;
         } else {
             if(listData->sortByName) {
