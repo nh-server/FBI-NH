@@ -78,6 +78,8 @@ try:
 	sock.close()
 except Exception as e:
 	print("Error: " + str(e))
+	server.shutdown()
+	sys.exit(1)
 
 print("Shutting down HTTP server...")
 
