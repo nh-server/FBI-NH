@@ -23,7 +23,7 @@ EXTRA_OUTPUT_FILES := servefiles
 LIBRARY_DIRS :=
 LIBRARIES :=
 
-BUILD_FLAGS :=
+BUILD_FLAGS := -Wno-misleading-indentation
 BUILD_FLAGS_CC :=
 BUILD_FLAGS_CXX :=
 RUN_FLAGS :=
