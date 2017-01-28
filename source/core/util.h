@@ -83,6 +83,9 @@ void util_escape_file_name(char* out, const char* in, size_t size);
 
 void util_smdh_region_to_string(char* out, u32 region, size_t size);
 
+SMDH_title* util_select_smdh_title(SMDH* smdh);
+u16* util_select_bnr_title(BNR* bnr);
+
 Result util_http_open(httpcContext* context, u32* responseCode, const char* url, bool userAgent);
 Result util_http_open_ranged(httpcContext* context, u32* responseCode, const char* url, bool userAgent, u32 rangeStart, u32 rangeEnd);
 Result util_http_get_size(httpcContext* context, u32* size);

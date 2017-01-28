@@ -52,15 +52,14 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                             u32 smdhBytesRead = 0;
                             if(R_SUCCEEDED(FSUSER_ReadExtSaveDataIcon(&smdhBytesRead, info, sizeof(SMDH), (u8*) smdh)) && smdhBytesRead == sizeof(SMDH)) {
                                 if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
-                                    u8 systemLanguage = CFG_LANGUAGE_EN;
-                                    CFGU_GetSystemLanguage(&systemLanguage);
+                                    SMDH_title* smdhTitle = util_select_smdh_title(smdh);
 
-                                    utf16_to_utf8((uint8_t*) item->name, smdh->titles[systemLanguage].shortDescription, LIST_ITEM_NAME_MAX - 1);
+                                    utf16_to_utf8((uint8_t*) item->name, smdhTitle->shortDescription, LIST_ITEM_NAME_MAX - 1);
 
                                     extSaveDataInfo->hasMeta = true;
-                                    utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(extSaveDataInfo->meta.shortDescription) - 1);
-                                    utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(extSaveDataInfo->meta.longDescription) - 1);
-                                    utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(extSaveDataInfo->meta.publisher) - 1);
+                                    utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.shortDescription, smdhTitle->shortDescription, sizeof(extSaveDataInfo->meta.shortDescription) - 1);
+                                    utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.longDescription, smdhTitle->longDescription, sizeof(extSaveDataInfo->meta.longDescription) - 1);
+                                    utf16_to_utf8((uint8_t*) extSaveDataInfo->meta.publisher, smdhTitle->publisher, sizeof(extSaveDataInfo->meta.publisher) - 1);
                                     extSaveDataInfo->meta.region = smdh->region;
                                     extSaveDataInfo->meta.texture = screen_allocate_free_texture();
                                     screen_load_texture_tiled(extSaveDataInfo->meta.texture, smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
