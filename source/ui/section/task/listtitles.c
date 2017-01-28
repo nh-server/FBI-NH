@@ -42,14 +42,13 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                             if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
                                 titleInfo->hasMeta = true;
 
-                                u8 systemLanguage = CFG_LANGUAGE_EN;
-                                CFGU_GetSystemLanguage(&systemLanguage);
+                                SMDH_title* smdhTitle = util_select_smdh_title(smdh);
 
-                                utf16_to_utf8((uint8_t*) item->name, smdh->titles[systemLanguage].shortDescription, NAME_MAX - 1);
+                                utf16_to_utf8((uint8_t*) item->name, smdhTitle->shortDescription, NAME_MAX - 1);
 
-                                utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(titleInfo->meta.shortDescription) - 1);
-                                utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdh->titles[systemLanguage].longDescription, sizeof(titleInfo->meta.longDescription) - 1);
-                                utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdh->titles[systemLanguage].publisher, sizeof(titleInfo->meta.publisher) - 1);
+                                utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdhTitle->shortDescription, sizeof(titleInfo->meta.shortDescription) - 1);
+                                utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdhTitle->longDescription, sizeof(titleInfo->meta.longDescription) - 1);
+                                utf16_to_utf8((uint8_t*) titleInfo->meta.publisher, smdhTitle->publisher, sizeof(titleInfo->meta.publisher) - 1);
                                 titleInfo->meta.region = smdh->region;
                                 titleInfo->meta.texture = screen_allocate_free_texture();
                                 screen_load_texture_tiled(titleInfo->meta.texture, smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
@@ -140,11 +139,8 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                     if(R_SUCCEEDED(FSUSER_GetLegacyBannerData(mediaType, titleId, (u8*) bnr))) {
                         titleInfo->hasMeta = true;
 
-                        u8 systemLanguage = CFG_LANGUAGE_EN;
-                        CFGU_GetSystemLanguage(&systemLanguage);
-
                         char title[0x100] = {'\0'};
-                        utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], sizeof(title) - 1);
+                        utf16_to_utf8((uint8_t*) title, util_select_bnr_title(bnr), sizeof(title) - 1);
 
                         if(strchr(title, '\n') == NULL) {
                             size_t len = strlen(title);

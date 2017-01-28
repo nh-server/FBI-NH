@@ -586,7 +586,7 @@ void util_escape_file_name(char* out, const char* in, size_t size) {
 #define SMDH_NUM_REGIONS 7
 #define SMDH_ALL_REGIONS 0x7F
 
-static const char* regionStrings[SMDH_NUM_REGIONS] = {
+static const char* smdh_region_strings[SMDH_NUM_REGIONS] = {
         "Japan",
         "North America",
         "Europe",
@@ -614,10 +614,60 @@ void util_smdh_region_to_string(char* out, u32 region, size_t size) {
                     pos += snprintf(out + pos, size - pos, ", ");
                 }
 
-                pos += snprintf(out + pos, size - pos, regionStrings[i]);
+                pos += snprintf(out + pos, size - pos, smdh_region_strings[i]);
             }
         }
     }
+}
+
+static CFG_Language region_default_language[] = {
+        CFG_LANGUAGE_JP,
+        CFG_LANGUAGE_EN,
+        CFG_LANGUAGE_EN,
+        CFG_LANGUAGE_EN,
+        CFG_LANGUAGE_ZH,
+        CFG_LANGUAGE_KO,
+        CFG_LANGUAGE_ZH
+};
+
+SMDH_title* util_select_smdh_title(SMDH* smdh) {
+    char shortDescription[0x100] = {'\0'};
+
+    CFG_Language systemLanguage;
+    if(R_SUCCEEDED(CFGU_GetSystemLanguage((u8*) &systemLanguage))) {
+        utf16_to_utf8((uint8_t*) shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(shortDescription) - 1);
+    }
+
+    if(util_is_string_empty(shortDescription)) {
+        CFG_Region systemRegion;
+        if(R_SUCCEEDED(CFGU_SecureInfoGetRegion((u8*) &systemRegion))) {
+            systemLanguage = region_default_language[systemRegion];
+        } else {
+            systemLanguage = CFG_LANGUAGE_JP;
+        }
+    }
+
+    return &smdh->titles[systemLanguage];
+}
+
+u16* util_select_bnr_title(BNR* bnr) {
+    char title[0x100] = {'\0'};
+
+    CFG_Language systemLanguage;
+    if(R_SUCCEEDED(CFGU_GetSystemLanguage((u8*) &systemLanguage))) {
+        utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], sizeof(title) - 1);
+    }
+
+    if(util_is_string_empty(title)) {
+        CFG_Region systemRegion;
+        if(R_SUCCEEDED(CFGU_SecureInfoGetRegion((u8*) &systemRegion))) {
+            systemLanguage = region_default_language[systemRegion];
+        } else {
+            systemLanguage = CFG_LANGUAGE_JP;
+        }
+    }
+
+    return bnr->titles[systemLanguage];
 }
 
 static char util_http_redirect_buffer[1024];
