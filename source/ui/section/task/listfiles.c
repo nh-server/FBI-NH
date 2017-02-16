@@ -57,54 +57,51 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
 
                         FSFILE_GetSize(fileHandle, &fileInfo->size);
 
-                        size_t len = strlen(fileInfo->path);
-                        if(len > 4) {
-                            if(strcasecmp(&fileInfo->path[len - 4], ".cia") == 0) {
-                                AM_TitleEntry titleEntry;
-                                if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
-                                    fileInfo->isCia = true;
-                                    fileInfo->ciaInfo.titleId = titleEntry.titleID;
-                                    fileInfo->ciaInfo.version = titleEntry.version;
+                        if(util_filter_cias(NULL, fileInfo->path, fileInfo->attributes)) {
+                            AM_TitleEntry titleEntry;
+                            if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
+                                fileInfo->isCia = true;
+                                fileInfo->ciaInfo.titleId = titleEntry.titleID;
+                                fileInfo->ciaInfo.version = titleEntry.version;
+                                fileInfo->ciaInfo.installedSize = titleEntry.size;
+                                fileInfo->ciaInfo.hasMeta = false;
+
+                                if(util_get_title_destination(titleEntry.titleID) != MEDIATYPE_SD && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
                                     fileInfo->ciaInfo.installedSize = titleEntry.size;
-                                    fileInfo->ciaInfo.hasMeta = false;
-
-                                    if(util_get_title_destination(titleEntry.titleID) != MEDIATYPE_SD && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
-                                        fileInfo->ciaInfo.installedSize = titleEntry.size;
-                                    }
-
-                                    SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
-                                    if(smdh != NULL) {
-                                        if(R_SUCCEEDED(util_get_cia_file_smdh(smdh, fileHandle))) {
-                                            if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
-                                                SMDH_title* smdhTitle = util_select_smdh_title(smdh);
-
-                                                fileInfo->ciaInfo.hasMeta = true;
-                                                utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdhTitle->shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription) - 1);
-                                                utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdhTitle->longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription) - 1);
-                                                utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdhTitle->publisher, sizeof(fileInfo->ciaInfo.meta.publisher) - 1);
-                                                fileInfo->ciaInfo.meta.region = smdh->region;
-                                                fileInfo->ciaInfo.meta.texture = screen_allocate_free_texture();
-                                                screen_load_texture_tiled(fileInfo->ciaInfo.meta.texture, smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
-                                            }
-                                        }
-
-                                        free(smdh);
-                                    }
                                 }
-                            } else if(strcasecmp(&fileInfo->path[len - 4], ".tik") == 0) {
-                                u32 bytesRead = 0;
 
-                                u8 sigType = 0;
-                                if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 3, &sigType, sizeof(sigType))) && bytesRead == sizeof(sigType) && sigType <= 5) {
-                                    static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
-                                    static u32 titleIdOffset = 0x9C;
+                                SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
+                                if(smdh != NULL) {
+                                    if(R_SUCCEEDED(util_get_cia_file_smdh(smdh, fileHandle))) {
+                                        if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
+                                            SMDH_title* smdhTitle = util_select_smdh_title(smdh);
 
-                                    u64 titleId = 0;
-                                    if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, dataOffsets[sigType] + titleIdOffset, &titleId, sizeof(titleId))) && bytesRead == sizeof(titleId)) {
-                                        fileInfo->isTicket = true;
-                                        fileInfo->ticketInfo.titleId = __builtin_bswap64(titleId);
-                                        fileInfo->ticketInfo.inUse = false;
+                                            fileInfo->ciaInfo.hasMeta = true;
+                                            utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdhTitle->shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription) - 1);
+                                            utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.longDescription, smdhTitle->longDescription, sizeof(fileInfo->ciaInfo.meta.longDescription) - 1);
+                                            utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.publisher, smdhTitle->publisher, sizeof(fileInfo->ciaInfo.meta.publisher) - 1);
+                                            fileInfo->ciaInfo.meta.region = smdh->region;
+                                            fileInfo->ciaInfo.meta.texture = screen_allocate_free_texture();
+                                            screen_load_texture_tiled(fileInfo->ciaInfo.meta.texture, smdh->largeIcon, sizeof(smdh->largeIcon), 48, 48, GPU_RGB565, false);
+                                        }
                                     }
+
+                                    free(smdh);
+                                }
+                            }
+                        } else if(util_filter_tickets(NULL, fileInfo->path, fileInfo->attributes)) {
+                            u32 bytesRead = 0;
+
+                            u8 sigType = 0;
+                            if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, 3, &sigType, sizeof(sigType))) && bytesRead == sizeof(sigType) && sigType <= 5) {
+                                static u32 dataOffsets[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
+                                static u32 titleIdOffset = 0x9C;
+
+                                u64 titleId = 0;
+                                if(R_SUCCEEDED(FSFILE_Read(fileHandle, &bytesRead, dataOffsets[sigType] + titleIdOffset, &titleId, sizeof(titleId))) && bytesRead == sizeof(titleId)) {
+                                    fileInfo->isTicket = true;
+                                    fileInfo->ticketInfo.titleId = __builtin_bswap64(titleId);
+                                    fileInfo->ticketInfo.inUse = false;
                                 }
                             }
                         }

@@ -358,12 +358,8 @@ static bool files_filter(void* data, const char* name, u32 attributes) {
     if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
         return listData->showDirectories;
     } else {
-        size_t len = strlen(name);
-        if(len >= 4) {
-            const char* extension = name + len - 4;
-            if((strncasecmp(extension, ".cia", 4) == 0 && !listData->showCias) || (strncasecmp(extension, ".tik", 4) == 0 && !listData->showTickets)) {
-                return false;
-            }
+        if((util_filter_cias(NULL, name, attributes) && !listData->showCias) || (util_filter_tickets(NULL, name, attributes) && !listData->showTickets)) {
+            return false;
         }
 
         return listData->showFiles;
