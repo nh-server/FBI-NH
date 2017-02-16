@@ -406,7 +406,7 @@ bool util_filter_tickets(void* data, const char* name, u32 attributes) {
     }
 
     size_t len = strlen(name);
-    return len >= 4 && strncasecmp(name + len - 4, ".tik", 4) == 0;
+    return (len >= 4 && strncasecmp(name + len - 4, ".tik", 4) == 0) || (len >= 5 && strncasecmp(name + len - 5, ".cetk", 5) == 0);
 }
 
 int util_compare_file_infos(void* userData, const void* p1, const void* p2) {
