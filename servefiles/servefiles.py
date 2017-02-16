@@ -24,13 +24,13 @@ if len(sys.argv) < 3 or len(sys.argv) > 5:
     print('Usage:', sys.argv[0], '<target ip> <file / directory> [host ip] [host port]')
     sys.exit(1)
 
-accepted_extension = ('.cia', '.tik')
+accepted_extension = ('.cia', '.tik', '.cetk')
 target_ip = sys.argv[1]
 target_path = sys.argv[2]
-hostPort = 8080  # default value
+hostPort = 8080 # Default value
 
 if not os.path.exists(target_path):
-    print(target_path, ': No such file or directory.', file=sys.stderr)
+    print(target_path + ': No such file or directory.', file=sys.stderr)
     sys.exit(1)
 
 if len(sys.argv) >= 4:
@@ -38,10 +38,10 @@ if len(sys.argv) >= 4:
     if len(sys.argv) == 5:
         hostPort = int(sys.argv[4])
 else:
-    print('Finding host ip ...')  # loop over network address to find one
+    print('Detecting host IP...')
     hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
 
-print('Preparing data ...')
+print('Preparing data...')
 baseUrl = hostIp + ':' + str(hostPort) + '/'
 
 if os.path.isfile(target_path):
@@ -49,7 +49,7 @@ if os.path.isfile(target_path):
         file_list_payload = baseUrl + quote(os.path.basename(target_path))
         directory = os.path.dirname(target_path)  # get file directory
     else:
-        print('This file has no extension like :', accepted_extension, file=sys.stderr)
+        print('Unsupported file extension. Supported extensions are:', accepted_extension, file=sys.stderr)
         sys.exit(1)
 
 else:
@@ -67,16 +67,16 @@ file_list_payloadBytes = file_list_payload.encode('ascii')
 if directory and directory != '.':  # doesn't need to move if it's already the current working directory
     os.chdir(directory)  # set working directory to the right folder to be able to serve files
 
-print('\nURLS (data) :')
+print('\nURLs:')
 print(file_list_payload, '\n')
 
-print('Opening HTTP server on port :', hostPort)
+print('Opening HTTP server on port', hostPort)
 server = TCPServer(('', hostPort), SimpleHTTPRequestHandler)
 thread = threading.Thread(target=server.serve_forever)
 thread.start()
 
 try:
-    print('Sending URL(s) to', target_ip, 'on port 5000 ...')
+    print('Sending URL(s) to', target_ip, 'on port 5000...')
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((target_ip, 5000))
     sock.sendall(struct.pack('!L', len(file_list_payloadBytes)) + file_list_payloadBytes)
@@ -84,7 +84,7 @@ try:
         time.sleep(0.05)
     sock.close()
 except Exception as e:
-    print('An Error occurred :', str(e), file=sys.stderr)
+    print('An error occurred:', str(e), file=sys.stderr)
     server.shutdown()
     sys.exit(1)
 
