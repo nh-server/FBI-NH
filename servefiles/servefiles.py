@@ -44,9 +44,14 @@ else:
 print('Preparing data ...')
 baseUrl = hostIp + ':' + str(hostPort) + '/'
 
-if os.path.isfile(target_path) and target_path.endswith(accepted_extension):
-    file_list_payload = baseUrl + quote(os.path.basename(target_path))
-    directory = os.path.dirname(target_path)  # get file directory
+if os.path.isfile(target_path):
+    if target_path.endswith(accepted_extension):
+        file_list_payload = baseUrl + quote(os.path.basename(target_path))
+        directory = os.path.dirname(target_path)  # get file directory
+    else:
+        print('This file has no extension like :', accepted_extension, file=sys.stderr)
+        sys.exit(1)
+
 else:
     directory = target_path  # it's a directory
     file_list_payload = ''  # init the payload before adding lines
@@ -62,7 +67,7 @@ file_list_payloadBytes = file_list_payload.encode('ascii')
 if directory and directory != '.':  # doesn't need to move if it's already the current working directory
     os.chdir(directory)  # set working directory to the right folder to be able to serve files
 
-print('\nURLS (payload send) :')
+print('\nURLS (data) :')
 print(file_list_payload, '\n')
 
 print('Opening HTTP server on port :', hostPort)
