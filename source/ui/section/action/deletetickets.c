@@ -1,6 +1,5 @@
 #include <malloc.h>
 #include <stdio.h>
-#include <string.h>
 
 #include <3ds.h>
 
@@ -13,7 +12,6 @@
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 
 typedef struct {
     linked_list* items;

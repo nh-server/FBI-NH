@@ -25,7 +25,6 @@ typedef struct {
 
     bool delete;
 
-    u64 currTitleId;
     volatile bool n3dsContinue;
 
     data_op_data installInfo;
@@ -119,15 +118,14 @@ static Result action_install_cias_read_src(void* data, u32 handle, u32* bytesRea
 static Result action_install_cias_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     install_cias_data* installData = (install_cias_data*) data;
 
-    installData->currTitleId = 0;
     installData->n3dsContinue = false;
 
-    u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
+    file_info* info = (file_info*) ((list_item*) linked_list_get(&installData->contents, index))->data;
 
-    FS_MediaType dest = util_get_title_destination(titleId);
+    FS_MediaType dest = util_get_title_destination(info->ciaInfo.titleId);
 
     bool n3ds = false;
-    if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
+    if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((info->ciaInfo.titleId >> 28) & 0xF) == 2) {
         ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, action_install_cias_draw_top, action_install_cias_n3ds_onresponse);
         if(view != NULL) {
             svcWaitSynchronization(view->active, U64_MAX);
@@ -142,33 +140,30 @@ static Result action_install_cias_open_dst(void* data, u32 index, void* initialR
     u64 currTitleId = 0;
     FS_MediaType currMediaType = MEDIATYPE_NAND;
 
-    if(envIsHomebrew() || R_FAILED(APT_GetAppletInfo((NS_APPID) envGetAptAppId(), &currTitleId, (u8*) &currMediaType, NULL, NULL, NULL)) || titleId != currTitleId || dest != currMediaType) {
-        AM_DeleteTitle(dest, titleId);
-        AM_DeleteTicket(titleId);
+    if(envIsHomebrew() || R_FAILED(APT_GetAppletInfo((NS_APPID) envGetAptAppId(), &currTitleId, (u8*) &currMediaType, NULL, NULL, NULL)) || info->ciaInfo.titleId != currTitleId || dest != currMediaType) {
+        AM_DeleteTitle(dest, info->ciaInfo.titleId);
+        AM_DeleteTicket(info->ciaInfo.titleId);
 
         if(dest == MEDIATYPE_SD) {
             AM_QueryAvailableExternalTitleDatabase(NULL);
         }
     }
 
-    Result res = AM_StartCiaInstall(dest, handle);
-    if(R_SUCCEEDED(res)) {
-        installData->currTitleId = titleId;
-    }
-
-    return res;
+    return AM_StartCiaInstall(dest, handle);
 }
 
 static Result action_install_cias_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     if(succeeded) {
         install_cias_data* installData = (install_cias_data*) data;
 
+        file_info* info = (file_info*) ((list_item*) linked_list_get(&installData->contents, index))->data;
+
         Result res = 0;
         if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-            util_import_seed(NULL, installData->currTitleId);
+            util_import_seed(NULL, info->ciaInfo.titleId);
 
-            if(installData->currTitleId == 0x0004013800000002 || installData->currTitleId == 0x0004013820000002) {
-                res = AM_InstallFirm(installData->currTitleId);
+            if((info->ciaInfo.titleId & 0xFFFFFFF) == 0x0000002) {
+                res = AM_InstallFirm(info->ciaInfo.titleId);
             }
         }
 
@@ -336,7 +331,6 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
 
     data->delete = delete;
 
-    data->currTitleId = 0;
     data->n3dsContinue = false;
 
     data->installInfo.data = data;
