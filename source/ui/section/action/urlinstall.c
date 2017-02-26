@@ -13,11 +13,8 @@
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 
-#define URL_MAX 1024
-#define URLS_MAX 128
-
 typedef struct {
-    char urls[URLS_MAX][URL_MAX];
+    char urls[INSTALL_URLS_MAX][INSTALL_URL_MAX];
 
     void* finishedData;
     void (*finished)(void* data);
@@ -306,7 +303,7 @@ void action_url_install(const char* confirmMessage, const char* urls, void* fini
     size_t payloadLen = strlen(urls);
     if(payloadLen > 0) {
         const char* currStart = urls;
-        while(data->installInfo.total < URLS_MAX && currStart - urls < payloadLen) {
+        while(data->installInfo.total < INSTALL_URLS_MAX && currStart - urls < payloadLen) {
             const char* currEnd = strchr(currStart, '\n');
             if(currEnd == NULL) {
                 currEnd = urls + payloadLen;
@@ -315,15 +312,15 @@ void action_url_install(const char* confirmMessage, const char* urls, void* fini
             u32 len = currEnd - currStart;
 
             if((len < 7 || strncmp(currStart, "http://", 7) != 0) && (len < 8 || strncmp(currStart, "https://", 8) != 0)) {
-                if(len > URL_MAX - 7) {
-                    len = URL_MAX - 7;
+                if(len > INSTALL_URL_MAX - 7) {
+                    len = INSTALL_URL_MAX - 7;
                 }
 
                 strncpy(data->urls[data->installInfo.total], "http://", 7);
                 strncpy(&data->urls[data->installInfo.total][7], currStart, len);
             } else {
-                if(len > URL_MAX) {
-                    len = URL_MAX;
+                if(len > INSTALL_URL_MAX) {
+                    len = INSTALL_URL_MAX;
                 }
 
                 strncpy(data->urls[data->installInfo.total], currStart, len);

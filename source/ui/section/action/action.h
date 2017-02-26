@@ -4,6 +4,9 @@ typedef struct ticket_info_s ticket_info;
 typedef struct linked_list_s linked_list;
 typedef struct list_item_s list_item;
 
+#define INSTALL_URL_MAX 1024
+#define INSTALL_URLS_MAX 128
+
 void action_browse_boss_ext_save_data(linked_list* items, list_item* selected);
 void action_browse_user_ext_save_data(linked_list* items, list_item* selected);
 void action_delete_ext_save_data(linked_list* items, list_item* selected);
@@ -52,3 +55,4 @@ void action_delete_secure_value(linked_list* items, list_item* selected);
 void action_url_install(const char* confirmMessage, const char* urls, void* finishedData, void (*finished)(void* data));
 
 void action_install_titledb(linked_list* items, list_item* selected);
+void action_update_titledb(linked_list* items, list_item* selected);
