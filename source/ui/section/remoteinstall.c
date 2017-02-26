@@ -425,21 +425,32 @@ void remoteinstall_manually_enter_urls() {
     swkbdSetFeatures(&swkbd, SWKBD_MULTILINE);
     swkbdSetHintText(&swkbd, "Enter URL(s)");
 
-    char textBuf[1024];
-    if(swkbdInputText(&swkbd, textBuf, sizeof(textBuf)) == SWKBD_BUTTON_CONFIRM) {
-        remoteinstall_set_last_urls(textBuf);
+    char* textBuf = (char*) calloc(1, INSTALL_URL_MAX * INSTALL_URLS_MAX);
+    if(textBuf != NULL) {
+        if(swkbdInputText(&swkbd, textBuf, INSTALL_URL_MAX * INSTALL_URLS_MAX) == SWKBD_BUTTON_CONFIRM) {
+            remoteinstall_set_last_urls(textBuf);
 
-        action_url_install("Install from the entered URL(s)?", textBuf, NULL, NULL);
-        return;
+            action_url_install("Install from the entered URL(s)?", textBuf, NULL, NULL);
+        }
+
+        free(textBuf);
+    } else {
+        error_display_res(NULL, NULL, R_FBI_OUT_OF_MEMORY, "Failed to allocate URL text buffer.");
     }
 }
 
 void remoteinstall_repeat_last_request() {
-    char textBuf[4096];
-    if(remoteinstall_get_last_urls(textBuf, sizeof(textBuf))) {
-        action_url_install("Install from the last requested URL(s)?", textBuf, NULL, NULL);
+    char* textBuf = (char*) calloc(1, INSTALL_URL_MAX * INSTALL_URLS_MAX);
+    if(textBuf != NULL) {
+        if(remoteinstall_get_last_urls(textBuf, INSTALL_URL_MAX * INSTALL_URLS_MAX)) {
+            action_url_install("Install from the last requested URL(s)?", textBuf, NULL, NULL);
+        } else {
+            prompt_display("Failure", "No previously requested URL(s) could be found.", COLOR_TEXT, false, NULL, NULL, NULL);
+        }
+
+        free(textBuf);
     } else {
-        prompt_display("Failure", "No previously requested URL(s) could be found.", COLOR_TEXT, false, NULL, NULL, NULL);
+        error_display_res(NULL, NULL, R_FBI_OUT_OF_MEMORY, "Failed to allocate URL text buffer.");
     }
 }
 

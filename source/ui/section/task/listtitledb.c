@@ -86,14 +86,16 @@ static void task_populate_titledb_thread(void* arg) {
                                         }
                                     }
 
+                                    AM_TitleEntry entry;
+                                    titledbInfo->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(titledbInfo->titleId), 1, &titledbInfo->titleId, &entry));
+
                                     if(strlen(titledbInfo->meta.shortDescription) > 0) {
                                         strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
                                     } else {
                                         snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titledbInfo->titleId);
                                     }
 
-                                    AM_TitleEntry entry;
-                                    if(R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(titledbInfo->titleId), 1, &titledbInfo->titleId, &entry))) {
+                                    if(titledbInfo->installed) {
                                         item->color = COLOR_INSTALLED;
                                     } else {
                                         item->color = COLOR_NOT_INSTALLED;
