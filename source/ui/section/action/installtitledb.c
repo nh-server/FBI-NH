@@ -10,15 +10,10 @@
 #include "../../../core/linkedlist.h"
 
 void action_install_titledb(linked_list* items, list_item* selected) {
-    char* url = (char*) calloc(1, INSTALL_URL_MAX);
-    if(url != NULL) {
-        snprintf(url, INSTALL_URL_MAX, "https://api.titledb.com/v0/proxy/%016llX", ((titledb_info*) selected->data)->titleId);
-        action_url_install("Install the selected title from TitleDB?", url, NULL, NULL);
+    char url[64];
+    snprintf(url, INSTALL_URL_MAX, "https://3ds.titledb.com/v1/cia/%lu/download", ((titledb_info*) selected->data)->id);
 
-        free(url);
-    } else {
-        error_display_res(NULL, NULL, R_FBI_OUT_OF_MEMORY, "Failed to allocate URL text buffer.");
-    }
+    action_url_install("Install the selected title from TitleDB?", url, NULL, NULL);
 }
 
 void action_update_titledb(linked_list* items, list_item* selected) {
@@ -31,8 +26,8 @@ void action_update_titledb(linked_list* items, list_item* selected) {
         while(linked_list_iter_has_next(&iter) && pos < INSTALL_URL_MAX * INSTALL_URLS_MAX) {
             titledb_info* info = (titledb_info*) ((list_item*) linked_list_iter_next(&iter))->data;
 
-            if(info->installed) {
-                pos += snprintf(urls + pos, (INSTALL_URL_MAX * INSTALL_URLS_MAX) - pos, "https://api.titledb.com/v0/proxy/%016llX\n", info->titleId);
+            if(info->outdated) {
+                pos += snprintf(urls + pos, (INSTALL_URL_MAX * INSTALL_URLS_MAX) - pos, "https://3ds.titledb.com/v1/cia/%lu/download\n", info->id);
             }
         }
 

@@ -225,10 +225,12 @@ void screen_init() {
                 color_config[COLOR_ENABLED] = color;
             } else if(strcasecmp(key, "disabled") == 0) {
                 color_config[COLOR_DISABLED] = color;
-            } else if(strcasecmp(key, "installed") == 0) {
-                color_config[COLOR_INSTALLED] = color;
-            } else if(strcasecmp(key, "notinstalled") == 0) {
-                color_config[COLOR_NOT_INSTALLED] = color;
+            } else if(strcasecmp(key, "titledboutdated") == 0) {
+                color_config[COLOR_TITLEDB_OUTDATED] = color;
+            } else if(strcasecmp(key, "titledbinstalled") == 0) {
+                color_config[COLOR_TITLEDB_INSTALLED] = color;
+            } else if(strcasecmp(key, "titledbnotinstalled") == 0) {
+                color_config[COLOR_TITLEDB_NOT_INSTALLED] = color;
             } else if(strcasecmp(key, "ticketinuse") == 0) {
                 color_config[COLOR_TICKET_IN_USE] = color;
             } else if(strcasecmp(key, "ticketnotinuse") == 0) {

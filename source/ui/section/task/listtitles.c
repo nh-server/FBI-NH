@@ -1,4 +1,3 @@
-#include <sys/syslimits.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,7 +43,7 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
 
                                 SMDH_title* smdhTitle = util_select_smdh_title(smdh);
 
-                                utf16_to_utf8((uint8_t*) item->name, smdhTitle->shortDescription, NAME_MAX - 1);
+                                utf16_to_utf8((uint8_t*) item->name, smdhTitle->shortDescription, LIST_ITEM_NAME_MAX - 1);
 
                                 utf16_to_utf8((uint8_t*) titleInfo->meta.shortDescription, smdhTitle->shortDescription, sizeof(titleInfo->meta.shortDescription) - 1);
                                 utf16_to_utf8((uint8_t*) titleInfo->meta.longDescription, smdhTitle->longDescription, sizeof(titleInfo->meta.longDescription) - 1);
@@ -62,7 +61,7 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                 }
 
                 if(util_is_string_empty(item->name)) {
-                    snprintf(item->name, NAME_MAX, "%016llX", titleId);
+                    snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titleId);
                 }
 
                 if(mediaType == MEDIATYPE_NAND) {
@@ -198,7 +197,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                 }
 
                 if(util_is_string_empty(item->name)) {
-                    snprintf(item->name, NAME_MAX, "%016llX", realTitleId);
+                    snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", realTitleId);
                 }
 
                 item->color = COLOR_DS_TITLE;

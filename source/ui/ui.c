@@ -615,8 +615,10 @@ void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x
 
     snprintf(infoText, sizeof(infoText),
              "Title ID: %016llX\n"
+             "Version: %hu (%d.%d.%d)\n"
              "Size: %.2f %s",
              info->titleId,
+             info->version, (info->version >> 10) & 0x3F, (info->version >> 4) & 0x3F, info->version & 0xF,
              util_get_display_size(info->size), util_get_display_size_units(info->size));
 
     float infoWidth;
