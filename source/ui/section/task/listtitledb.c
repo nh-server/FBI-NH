@@ -42,14 +42,11 @@ static void task_populate_titledb_thread(void* arg) {
 
     Result res = 0;
 
-    linked_list tempItems;
-    linked_list_init(&tempItems);
-
-    u32 maxTextSize = 128 * 1024;
+    u32 maxTextSize = 256 * 1024;
     char* text = (char*) calloc(sizeof(char), maxTextSize);
     if(text != NULL) {
         u32 textSize = 0;
-        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v0/"))) {
+        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=titleid&only=version&only=name_s&only=name_l&only=publisher"))) {
             json_value* json = json_parse(text, textSize);
             if(json != NULL) {
                 if(json->type == json_array) {
@@ -72,15 +69,24 @@ static void task_populate_titledb_thread(void* arg) {
                                         if(subVal->type == json_string) {
                                             if(strncmp(name, "titleid", nameLen) == 0) {
                                                 titledbInfo->titleId = strtoull(subVal->u.string.ptr, NULL, 16);
-                                            } else if(strncmp(name, "name", nameLen) == 0) {
+                                            } else if(strncmp(name, "version", nameLen) == 0) {
+                                                u32 major = 0;
+                                                u32 minor = 0;
+                                                u32 micro = 0;
+                                                sscanf(subVal->u.string.ptr, "%lu.%lu.%lu", &major, &minor, &micro);
+
+                                                titledbInfo->version = ((u8) (major & 0x3F) << 10) | ((u8) (minor & 0x3F) << 4) | ((u8) (micro & 0xF));
+                                            } else if(strncmp(name, "name_s", nameLen) == 0) {
                                                 strncpy(titledbInfo->meta.shortDescription, subVal->u.string.ptr, sizeof(titledbInfo->meta.shortDescription));
-                                            } else if(strncmp(name, "description", nameLen) == 0) {
+                                            } else if(strncmp(name, "name_l", nameLen) == 0) {
                                                 strncpy(titledbInfo->meta.longDescription, subVal->u.string.ptr, sizeof(titledbInfo->meta.longDescription));
-                                            } else if(strncmp(name, "author", nameLen) == 0) {
+                                            } else if(strncmp(name, "publisher", nameLen) == 0) {
                                                 strncpy(titledbInfo->meta.publisher, subVal->u.string.ptr, sizeof(titledbInfo->meta.publisher));
                                             }
                                         } else if(subVal->type == json_integer) {
-                                            if(strncmp(name, "size", nameLen) == 0) {
+                                            if(strncmp(name, "id", nameLen) == 0) {
+                                                titledbInfo->id = (u32) subVal->u.integer;
+                                            } else if(strncmp(name, "size", nameLen) == 0) {
                                                 titledbInfo->size = (u64) subVal->u.integer;
                                             }
                                         }
@@ -88,6 +94,7 @@ static void task_populate_titledb_thread(void* arg) {
 
                                     AM_TitleEntry entry;
                                     titledbInfo->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(titledbInfo->titleId), 1, &titledbInfo->titleId, &entry));
+                                    titledbInfo->outdated = titledbInfo->installed && entry.version < titledbInfo->version;
 
                                     if(strlen(titledbInfo->meta.shortDescription) > 0) {
                                         strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
@@ -95,15 +102,39 @@ static void task_populate_titledb_thread(void* arg) {
                                         snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titledbInfo->titleId);
                                     }
 
-                                    if(titledbInfo->installed) {
-                                        item->color = COLOR_INSTALLED;
+                                    if(titledbInfo->outdated) {
+                                        item->color = COLOR_TITLEDB_OUTDATED;
+                                    } else if(titledbInfo->installed) {
+                                        item->color = COLOR_TITLEDB_INSTALLED;
                                     } else {
-                                        item->color = COLOR_NOT_INSTALLED;
+                                        item->color = COLOR_TITLEDB_NOT_INSTALLED;
                                     }
 
                                     item->data = titledbInfo;
 
-                                    linked_list_add(&tempItems, item);
+                                    linked_list_iter iter;
+                                    linked_list_iterate(data->items, &iter);
+
+                                    bool add = true;
+                                    while(linked_list_iter_has_next(&iter)) {
+                                        list_item* currItem = (list_item*) linked_list_iter_next(&iter);
+                                        titledb_info* currTitledbInfo = (titledb_info*) currItem->data;
+
+                                        if(titledbInfo->titleId == currTitledbInfo->titleId) {
+                                            if(titledbInfo->version >= currTitledbInfo->version) {
+                                                linked_list_iter_remove(&iter);
+                                                task_free_titledb(currItem);
+                                            } else {
+                                                add = false;
+                                            }
+
+                                            break;
+                                        }
+                                    }
+
+                                    if(add) {
+                                        linked_list_add_sorted(data->items, item, NULL, task_populate_titledb_compare);
+                                    }
                                 } else {
                                     free(item);
 
@@ -128,15 +159,6 @@ static void task_populate_titledb_thread(void* arg) {
     }
 
     if(R_SUCCEEDED(res)) {
-        linked_list_sort(&tempItems, NULL, task_populate_titledb_compare);
-
-        linked_list_iter tempIter;
-        linked_list_iterate(&tempItems, &tempIter);
-
-        while(linked_list_iter_has_next(&tempIter)) {
-            linked_list_add(data->items, linked_list_iter_next(&tempIter));
-        }
-
         linked_list_iter iter;
         linked_list_iterate(data->items, &iter);
 
@@ -149,48 +171,17 @@ static void task_populate_titledb_thread(void* arg) {
             list_item* item = (list_item*) linked_list_iter_next(&iter);
             titledb_info* titledbInfo = (titledb_info*) item->data;
 
-            u32 maxPngSize = 128 * 1024;
-            u8* png = (u8*) calloc(1, maxPngSize);
-            if(png != NULL) {
-                char pngUrl[128];
-                snprintf(pngUrl, sizeof(pngUrl), "https://api.titledb.com/images/%016llX.png", titledbInfo->titleId);
+            char url[128];
+            snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/cia/%lu/icon_l.bin", titledbInfo->id);
 
-                u32 pngSize = 0;
-                if(R_SUCCEEDED(task_populate_titledb_download(&pngSize, png, maxPngSize, pngUrl))) {
-                    int width;
-                    int height;
-                    int depth;
-                    u8* image = stbi_load_from_memory(png, (int) pngSize, &width, &height, &depth, STBI_rgb_alpha);
-                    if(image != NULL && depth == STBI_rgb_alpha) {
-                        for(u32 x = 0; x < width; x++) {
-                            for(u32 y = 0; y < height; y++) {
-                                u32 pos = (y * width + x) * 4;
-
-                                u8 c1 = image[pos + 0];
-                                u8 c2 = image[pos + 1];
-                                u8 c3 = image[pos + 2];
-                                u8 c4 = image[pos + 3];
-
-                                image[pos + 0] = c4;
-                                image[pos + 1] = c3;
-                                image[pos + 2] = c2;
-                                image[pos + 3] = c1;
-                            }
-                        }
-
-                        titledbInfo->meta.texture = screen_allocate_free_texture();
-                        screen_load_texture(titledbInfo->meta.texture, image, (u32) (width * height * 4), (u32) width, (u32) height, GPU_RGBA8, false);
-
-                        free(image);
-                    }
-                }
-
-                free(png);
+            u8 icon[0x1200];
+            u32 iconSize = 0;
+            if(R_SUCCEEDED(task_populate_titledb_download(&iconSize, &icon, sizeof(icon), url)) && iconSize == sizeof(icon)) {
+                titledbInfo->meta.texture = screen_allocate_free_texture();
+                screen_load_texture_tiled(titledbInfo->meta.texture, icon, sizeof(icon), 48, 48, GPU_RGB565, false);
             }
         }
     }
-
-    linked_list_destroy(&tempItems);
 
     svcCloseHandle(data->cancelEvent);
 
