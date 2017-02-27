@@ -134,6 +134,8 @@ static void task_populate_titledb_thread(void* arg) {
 
                                     if(add) {
                                         linked_list_add_sorted(data->items, item, NULL, task_populate_titledb_compare);
+                                    } else {
+                                        task_free_titledb(item);
                                     }
                                 } else {
                                     free(item);
