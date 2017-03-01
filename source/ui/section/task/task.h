@@ -73,10 +73,10 @@ typedef struct file_info_s {
 typedef struct titledb_info_s {
     u32 id;
     u64 titleId;
-    u16 version;
+    u16 installedVersion;
+    u16 latestVersion;
     u64 size;
     bool installed;
-    bool outdated;
     meta_info meta;
 } titledb_info;
 

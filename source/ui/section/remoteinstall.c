@@ -174,7 +174,7 @@ static void remoteinstall_network_update(ui_view* view, void* data, float* progr
         }
 
         remoteinstall_set_last_urls(urls);
-        action_url_install("Install from the received URL(s)?", urls, data, remoteinstall_network_close_client);
+        action_url_install("Install from the received URL(s)?", urls, data, remoteinstall_network_close_client, NULL);
 
         free(urls);
     } else if(errno != EAGAIN) {
@@ -365,7 +365,7 @@ static void remoteinstall_qr_update(ui_view* view, void* data, float* progress, 
 
             remoteinstall_set_last_urls((const char*) qrData.payload);
 
-            action_url_install("Install from the scanned QR code?", (const char*) qrData.payload, NULL, NULL);
+            action_url_install("Install from the scanned QR code?", (const char*) qrData.payload, NULL, NULL, NULL);
             return;
         }
     }
@@ -430,7 +430,7 @@ void remoteinstall_manually_enter_urls() {
         if(swkbdInputText(&swkbd, textBuf, INSTALL_URL_MAX * INSTALL_URLS_MAX) == SWKBD_BUTTON_CONFIRM) {
             remoteinstall_set_last_urls(textBuf);
 
-            action_url_install("Install from the entered URL(s)?", textBuf, NULL, NULL);
+            action_url_install("Install from the entered URL(s)?", textBuf, NULL, NULL, NULL);
         }
 
         free(textBuf);
@@ -443,7 +443,7 @@ void remoteinstall_repeat_last_request() {
     char* textBuf = (char*) calloc(1, INSTALL_URL_MAX * INSTALL_URLS_MAX);
     if(textBuf != NULL) {
         if(remoteinstall_get_last_urls(textBuf, INSTALL_URL_MAX * INSTALL_URLS_MAX)) {
-            action_url_install("Install from the last requested URL(s)?", textBuf, NULL, NULL);
+            action_url_install("Install from the last requested URL(s)?", textBuf, NULL, NULL, NULL);
         } else {
             prompt_display("Failure", "No previously requested URL(s) could be found.", COLOR_TEXT, false, NULL, NULL, NULL);
         }

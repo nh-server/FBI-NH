@@ -16,8 +16,9 @@
 typedef struct {
     char urls[INSTALL_URLS_MAX][INSTALL_URL_MAX];
 
-    void* finishedData;
+    void* userData;
     void (*finished)(void* data);
+    void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index);
 
     bool cdn;
     bool cdnDecided;
@@ -33,7 +34,7 @@ typedef struct {
 
 static void action_url_install_free_data(url_install_data* data) {
     if(data->finished != NULL) {
-        data->finished(data->finishedData);
+        data->finished(data->userData);
     }
 
     free(data);
@@ -48,6 +49,14 @@ static void action_url_install_cdn_check_onresponse(ui_view* view, void* data, b
 
 static void action_url_install_n3ds_onresponse(ui_view* view, void* data, bool response) {
     ((url_install_data*) data)->n3dsContinue = response;
+}
+
+static void action_url_install_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    url_install_data* installData = (url_install_data*) data;
+
+    if(installData->drawTop != NULL) {
+        installData->drawTop(view, installData->userData, x1, y1, x2, y2, installData->installInfo.processed);
+    }
 }
 
 static Result action_url_install_is_src_directory(void* data, u32 index, bool* isDirectory) {
@@ -107,7 +116,7 @@ static Result action_url_install_open_dst(void* data, u32 index, void* initialRe
 
     if(*(u16*) initialReadBlock == 0x0100) {
         if(!installData->cdnDecided) {
-            ui_view* view = prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, NULL, action_url_install_cdn_check_onresponse);
+            ui_view* view = prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, action_url_install_draw_top, action_url_install_cdn_check_onresponse);
             if(view != NULL) {
                 svcWaitSynchronization(view->active, U64_MAX);
             }
@@ -126,7 +135,7 @@ static Result action_url_install_open_dst(void* data, u32 index, void* initialRe
 
         bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-            ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, NULL, action_url_install_n3ds_onresponse);
+            ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, action_url_install_draw_top, action_url_install_n3ds_onresponse);
             if(view != NULL) {
                 svcWaitSynchronization(view->active, U64_MAX);
             }
@@ -229,15 +238,15 @@ static bool action_url_install_error(void* data, u32 index, Result res) {
 
         if(res == R_FBI_HTTP_RESPONSE_CODE) {
             if(strlen(url) > 38) {
-                view = error_display(NULL, NULL, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, installData->responseCode);
+                view = error_display(data, action_url_install_draw_top, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, installData->responseCode);
             } else {
-                view = error_display(NULL, NULL, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, installData->responseCode);
+                view = error_display(data, action_url_install_draw_top, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, installData->responseCode);
             }
         } else {
             if(strlen(url) > 38) {
-                view = error_display_res(NULL, NULL, res, "Failed to install from URL.\n%.35s...", url);
+                view = error_display_res(data, action_url_install_draw_top, res, "Failed to install from URL.\n%.35s...", url);
             } else {
-                view = error_display_res(NULL, NULL, res, "Failed to install from URL.\n%.38s", url);
+                view = error_display_res(data, action_url_install_draw_top, res, "Failed to install from URL.\n%.38s", url);
             }
         }
 
@@ -279,7 +288,7 @@ static void action_url_install_confirm_onresponse(ui_view* view, void* data, boo
     if(response) {
         Result res = task_data_op(&installData->installInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Installing From URL(s)", "Press B to cancel.", true, data, action_url_install_install_update, NULL);
+            info_display("Installing From URL(s)", "Press B to cancel.", true, data, action_url_install_install_update, action_url_install_draw_top);
         } else {
             error_display_res(NULL, NULL, res, "Failed to initiate installation.");
 
@@ -290,7 +299,8 @@ static void action_url_install_confirm_onresponse(ui_view* view, void* data, boo
     }
 }
 
-void action_url_install(const char* confirmMessage, const char* urls, void* finishedData, void (*finished)(void* data)) {
+void action_url_install(const char* confirmMessage, const char* urls, void* userData, void (*finished)(void* data),
+                                                                                      void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
     url_install_data* data = (url_install_data*) calloc(1, sizeof(url_install_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate URL install data.");
@@ -331,8 +341,9 @@ void action_url_install(const char* confirmMessage, const char* urls, void* fini
         }
     }
 
-    data->finishedData = finishedData;
+    data->userData = userData;
     data->finished = finished;
+    data->drawTop = drawTop;
 
     data->cdn = false;
     data->cdnDecided = false;
@@ -372,5 +383,5 @@ void action_url_install(const char* confirmMessage, const char* urls, void* fini
 
     data->installInfo.finished = true;
 
-    prompt_display("Confirmation", confirmMessage, COLOR_TEXT, true, data, NULL, action_url_install_confirm_onresponse);
+    prompt_display("Confirmation", confirmMessage, COLOR_TEXT, true, data, action_url_install_draw_top, action_url_install_confirm_onresponse);
 }

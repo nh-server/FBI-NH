@@ -68,7 +68,7 @@ static void info_draw_bottom(ui_view* view, void* data, float x1, float y1, floa
 }
 
 ui_view* info_display(const char* name, const char* info, bool bar, void* data, void (*update)(ui_view* view, void* data, float* progress, char* text),
-                                                                            void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2)) {
+                                                                                void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2)) {
     info_data* infoData = (info_data*) calloc(1, sizeof(info_data));
     if(infoData == NULL) {
         error_display(NULL, NULL, "Failed to allocate info data.");
