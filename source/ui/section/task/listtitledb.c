@@ -75,7 +75,7 @@ static void task_populate_titledb_thread(void* arg) {
                                                 u32 micro = 0;
                                                 sscanf(subVal->u.string.ptr, "%lu.%lu.%lu", &major, &minor, &micro);
 
-                                                titledbInfo->version = ((u8) (major & 0x3F) << 10) | ((u8) (minor & 0x3F) << 4) | ((u8) (micro & 0xF));
+                                                titledbInfo->latestVersion = ((u8) (major & 0x3F) << 10) | ((u8) (minor & 0x3F) << 4) | ((u8) (micro & 0xF));
                                             } else if(strncmp(name, "name_s", nameLen) == 0) {
                                                 strncpy(titledbInfo->meta.shortDescription, subVal->u.string.ptr, sizeof(titledbInfo->meta.shortDescription));
                                             } else if(strncmp(name, "name_l", nameLen) == 0) {
@@ -94,7 +94,7 @@ static void task_populate_titledb_thread(void* arg) {
 
                                     AM_TitleEntry entry;
                                     titledbInfo->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(titledbInfo->titleId), 1, &titledbInfo->titleId, &entry));
-                                    titledbInfo->outdated = titledbInfo->installed && entry.version < titledbInfo->version;
+                                    titledbInfo->installedVersion = titledbInfo->installed ? entry.version : (u16) 0;
 
                                     if(strlen(titledbInfo->meta.shortDescription) > 0) {
                                         strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
@@ -102,10 +102,12 @@ static void task_populate_titledb_thread(void* arg) {
                                         snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titledbInfo->titleId);
                                     }
 
-                                    if(titledbInfo->outdated) {
-                                        item->color = COLOR_TITLEDB_OUTDATED;
-                                    } else if(titledbInfo->installed) {
-                                        item->color = COLOR_TITLEDB_INSTALLED;
+                                    if(titledbInfo->installed) {
+                                        if(titledbInfo->installedVersion < titledbInfo->latestVersion) {
+                                            item->color = COLOR_TITLEDB_OUTDATED;
+                                        } else {
+                                            item->color = COLOR_TITLEDB_INSTALLED;
+                                        }
                                     } else {
                                         item->color = COLOR_TITLEDB_NOT_INSTALLED;
                                     }
@@ -121,7 +123,7 @@ static void task_populate_titledb_thread(void* arg) {
                                         titledb_info* currTitledbInfo = (titledb_info*) currItem->data;
 
                                         if(titledbInfo->titleId == currTitledbInfo->titleId) {
-                                            if(titledbInfo->version >= currTitledbInfo->version) {
+                                            if(titledbInfo->latestVersion >= currTitledbInfo->latestVersion) {
                                                 linked_list_iter_remove(&iter);
                                                 task_free_titledb(currItem);
                                             } else {

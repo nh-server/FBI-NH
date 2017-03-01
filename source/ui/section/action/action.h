@@ -3,6 +3,7 @@
 typedef struct ticket_info_s ticket_info;
 typedef struct linked_list_s linked_list;
 typedef struct list_item_s list_item;
+typedef struct ui_view_s ui_view;
 
 #define INSTALL_URL_MAX 1024
 #define INSTALL_URLS_MAX 128
@@ -52,7 +53,8 @@ void action_import_secure_value(linked_list* items, list_item* selected);
 void action_export_secure_value(linked_list* items, list_item* selected);
 void action_delete_secure_value(linked_list* items, list_item* selected);
 
-void action_url_install(const char* confirmMessage, const char* urls, void* finishedData, void (*finished)(void* data));
+void action_url_install(const char* confirmMessage, const char* urls, void* userData, void (*finished)(void* data),
+                                                                                      void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index));
 
 void action_install_titledb(linked_list* items, list_item* selected);
 void action_update_titledb(linked_list* items, list_item* selected);
