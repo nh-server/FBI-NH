@@ -70,8 +70,14 @@ if directory and directory != '.':  # doesn't need to move if it's already the c
 print('\nURLs:')
 print(file_list_payload + '\n')
 
+class MyServer(TCPServer):
+    def server_bind(self):
+        import socket
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.bind(self.server_address)
+
 print('Opening HTTP server on port ' + str(hostPort))
-server = TCPServer(('', hostPort), SimpleHTTPRequestHandler)
+server = MyServer(('', hostPort), SimpleHTTPRequestHandler)
 thread = threading.Thread(target=server.serve_forever)
 thread.start()
 
