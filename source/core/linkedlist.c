@@ -50,7 +50,7 @@ int linked_list_index_of(linked_list* list, void* value) {
 }
 
 static linked_list_node* linked_list_get_node(linked_list* list, unsigned int index) {
-    if(index < 0 || index >= list->size) {
+    if(index >= list->size) {
         return NULL;
     }
 
