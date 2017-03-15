@@ -20,26 +20,69 @@ except ImportError:
     from urllib.parse import urljoin, quote
     from urllib.request import pathname2url
 
-if len(sys.argv) < 3 or len(sys.argv) > 5:
+interactive = False
+    
+if len(sys.argv) <= 2:
+    # If there aren't enough variables, use interactive mode
+    if len(sys.argv) == 2:
+        if sys.argv[1].lower() in ('--help', '-help', 'help', 'h', '-h', '--h'):
+            print('Usage: ' + sys.argv[0] + ' <target ip> <file / directory> [host ip] [host port]')
+            sys.exit(1)
+    
+    interactive = True
+
+elif len(sys.argv) < 3 or len(sys.argv) > 6:
     print('Usage: ' + sys.argv[0] + ' <target ip> <file / directory> [host ip] [host port]')
     sys.exit(1)
 
 accepted_extension = ('.cia', '.tik', '.cetk')
-target_ip = sys.argv[1]
-target_path = sys.argv[2]
 hostPort = 8080 # Default value
+
+if interactive:
+    target_ip = raw_input("The IP of your 3DS: ")
+    target_path = raw_input("The file you want to send (.cia, .tik, or .cetk): ")
+    
+    hostIp = raw_input("Host IP (or press Enter to have the script detect host IP):")
+    if hostIp == '':
+        print('Detecting host IP...') 
+        hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
+    else:
+        hostPort = raw_input("Host port (or press Enter to keep default, 8080):")
+        if hostPort == '':
+            hostPort = 8080 # Default
+    
+
+else:
+    # (if the script is being run using a full python path; ex: "path/to/python script_name.py foo foo..")
+    if sys.argv[1] == os.path.basename(__file__):
+        target_ip = sys.argv[2]
+        target_path = sys.argv[3]
+        
+        if len(sys.argv) >= 5:
+            hostIp = sys.argv[4]
+            if len(sys.argv) == 6:
+                hostPort = int(sys.argv[5])
+        else:
+            print('Detecting host IP...')
+            hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
+                
+    # (if the script is being run using just the script name and default executable for python scripts; ex: "script_name.py foo foo..")
+    else:
+        target_ip = sys.argv[1]
+        target_path = sys.argv[2]
+        
+        if len(sys.argv) >= 4:
+            hostIp = sys.argv[3]
+            if len(sys.argv) == 5:
+                hostPort = int(sys.argv[4])
+        else:
+            print('Detecting host IP...')
+            hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
 
 if not os.path.exists(target_path):
     print(target_path + ': No such file or directory.')
     sys.exit(1)
 
-if len(sys.argv) >= 4:
-    hostIp = sys.argv[3]
-    if len(sys.argv) == 5:
-        hostPort = int(sys.argv[4])
-else:
-    print('Detecting host IP...')
-    hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
 
 print('Preparing data...')
 baseUrl = hostIp + ':' + str(hostPort) + '/'
