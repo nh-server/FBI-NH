@@ -670,7 +670,10 @@ u16* util_select_bnr_title(BNR* bnr) {
     return bnr->titles[systemLanguage];
 }
 
-static char util_http_redirect_buffer[1024];
+#define HTTP_TIMEOUT 30000000000
+
+#define MAKE_HTTP_USER_AGENT(major, minor, micro) ("Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/" #major "." #minor "." #micro)
+#define HTTP_USER_AGENT MAKE_HTTP_USER_AGENT(VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO)
 
 Result util_http_open(httpcContext* context, u32* responseCode, const char* url, bool userAgent) {
     return util_http_open_ranged(context, responseCode, url, userAgent, 0, 0);
@@ -681,42 +684,58 @@ Result util_http_open_ranged(httpcContext* context, u32* responseCode, const cha
         return R_FBI_INVALID_ARGUMENT;
     }
 
+    char currUrl[1024];
+    strncpy(currUrl, url, sizeof(currUrl));
+
+    char range[64];
+    if(rangeEnd > rangeStart) {
+        snprintf(range, sizeof(range), "%lu-%lu", rangeStart, rangeEnd);
+    } else {
+        snprintf(range, sizeof(range), "%lu-", rangeStart);
+    }
+
     Result res = 0;
 
-    if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, url, 1))) {
-        char agent[128];
-        snprintf(agent, sizeof(agent), "Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+    bool resolved = false;
+    u32 redirectCount = 0;
+    while(R_SUCCEEDED(res) && !resolved && redirectCount < 32) {
+        if(R_SUCCEEDED(res = httpcOpenContext(context, HTTPC_METHOD_GET, currUrl, 1))) {
+            u32 response = 0;
+            if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify))
+               && (!userAgent || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", HTTP_USER_AGENT)))
+               && (rangeStart == 0 || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Range", range)))
+               && R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Accept-Encoding", "gzip"))
+               && R_SUCCEEDED(res = httpcSetKeepAlive(context, HTTPC_KEEPALIVE_ENABLED))
+               && R_SUCCEEDED(res = httpcBeginRequest(context))
+               && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(context, &response, HTTP_TIMEOUT))) {
+                if(response == 301 || response == 302 || response == 303) {
+                    redirectCount++;
 
-        char range[64];
-        if(rangeEnd > rangeStart) {
-            snprintf(range, sizeof(range), "%lu-%lu", rangeStart, rangeEnd);
-        } else {
-            snprintf(range, sizeof(range), "%lu-", rangeStart);
-        }
+                    memset(currUrl, '\0', sizeof(currUrl));
+                    if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", currUrl, sizeof(currUrl)))) {
+                        httpcCloseContext(context);
+                    }
+                } else {
+                    resolved = true;
 
-        u32 response = 0;
-        if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify)) && (!userAgent || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", agent))) && (rangeStart == 0 || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Range", range))) && R_SUCCEEDED(res = httpcSetKeepAlive(context, HTTPC_KEEPALIVE_ENABLED)) && R_SUCCEEDED(res = httpcBeginRequest(context)) && R_SUCCEEDED(res = httpcGetResponseStatusCode(context, &response))) {
-            if(response == 301 || response == 302 || response == 303) {
-                memset(util_http_redirect_buffer, '\0', sizeof(util_http_redirect_buffer));
-                if(R_SUCCEEDED(res = httpcGetResponseHeader(context, "Location", util_http_redirect_buffer, sizeof(util_http_redirect_buffer)))) {
-                    httpcCloseContext(context);
+                    if(responseCode != NULL) {
+                        *responseCode = response;
+                    }
 
-                    return util_http_open_ranged(context, responseCode, util_http_redirect_buffer, userAgent, rangeStart, rangeEnd);
-                }
-            } else {
-                if(responseCode != NULL) {
-                    *responseCode = response;
-                }
-
-                if(response != 200) {
-                    res = R_FBI_HTTP_RESPONSE_CODE;
+                    if(response != 200) {
+                        res = R_FBI_HTTP_RESPONSE_CODE;
+                    }
                 }
             }
-        }
 
-        if(R_FAILED(res)) {
-            httpcCloseContext(context);
+            if(R_FAILED(res)) {
+                httpcCloseContext(context);
+            }
         }
+    }
+
+    if(R_SUCCEEDED(res) && redirectCount >= 32) {
+        res = R_FBI_TOO_MANY_REDIRECTS;
     }
 
     return res;
@@ -735,8 +754,25 @@ Result util_http_read(httpcContext* context, u32* bytesRead, void* buffer, u32 s
         return R_FBI_INVALID_ARGUMENT;
     }
 
-    Result res = httpcDownloadData(context, buffer, size, bytesRead);
-    return res != HTTPC_RESULTCODE_DOWNLOADPENDING ? res : 0;
+    Result res = 0;
+
+    u32 startPos = 0;
+    if(R_SUCCEEDED(res = httpcGetDownloadSizeState(context, &startPos, NULL))) {
+        u32 outPos = 0;
+        while(outPos < size && R_SUCCEEDED(res)) {
+            u32 currPos = 0;
+            if((R_SUCCEEDED(res = httpcReceiveDataTimeout(context, &((u8*) buffer)[outPos], size - outPos, HTTP_TIMEOUT)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING)
+               && R_SUCCEEDED(res = httpcGetDownloadSizeState(context, &currPos, NULL))) {
+                outPos = currPos - startPos;
+            }
+        }
+
+        if(R_SUCCEEDED(res) && bytesRead != NULL) {
+            *bytesRead = outPos;
+        }
+    }
+
+    return res;
 }
 
 Result util_http_close(httpcContext* context) {
