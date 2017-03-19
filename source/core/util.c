@@ -704,7 +704,6 @@ Result util_http_open_ranged(httpcContext* context, u32* responseCode, const cha
             if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify))
                && (!userAgent || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", HTTP_USER_AGENT)))
                && (rangeStart == 0 || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Range", range)))
-               && R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Accept-Encoding", "gzip"))
                && R_SUCCEEDED(res = httpcSetKeepAlive(context, HTTPC_KEEPALIVE_ENABLED))
                && R_SUCCEEDED(res = httpcBeginRequest(context))
                && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(context, &response, HTTP_TIMEOUT))) {
@@ -758,13 +757,23 @@ Result util_http_read(httpcContext* context, u32* bytesRead, void* buffer, u32 s
 
     u32 startPos = 0;
     if(R_SUCCEEDED(res = httpcGetDownloadSizeState(context, &startPos, NULL))) {
+        res = HTTPC_RESULTCODE_DOWNLOADPENDING;
+
         u32 outPos = 0;
-        while(outPos < size && R_SUCCEEDED(res)) {
-            u32 currPos = 0;
-            if((R_SUCCEEDED(res = httpcReceiveDataTimeout(context, &((u8*) buffer)[outPos], size - outPos, HTTP_TIMEOUT)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING)
-               && R_SUCCEEDED(res = httpcGetDownloadSizeState(context, &currPos, NULL))) {
-                outPos = currPos - startPos;
+        while(res == HTTPC_RESULTCODE_DOWNLOADPENDING && outPos < size) {
+            if(R_SUCCEEDED(res = httpcReceiveDataTimeout(context, &((u8*) buffer)[outPos], size - outPos, HTTP_TIMEOUT)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING) {
+                Result posRes = 0;
+                u32 currPos = 0;
+                if(R_SUCCEEDED(posRes = httpcGetDownloadSizeState(context, &currPos, NULL))) {
+                    outPos = currPos - startPos;
+                } else {
+                    res = posRes;
+                }
             }
+        }
+
+        if(res == HTTPC_RESULTCODE_DOWNLOADPENDING) {
+            res = 0;
         }
 
         if(R_SUCCEEDED(res) && bytesRead != NULL) {
