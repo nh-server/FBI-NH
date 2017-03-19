@@ -150,7 +150,7 @@ static void remoteinstall_network_update(ui_view* view, void* data, float* progr
         }
 
         size = ntohl(size);
-        if(size >= 128 * 1024) {
+        if(size >= INSTALL_URL_MAX * INSTALL_URLS_MAX) {
             error_display(NULL, NULL, "Payload too large.");
 
             remoteinstall_network_close_client(data);

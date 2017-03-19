@@ -500,6 +500,8 @@ static const char* description_to_string(Result res) {
                     return "Parse failed";
                 case R_FBI_BAD_DATA:
                     return "Bad data";
+                case R_FBI_TOO_MANY_REDIRECTS:
+                    return "Too many redirects";
                 default:
                     break;
             }
