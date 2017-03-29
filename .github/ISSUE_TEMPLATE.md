@@ -1,0 +1,1 @@
+Before creating an issue, remember that FBI does not work on systems without custom firmware on 11.3. There is no kernel exploit for this version yet, and there are currently no estimates when another one will be found.
