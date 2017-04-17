@@ -53,6 +53,40 @@ static int util_get_lines(PrintConsole* console, const char* str) {
     return lines;
 }
 
+static char util_dec2hex(short int c)
+{
+    if (0 <= c && c <= 9) return c + '0';
+    else if (10 <= c && c <= 15) return c + 'A' - 10;
+    else return -1;
+}
+
+void util_urlencode(char url[])
+{
+    int i = 0;
+    int res_len = 0;
+    int len = strlen(url);
+    char res[1024];
+    for (i = 0; i < len; ++i) {
+        char c = url[i];
+        if (
+        		('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
+                c == ':' || c == '/' || c == '.' || c == '%' || c == '+' || c == '?' || c == '=' || c == '&' || c == '#'
+            ) res[res_len++] = c;
+        else {
+            int j = (short int)c;
+            if (j < 0) j += 256;
+            int i1, i0;
+            i1 = j / 16;
+            i0 = j - i1 * 16;
+            res[res_len++] = '%';
+            res[res_len++] = util_dec2hex(i1);
+            res[res_len++] = util_dec2hex(i0);
+        }
+    }
+    res[res_len] = '\0';
+    strcpy(url, res);
+}
+
 void util_panic(const char* s, ...) {
     va_list list;
     va_start(list, s);
@@ -686,6 +720,8 @@ Result util_http_open_ranged(httpcContext* context, u32* responseCode, const cha
 
     char currUrl[1024];
     strncpy(currUrl, url, sizeof(currUrl));
+
+    util_urlencode(currUrl);
 
     char range[64];
     if(rangeEnd > rangeStart) {
