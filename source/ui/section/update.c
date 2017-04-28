@@ -120,7 +120,7 @@ static bool update_error(void* data, u32 index, Result res) {
     update_data* updateData = (update_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
+        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, NULL, NULL, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
         error_display(NULL, NULL, "Failed to update FBI.\nHTTP server returned response code %d", updateData->responseCode);
     } else {
@@ -138,7 +138,7 @@ static void update_install_update(ui_view* view, void* data, float* progress, ch
         info_destroy(view);
 
         if(R_SUCCEEDED(updateData->installInfo.result)) {
-            prompt_display("Success", "Update complete.", COLOR_TEXT, false, NULL, NULL, NULL);
+            prompt_display_notify("Success", "Update complete.", COLOR_TEXT, NULL, NULL, NULL);
         }
 
         free(updateData);
@@ -263,15 +263,15 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                 error_display_res(NULL, NULL, res, "Failed to check for update.");
             }
         } else {
-            prompt_display("Success", "No updates available.", COLOR_TEXT, false, NULL, NULL, NULL);
+            prompt_display_notify("Success", "No updates available.", COLOR_TEXT, NULL, NULL, NULL);
         }
 
         free(data);
     }
 }
 
-static void update_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
+static void update_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
         info_display("Checking For Updates", "", false, data, update_check_update, NULL);
     } else {
         free(data);
@@ -319,5 +319,5 @@ void update_open() {
 
     data->installInfo.finished = true;
 
-    prompt_display("Confirmation", "Check for FBI updates?", COLOR_TEXT, true, data, NULL, update_onresponse);
+    prompt_display_yes_no("Confirmation", "Check for FBI updates?", COLOR_TEXT, data, NULL, update_onresponse);
 }

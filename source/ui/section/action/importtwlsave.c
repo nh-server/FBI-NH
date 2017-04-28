@@ -101,7 +101,7 @@ static bool action_import_twl_save_error(void* data, u32 index, Result res) {
     import_twl_save_data* importData = (import_twl_save_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Import cancelled.", COLOR_TEXT, false, importData->title, ui_draw_title_info, NULL);
+        prompt_display_notify("Failure", "Import cancelled.", COLOR_TEXT, importData->title, ui_draw_title_info, NULL);
     } else {
         error_display_res(importData->title, ui_draw_title_info, res, "Failed to import save.");
     }
@@ -117,7 +117,7 @@ static void action_import_twl_save_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(importData->importInfo.result)) {
-            prompt_display("Success", "Save imported.", COLOR_TEXT, false, importData->title, ui_draw_title_info, NULL);
+            prompt_display_notify("Success", "Save imported.", COLOR_TEXT, importData->title, ui_draw_title_info, NULL);
         }
 
         free(data);
@@ -133,8 +133,8 @@ static void action_import_twl_save_update(ui_view* view, void* data, float* prog
     snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s", util_get_display_size(importData->importInfo.currProcessed), util_get_display_size_units(importData->importInfo.currProcessed), util_get_display_size(importData->importInfo.currTotal), util_get_display_size_units(importData->importInfo.currTotal), util_get_display_size(importData->importInfo.copyBytesPerSecond), util_get_display_size_units(importData->importInfo.copyBytesPerSecond));
 }
 
-static void action_import_twl_save_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
+static void action_import_twl_save_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
         import_twl_save_data* importData = (import_twl_save_data*) data;
 
         Result res = task_data_op(&importData->importInfo);
@@ -190,5 +190,5 @@ void action_import_twl_save(linked_list* items, list_item* selected) {
 
     data->importInfo.finished = true;
 
-    prompt_display("Confirmation", "Import the save of the selected title?", COLOR_TEXT, true, data, action_import_twl_save_draw_top, action_import_twl_save_onresponse);
+    prompt_display_yes_no("Confirmation", "Import the save of the selected title?", COLOR_TEXT, data, action_import_twl_save_draw_top, action_import_twl_save_onresponse);
 }

@@ -95,7 +95,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
 
             Result res = 0;
             if(R_SUCCEEDED(res = clipboard_set_contents(actionData->parent->archive, info->path, selected == &copy_all_contents))) {
-                prompt_display("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : (info->attributes & FS_ATTRIBUTE_DIRECTORY) ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, false, info, ui_draw_file_info, NULL);
+                prompt_display_notify("Success", selected == &copy_all_contents ? "Current directory contents copied to clipboard." : (info->attributes & FS_ATTRIBUTE_DIRECTORY) ? "Current directory copied to clipboard." : "File copied to clipboard.", COLOR_TEXT, info, ui_draw_file_info, NULL);
             } else {
                 error_display_res(info, ui_draw_file_info, res, "Failed to copy to clipboard.");
             }
@@ -420,16 +420,16 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     list_display("Files", "A: Select, B: Back, X: Refresh, Select: Options", data, files_update, files_draw_top);
 }
 
-static void files_open_nand_warning_onresponse(ui_view* view, void* data, bool response) {
+static void files_open_nand_warning_onresponse(ui_view* view, void* data, u32 response) {
     FS_ArchiveID archive = (FS_ArchiveID) data;
 
-    if(response) {
+    if(response == PROMPT_YES) {
         files_open(archive, fsMakePath(PATH_EMPTY, ""));
     }
 }
 
 void files_open_nand_warning(FS_ArchiveID archive) {
-    prompt_display("Confirmation", "Modifying the NAND is dangerous and can render\n the system inoperable.\nMake sure you know what you are doing.\n\nProceed?", COLOR_TEXT, true, (void*) archive, NULL, files_open_nand_warning_onresponse);
+    prompt_display_yes_no("Confirmation", "Modifying the NAND is dangerous and can render\n the system inoperable.\nMake sure you know what you are doing.\n\nProceed?", COLOR_TEXT, (void*) archive, NULL, files_open_nand_warning_onresponse);
 }
 
 void files_open_sd() {

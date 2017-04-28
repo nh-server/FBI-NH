@@ -53,40 +53,6 @@ static int util_get_lines(PrintConsole* console, const char* str) {
     return lines;
 }
 
-static char util_dec2hex(short int c)
-{
-    if (0 <= c && c <= 9) return c + '0';
-    else if (10 <= c && c <= 15) return c + 'A' - 10;
-    else return -1;
-}
-
-void util_urlencode(char url[])
-{
-    int i = 0;
-    int res_len = 0;
-    int len = strlen(url);
-    char res[1024];
-    for (i = 0; i < len; ++i) {
-        char c = url[i];
-        if (
-        		('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') ||
-                c == ':' || c == '/' || c == '.' || c == '%' || c == '+' || c == '?' || c == '=' || c == '&' || c == '#'
-            ) res[res_len++] = c;
-        else {
-            int j = (short int)c;
-            if (j < 0) j += 256;
-            int i1, i0;
-            i1 = j / 16;
-            i0 = j - i1 * 16;
-            res[res_len++] = '%';
-            res[res_len++] = util_dec2hex(i1);
-            res[res_len++] = util_dec2hex(i0);
-        }
-    }
-    res[res_len] = '\0';
-    strcpy(url, res);
-}
-
 void util_panic(const char* s, ...) {
     va_list list;
     va_start(list, s);
@@ -709,6 +675,39 @@ u16* util_select_bnr_title(BNR* bnr) {
 #define MAKE_HTTP_USER_AGENT(major, minor, micro) ("Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/" #major "." #minor "." #micro)
 #define HTTP_USER_AGENT MAKE_HTTP_USER_AGENT(VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO)
 
+static char util_dec2hex(u8 c) {
+    if(c >= 0 && c <= 9) {
+        return (char) ('0' + c);
+    } else if(c >= 10 && c <= 15) {
+        return (char) ('A' + (c - 10));
+    } else {
+        return -1;
+    }
+}
+
+static void util_encode_url(char* out, const char* in, size_t size) {
+    u32 pos = 0;
+    size_t len = strlen(in);
+    for(u32 i = 0; i < len && pos < size; i++) {
+        char c = in[i];
+        if((c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == ':' || c == '/' || c == '.' || c == '%' || c == '+' || c == '?' || c == '=' || c == '&' || c == '#') {
+            out[pos++] = c;
+        } else {
+            out[pos++] = '%';
+
+            if(pos < size) {
+                out[pos++] = util_dec2hex((u8) (((u8) c) / 16));
+            }
+
+            if(pos < size) {
+                out[pos++] = util_dec2hex((u8) (((u8) c) % 16));
+            }
+        }
+    }
+
+    out[pos < size ? pos : size - 1] = '\0';
+}
+
 Result util_http_open(httpcContext* context, u32* responseCode, const char* url, bool userAgent) {
     return util_http_open_ranged(context, responseCode, url, userAgent, 0, 0);
 }
@@ -719,9 +718,7 @@ Result util_http_open_ranged(httpcContext* context, u32* responseCode, const cha
     }
 
     char currUrl[1024];
-    strncpy(currUrl, url, sizeof(currUrl));
-
-    util_urlencode(currUrl);
+    util_encode_url(currUrl, url, sizeof(currUrl));
 
     char range[64];
     if(rangeEnd > rangeStart) {

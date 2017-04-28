@@ -30,8 +30,8 @@ typedef struct {
     data_op_data installInfo;
 } install_cias_data;
 
-static void action_install_cias_n3ds_onresponse(ui_view* view, void* data, bool response) {
-    ((install_cias_data*) data)->n3dsContinue = response;
+static void action_install_cias_n3ds_onresponse(ui_view* view, void* data, u32 response) {
+    ((install_cias_data*) data)->n3dsContinue = response == PROMPT_YES;
 }
 
 static void action_install_cias_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -126,7 +126,7 @@ static Result action_install_cias_open_dst(void* data, u32 index, void* initialR
 
     bool n3ds = false;
     if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((info->ciaInfo.titleId >> 28) & 0xF) == 2) {
-        ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, action_install_cias_draw_top, action_install_cias_n3ds_onresponse);
+        ui_view* view = prompt_display_yes_no("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, data, action_install_cias_draw_top, action_install_cias_n3ds_onresponse);
         if(view != NULL) {
             svcWaitSynchronization(view->active, U64_MAX);
         }
@@ -197,7 +197,7 @@ bool action_install_cias_error(void* data, u32 index, Result res) {
     install_cias_data* installData = (install_cias_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
+        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, NULL, NULL, NULL);
         return false;
     } else if(res != R_FBI_WRONG_SYSTEM) {
         ui_view* view = error_display_res(data, action_install_cias_draw_top, res, "Failed to install CIA file.");
@@ -234,7 +234,7 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
         info_destroy(view);
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
+            prompt_display_notify("Success", "Install finished.", COLOR_TEXT, NULL, NULL, NULL);
         }
 
         action_install_cias_free_data(installData);
@@ -250,10 +250,10 @@ static void action_install_cias_update(ui_view* view, void* data, float* progres
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal), util_get_display_size(installData->installInfo.copyBytesPerSecond), util_get_display_size_units(installData->installInfo.copyBytesPerSecond));
 }
 
-static void action_install_cias_onresponse(ui_view* view, void* data, bool response) {
+static void action_install_cias_onresponse(ui_view* view, void* data, u32 response) {
     install_cias_data* installData = (install_cias_data*) data;
 
-    if(response) {
+    if(response == PROMPT_YES) {
         Result res = task_data_op(&installData->installInfo);
         if(R_SUCCEEDED(res)) {
             info_display("Installing CIA(s)", "Press B to cancel.", true, data, action_install_cias_update, action_install_cias_draw_top);
@@ -290,7 +290,7 @@ static void action_install_cias_loading_update(ui_view* view, void* data, float*
             loadingData->installData->installInfo.total = linked_list_size(&loadingData->installData->contents);
             loadingData->installData->installInfo.processed = loadingData->installData->installInfo.total;
 
-            prompt_display("Confirmation", loadingData->message, COLOR_TEXT, true, loadingData->installData, action_install_cias_draw_top, action_install_cias_onresponse);
+            prompt_display_yes_no("Confirmation", loadingData->message, COLOR_TEXT, loadingData->installData, action_install_cias_draw_top, action_install_cias_onresponse);
         } else {
             error_display_res(NULL, NULL, loadingData->popData.result, "Failed to populate CIA list.");
 

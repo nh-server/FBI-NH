@@ -93,7 +93,7 @@ static Result dumpnand_restore(void* data, u32 index) {
 
 static bool dumpnand_error(void* data, u32 index, Result res) {
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Dump cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
+        prompt_display_notify("Failure", "Dump cancelled.", COLOR_TEXT, NULL, NULL, NULL);
     } else {
         error_display_res(NULL, NULL, res, "Failed to dump NAND.");
     }
@@ -109,7 +109,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
         info_destroy(view);
 
         if(R_SUCCEEDED(dumpData->result)) {
-            prompt_display("Success", "NAND dumped.", COLOR_TEXT, false, NULL, NULL, NULL);
+            prompt_display_notify("Success", "NAND dumped.", COLOR_TEXT, NULL, NULL, NULL);
         }
 
         free(dumpData);
@@ -125,8 +125,8 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
     snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s", util_get_display_size(dumpData->currProcessed), util_get_display_size_units(dumpData->currProcessed), util_get_display_size(dumpData->currTotal), util_get_display_size_units(dumpData->currTotal), util_get_display_size(dumpData->copyBytesPerSecond), util_get_display_size_units(dumpData->copyBytesPerSecond));
 }
 
-static void dumpnand_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
+static void dumpnand_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
         data_op_data* dumpData = (data_op_data*) data;
 
         Result res = task_data_op(dumpData);
@@ -180,5 +180,5 @@ void dumpnand_open() {
 
     data->finished = true;
 
-    prompt_display("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, true, data, NULL, dumpnand_onresponse);
+    prompt_display_yes_no("Confirmation", "Dump raw NAND image to the SD card?", COLOR_TEXT, data, NULL, dumpnand_onresponse);
 }

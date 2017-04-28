@@ -8,6 +8,7 @@
 #include "../task/task.h"
 #include "../../error.h"
 #include "../../info.h"
+#include "../../kbd.h"
 #include "../../list.h"
 #include "../../prompt.h"
 #include "../../ui.h"
@@ -175,7 +176,7 @@ bool action_install_cdn_error(void* data, u32 index, Result res) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, installData->ticket, ui_draw_ticket_info, NULL);
+        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, installData->ticket, ui_draw_ticket_info, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
         error_display(installData->ticket, ui_draw_ticket_info, "Failed to install CDN title.\nHTTP server returned response code %d", installData->responseCode);
     } else {
@@ -219,7 +220,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 
         if(R_SUCCEEDED(installData->installInfo.result) && R_SUCCEEDED(res)) {
             if(installData->finishedPrompt) {
-                prompt_display("Success", "Install finished.", COLOR_TEXT, false, installData->ticket, ui_draw_ticket_info, NULL);
+                prompt_display_notify("Success", "Install finished.", COLOR_TEXT, installData->ticket, ui_draw_ticket_info, NULL);
             }
         } else {
             AM_InstallTitleAbort();
@@ -242,38 +243,55 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal), util_get_display_size(installData->installInfo.copyBytesPerSecond), util_get_display_size_units(installData->installInfo.copyBytesPerSecond));
 }
 
-static void action_install_cdn_start(install_cdn_data* data) {
-    FS_MediaType dest = util_get_title_destination(data->ticket->titleId);
+static void action_install_cdn_n3ds_onresponse(ui_view* view, void* data, u32 response) {
+    install_cdn_data* installData = (install_cdn_data*) data;
 
-    AM_DeleteTitle(dest, data->ticket->titleId);
-    if(dest == MEDIATYPE_SD) {
-        AM_QueryAvailableExternalTitleDatabase(NULL);
-    }
+    if(response == PROMPT_YES) {
+        FS_MediaType dest = util_get_title_destination(installData->ticket->titleId);
 
-    Result res = 0;
-
-    if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, data->ticket->titleId, false))) {
-        if(R_SUCCEEDED(res = task_data_op(&data->installInfo))) {
-            info_display("Installing CDN Title", "Press B to cancel.", true, data, action_install_cdn_update, action_install_cdn_draw_top);
-        } else {
-            AM_InstallTitleAbort();
+        AM_DeleteTitle(dest, installData->ticket->titleId);
+        if(dest == MEDIATYPE_SD) {
+            AM_QueryAvailableExternalTitleDatabase(NULL);
         }
-    }
 
-    if(R_FAILED(res)) {
-        error_display_res(data->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
+        Result res = 0;
 
-        action_install_cdn_free_data(data);
+        if(R_SUCCEEDED(res = AM_InstallTitleBegin(dest, installData->ticket->titleId, false))) {
+            if(R_SUCCEEDED(res = task_data_op(&installData->installInfo))) {
+                info_display("Installing CDN Title", "Press B to cancel.", true, data, action_install_cdn_update, action_install_cdn_draw_top);
+            } else {
+                AM_InstallTitleAbort();
+            }
+        }
+
+        if(R_FAILED(res)) {
+            error_display_res(installData->ticket, ui_draw_ticket_info, res, "Failed to initiate CDN title installation.");
+
+            action_install_cdn_free_data(data);
+        }
+    } else {
+        action_install_cdn_free_data(installData);
     }
 }
 
-static void action_install_cdn_n3ds_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        action_install_cdn_start((install_cdn_data*) data);
+static void action_install_cdn_version_onresponse(ui_view* view, void* data, SwkbdButton button, const char* response) {
+    install_cdn_data* installData = (install_cdn_data*) data;
+
+    if(button == SWKBD_BUTTON_CONFIRM) {
+        strncpy(installData->tmdVersion, response, sizeof(installData->tmdVersion));
+
+        bool n3ds = false;
+        if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((installData->ticket->titleId >> 28) & 0xF) == 2) {
+            prompt_display_yes_no("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, data, action_install_cdn_draw_top, action_install_cdn_n3ds_onresponse);
+        } else {
+            action_install_cdn_n3ds_onresponse(NULL, data, PROMPT_YES);
+        }
+    } else {
+        action_install_cdn_free_data(installData);
     }
 }
 
-static void action_install_cdn_internal(volatile bool* done, ticket_info* info, bool finishedPrompt, char* tmdVersion) {
+void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt, bool promptVersion) {
     install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate install CDN data.");
@@ -286,9 +304,6 @@ static void action_install_cdn_internal(volatile bool* done, ticket_info* info, 
     data->finishedPrompt = finishedPrompt;
 
     memset(data->tmdVersion, '\0', sizeof(data->tmdVersion));
-    if(tmdVersion != NULL) {
-        strncpy(data->tmdVersion, tmdVersion, sizeof(data->tmdVersion));
-    }
 
     data->contentCount = 0;
     memset(data->contentIndices, 0, sizeof(data->contentIndices));
@@ -327,31 +342,25 @@ static void action_install_cdn_internal(volatile bool* done, ticket_info* info, 
 
     data->installInfo.finished = true;
 
-    bool n3ds = false;
-    if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((data->ticket->titleId >> 28) & 0xF) == 2) {
-        prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, action_install_cdn_draw_top, action_install_cdn_n3ds_onresponse);
+    if(promptVersion) {
+        kbd_display("Enter version (empty for default)", "", SWKBD_TYPE_NUMPAD, 0, SWKBD_ANYTHING, sizeof(data->tmdVersion), data, action_install_cdn_version_onresponse);
     } else {
-        action_install_cdn_start(data);
+        action_install_cdn_version_onresponse(NULL, data, SWKBD_BUTTON_CONFIRM, "");
     }
 }
 
-void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt) {
-    action_install_cdn_internal(done, info, finishedPrompt, NULL);
-}
+#define CDN_PROMPT_DEFAULT_VERSION 0
+#define CDN_PROMPT_SELECT_VERSION 1
+#define CDN_PROMPT_NO 2
 
-static void action_install_cdn_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        SwkbdState swkbd;
-        swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, -1);
-        swkbdSetHintText(&swkbd, "Enter version (empty for default)");
-
-        char textBuf[16];
-        swkbdInputText(&swkbd, textBuf, sizeof(textBuf));
-
-        action_install_cdn_internal(NULL, (ticket_info*) data, true, textBuf);
+static void action_install_cdn_onresponse(ui_view* view, void* data, u32 response) {
+    if(response != CDN_PROMPT_NO) {
+        action_install_cdn_noprompt(NULL, (ticket_info*) data, true, response == CDN_PROMPT_SELECT_VERSION);
     }
 }
 
 void action_install_cdn(linked_list* items, list_item* selected) {
-    prompt_display("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, true, selected->data, ui_draw_ticket_info, action_install_cdn_onresponse);
+    static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
+    static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
+    prompt_display_multi_choice("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, options, optionButtons, 3, selected->data, ui_draw_ticket_info, action_install_cdn_onresponse);
 }

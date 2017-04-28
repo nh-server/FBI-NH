@@ -21,6 +21,7 @@ typedef struct {
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index);
 
     bool cdn;
+    bool selectCdnVersion;
     bool cdnDecided;
 
     u32 responseCode;
@@ -30,9 +31,9 @@ typedef struct {
     ticket_info ticketInfo;
 
     data_op_data installInfo;
-} url_install_data;
+} install_url_data;
 
-static void action_url_install_free_data(url_install_data* data) {
+static void action_install_url_free_data(install_url_data* data) {
     if(data->finished != NULL) {
         data->finished(data->userData);
     }
@@ -40,36 +41,41 @@ static void action_url_install_free_data(url_install_data* data) {
     free(data);
 }
 
-static void action_url_install_cdn_check_onresponse(ui_view* view, void* data, bool response) {
-    url_install_data* installData = (url_install_data*) data;
+#define CDN_PROMPT_DEFAULT_VERSION 0
+#define CDN_PROMPT_SELECT_VERSION 1
+#define CDN_PROMPT_NO 2
 
-    installData->cdn = response;
+static void action_install_url_cdn_check_onresponse(ui_view* view, void* data, u32 response) {
+    install_url_data* installData = (install_url_data*) data;
+
+    installData->cdn = response != CDN_PROMPT_NO;
+    installData->selectCdnVersion = response == CDN_PROMPT_SELECT_VERSION;
     installData->cdnDecided = true;
 }
 
-static void action_url_install_n3ds_onresponse(ui_view* view, void* data, bool response) {
-    ((url_install_data*) data)->n3dsContinue = response;
+static void action_install_url_n3ds_onresponse(ui_view* view, void* data, u32 response) {
+    ((install_url_data*) data)->n3dsContinue = response == PROMPT_YES;
 }
 
-static void action_url_install_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
-    url_install_data* installData = (url_install_data*) data;
+static void action_install_url_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    install_url_data* installData = (install_url_data*) data;
 
     if(installData->drawTop != NULL) {
         installData->drawTop(view, installData->userData, x1, y1, x2, y2, installData->installInfo.processed);
     }
 }
 
-static Result action_url_install_is_src_directory(void* data, u32 index, bool* isDirectory) {
+static Result action_install_url_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
     return 0;
 }
 
-static Result action_url_install_make_dst_directory(void* data, u32 index) {
+static Result action_install_url_make_dst_directory(void* data, u32 index) {
     return 0;
 }
 
-static Result action_url_install_open_src(void* data, u32 index, u32* handle) {
-    url_install_data* installData = (url_install_data*) data;
+static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
+    install_url_data* installData = (install_url_data*) data;
 
     Result res = 0;
 
@@ -87,11 +93,11 @@ static Result action_url_install_open_src(void* data, u32 index, u32* handle) {
     return res;
 }
 
-static Result action_url_install_close_src(void* data, u32 index, bool succeeded, u32 handle) {
+static Result action_install_url_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     return util_http_close((httpcContext*) handle);
 }
 
-static Result action_url_install_get_src_size(void* data, u32 handle, u64* size) {
+static Result action_install_url_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
     Result res = util_http_get_size((httpcContext*) handle, &downloadSize);
 
@@ -99,12 +105,12 @@ static Result action_url_install_get_src_size(void* data, u32 handle, u64* size)
     return res;
 }
 
-static Result action_url_install_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
+static Result action_install_url_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
     return util_http_read((httpcContext*) handle, bytesRead, buffer, size);
 }
 
-static Result action_url_install_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
-    url_install_data* installData = (url_install_data*) data;
+static Result action_install_url_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
+    install_url_data* installData = (install_url_data*) data;
 
     Result res = 0;
 
@@ -116,7 +122,9 @@ static Result action_url_install_open_dst(void* data, u32 index, void* initialRe
 
     if(*(u16*) initialReadBlock == 0x0100) {
         if(!installData->cdnDecided) {
-            ui_view* view = prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, action_url_install_draw_top, action_url_install_cdn_check_onresponse);
+            static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
+            static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
+            ui_view* view = prompt_display_multi_choice("Optional", "Install ticket titles from CDN?", COLOR_TEXT, options, optionButtons, 3, data, action_install_url_draw_top, action_install_url_cdn_check_onresponse);
             if(view != NULL) {
                 svcWaitSynchronization(view->active, U64_MAX);
             }
@@ -135,7 +143,7 @@ static Result action_url_install_open_dst(void* data, u32 index, void* initialRe
 
         bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
-            ui_view* view = prompt_display("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, true, data, action_url_install_draw_top, action_url_install_n3ds_onresponse);
+            ui_view* view = prompt_display_yes_no("Confirmation", "Title is intended for New 3DS systems.\nContinue?", COLOR_TEXT, data, action_install_url_draw_top, action_install_url_n3ds_onresponse);
             if(view != NULL) {
                 svcWaitSynchronization(view->active, U64_MAX);
             }
@@ -168,8 +176,8 @@ static Result action_url_install_open_dst(void* data, u32 index, void* initialRe
     return res;
 }
 
-static Result action_url_install_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
-    url_install_data* installData = (url_install_data*) data;
+static Result action_install_url_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
+    install_url_data* installData = (install_url_data*) data;
 
     if(succeeded) {
         Result res = 0;
@@ -179,7 +187,7 @@ static Result action_url_install_close_dst(void* data, u32 index, bool succeeded
 
             if(R_SUCCEEDED(res) && installData->cdn) {
                 volatile bool done = false;
-                action_install_cdn_noprompt(&done, &installData->ticketInfo, false);
+                action_install_cdn_noprompt(&done, &installData->ticketInfo, false, installData->selectCdnVersion);
 
                 while(!done) {
                     svcSleepThread(100000000);
@@ -205,31 +213,31 @@ static Result action_url_install_close_dst(void* data, u32 index, bool succeeded
     }
 }
 
-static Result action_url_install_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
+static Result action_install_url_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_url_install_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_url_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result action_url_install_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_url_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result action_url_install_suspend(void* data, u32 index) {
+static Result action_install_url_suspend(void* data, u32 index) {
     return 0;
 }
 
-static Result action_url_install_restore(void* data, u32 index) {
+static Result action_install_url_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_url_install_error(void* data, u32 index, Result res) {
-    url_install_data* installData = (url_install_data*) data;
+static bool action_install_url_error(void* data, u32 index, Result res) {
+    install_url_data* installData = (install_url_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
+        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, NULL, NULL, NULL);
         return false;
     } else if(res != R_FBI_WRONG_SYSTEM) {
         char* url = installData->urls[index];
@@ -238,15 +246,15 @@ static bool action_url_install_error(void* data, u32 index, Result res) {
 
         if(res == R_FBI_HTTP_RESPONSE_CODE) {
             if(strlen(url) > 38) {
-                view = error_display(data, action_url_install_draw_top, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, installData->responseCode);
+                view = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, installData->responseCode);
             } else {
-                view = error_display(data, action_url_install_draw_top, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, installData->responseCode);
+                view = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, installData->responseCode);
             }
         } else {
             if(strlen(url) > 38) {
-                view = error_display_res(data, action_url_install_draw_top, res, "Failed to install from URL.\n%.35s...", url);
+                view = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
             } else {
-                view = error_display_res(data, action_url_install_draw_top, res, "Failed to install from URL.\n%.38s", url);
+                view = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
             }
         }
 
@@ -258,18 +266,18 @@ static bool action_url_install_error(void* data, u32 index, Result res) {
     return index < installData->installInfo.total - 1;
 }
 
-static void action_url_install_install_update(ui_view* view, void* data, float* progress, char* text) {
-    url_install_data* installData = (url_install_data*) data;
+static void action_install_url_install_update(ui_view* view, void* data, float* progress, char* text) {
+    install_url_data* installData = (install_url_data*) data;
 
     if(installData->installInfo.finished) {
         ui_pop();
         info_destroy(view);
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
+            prompt_display_notify("Success", "Install finished.", COLOR_TEXT, NULL, NULL, NULL);
         }
 
-        action_url_install_free_data(installData);
+        action_install_url_free_data(installData);
 
         return;
     }
@@ -282,26 +290,26 @@ static void action_url_install_install_update(ui_view* view, void* data, float* 
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal), util_get_display_size(installData->installInfo.copyBytesPerSecond), util_get_display_size_units(installData->installInfo.copyBytesPerSecond));
 }
 
-static void action_url_install_confirm_onresponse(ui_view* view, void* data, bool response) {
-    url_install_data* installData = (url_install_data*) data;
+static void action_install_url_confirm_onresponse(ui_view* view, void* data, u32 response) {
+    install_url_data* installData = (install_url_data*) data;
 
-    if(response) {
+    if(response == PROMPT_YES) {
         Result res = task_data_op(&installData->installInfo);
         if(R_SUCCEEDED(res)) {
-            info_display("Installing From URL(s)", "Press B to cancel.", true, data, action_url_install_install_update, action_url_install_draw_top);
+            info_display("Installing From URL(s)", "Press B to cancel.", true, data, action_install_url_install_update, action_install_url_draw_top);
         } else {
             error_display_res(NULL, NULL, res, "Failed to initiate installation.");
 
-            action_url_install_free_data(installData);
+            action_install_url_free_data(installData);
         }
     } else {
-        action_url_install_free_data(installData);
+        action_install_url_free_data(installData);
     }
 }
 
-void action_url_install(const char* confirmMessage, const char* urls, void* userData, void (*finished)(void* data),
+void action_install_url(const char* confirmMessage, const char* urls, void* userData, void (*finished)(void* data),
                                                                                       void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
-    url_install_data* data = (url_install_data*) calloc(1, sizeof(url_install_data));
+    install_url_data* data = (install_url_data*) calloc(1, sizeof(install_url_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate URL install data.");
 
@@ -346,6 +354,7 @@ void action_url_install(const char* confirmMessage, const char* urls, void* user
     data->drawTop = drawTop;
 
     data->cdn = false;
+    data->selectCdnVersion = false;
     data->cdnDecided = false;
 
     data->responseCode = 0;
@@ -361,27 +370,27 @@ void action_url_install(const char* confirmMessage, const char* urls, void* user
     data->installInfo.copyBufferSize = 128 * 1024;
     data->installInfo.copyEmpty = false;
 
-    data->installInfo.isSrcDirectory = action_url_install_is_src_directory;
-    data->installInfo.makeDstDirectory = action_url_install_make_dst_directory;
+    data->installInfo.isSrcDirectory = action_install_url_is_src_directory;
+    data->installInfo.makeDstDirectory = action_install_url_make_dst_directory;
 
-    data->installInfo.openSrc = action_url_install_open_src;
-    data->installInfo.closeSrc = action_url_install_close_src;
-    data->installInfo.getSrcSize = action_url_install_get_src_size;
-    data->installInfo.readSrc = action_url_install_read_src;
+    data->installInfo.openSrc = action_install_url_open_src;
+    data->installInfo.closeSrc = action_install_url_close_src;
+    data->installInfo.getSrcSize = action_install_url_get_src_size;
+    data->installInfo.readSrc = action_install_url_read_src;
 
-    data->installInfo.openDst = action_url_install_open_dst;
-    data->installInfo.closeDst = action_url_install_close_dst;
-    data->installInfo.writeDst = action_url_install_write_dst;
+    data->installInfo.openDst = action_install_url_open_dst;
+    data->installInfo.closeDst = action_install_url_close_dst;
+    data->installInfo.writeDst = action_install_url_write_dst;
 
-    data->installInfo.suspendCopy = action_url_install_suspend_copy;
-    data->installInfo.restoreCopy = action_url_install_restore_copy;
+    data->installInfo.suspendCopy = action_install_url_suspend_copy;
+    data->installInfo.restoreCopy = action_install_url_restore_copy;
 
-    data->installInfo.suspend = action_url_install_suspend;
-    data->installInfo.restore = action_url_install_restore;
+    data->installInfo.suspend = action_install_url_suspend;
+    data->installInfo.restore = action_install_url_restore;
 
-    data->installInfo.error = action_url_install_error;
+    data->installInfo.error = action_install_url_error;
 
     data->installInfo.finished = true;
 
-    prompt_display("Confirmation", confirmMessage, COLOR_TEXT, true, data, action_url_install_draw_top, action_url_install_confirm_onresponse);
+    prompt_display_yes_no("Confirmation", confirmMessage, COLOR_TEXT, data, action_install_url_draw_top, action_install_url_confirm_onresponse);
 }

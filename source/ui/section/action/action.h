@@ -38,7 +38,7 @@ void action_delete_all_pending_titles(linked_list* items, list_item* selected);
 void action_delete_ticket(linked_list* items, list_item* selected);
 void action_delete_tickets_unused(linked_list* items, list_item* selected);
 void action_install_cdn(linked_list* items, list_item* selected);
-void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt);
+void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt, bool promptVersion);
 
 void action_delete_title(linked_list* items, list_item* selected);
 void action_delete_title_ticket(linked_list* items, list_item* selected);
@@ -53,7 +53,7 @@ void action_import_secure_value(linked_list* items, list_item* selected);
 void action_export_secure_value(linked_list* items, list_item* selected);
 void action_delete_secure_value(linked_list* items, list_item* selected);
 
-void action_url_install(const char* confirmMessage, const char* urls, void* userData, void (*finished)(void* data),
+void action_install_url(const char* confirmMessage, const char* urls, void* userData, void (*finished)(void* data),
                                                                                       void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index));
 
 void action_install_titledb(linked_list* items, list_item* selected);
