@@ -115,7 +115,7 @@ static bool action_export_twl_save_error(void* data, u32 index, Result res) {
     export_twl_save_data* exportData = (export_twl_save_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Export cancelled.", COLOR_TEXT, false, exportData->title, ui_draw_title_info, NULL);
+        prompt_display_notify("Failure", "Export cancelled.", COLOR_TEXT, exportData->title, ui_draw_title_info, NULL);
     } else {
         error_display_res(exportData->title, ui_draw_title_info, res, "Failed to export save.");
     }
@@ -131,7 +131,7 @@ static void action_export_twl_save_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(exportData->exportInfo.result)) {
-            prompt_display("Success", "Save exported.", COLOR_TEXT, false, exportData->title, ui_draw_title_info, NULL);
+            prompt_display_notify("Success", "Save exported.", COLOR_TEXT, exportData->title, ui_draw_title_info, NULL);
         }
 
         free(data);
@@ -147,8 +147,8 @@ static void action_export_twl_save_update(ui_view* view, void* data, float* prog
     snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s", util_get_display_size(exportData->exportInfo.currProcessed), util_get_display_size_units(exportData->exportInfo.currProcessed), util_get_display_size(exportData->exportInfo.currTotal), util_get_display_size_units(exportData->exportInfo.currTotal), util_get_display_size(exportData->exportInfo.copyBytesPerSecond), util_get_display_size_units(exportData->exportInfo.copyBytesPerSecond));
 }
 
-static void action_export_twl_save_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
+static void action_export_twl_save_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
         export_twl_save_data* exportData = (export_twl_save_data*) data;
 
         Result res = task_data_op(&exportData->exportInfo);
@@ -204,5 +204,5 @@ void action_export_twl_save(linked_list* items, list_item* selected) {
 
     data->exportInfo.finished = true;
 
-    prompt_display("Confirmation", "Export the save of the selected title?", COLOR_TEXT, true, data, action_export_twl_save_draw_top, action_export_twl_save_onresponse);
+    prompt_display_yes_no("Confirmation", "Export the save of the selected title?", COLOR_TEXT, data, action_export_twl_save_draw_top, action_export_twl_save_onresponse);
 }

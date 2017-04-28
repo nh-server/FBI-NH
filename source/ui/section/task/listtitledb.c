@@ -14,6 +14,24 @@
 #include "../../../json/json.h"
 #include "../../../stb_image/stb_image.h"
 
+void task_populate_titledb_update_status(list_item* item) {
+    titledb_info* info = (titledb_info*) item->data;
+
+    AM_TitleEntry entry;
+    info->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->titleId), 1, &info->titleId, &entry));
+    info->installedVersion = info->installed ? entry.version : (u16) 0;
+
+    if(info->installed) {
+        if(info->installedVersion < info->latestVersion) {
+            item->color = COLOR_TITLEDB_OUTDATED;
+        } else {
+            item->color = COLOR_TITLEDB_INSTALLED;
+        }
+    } else {
+        item->color = COLOR_TITLEDB_NOT_INSTALLED;
+    }
+}
+
 static Result task_populate_titledb_download(u32* downloadSize, void* buffer, u32 maxSize, const char* url) {
     Result res = 0;
 
@@ -92,27 +110,15 @@ static void task_populate_titledb_thread(void* arg) {
                                         }
                                     }
 
-                                    AM_TitleEntry entry;
-                                    titledbInfo->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(titledbInfo->titleId), 1, &titledbInfo->titleId, &entry));
-                                    titledbInfo->installedVersion = titledbInfo->installed ? entry.version : (u16) 0;
-
                                     if(strlen(titledbInfo->meta.shortDescription) > 0) {
                                         strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
                                     } else {
                                         snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titledbInfo->titleId);
                                     }
 
-                                    if(titledbInfo->installed) {
-                                        if(titledbInfo->installedVersion < titledbInfo->latestVersion) {
-                                            item->color = COLOR_TITLEDB_OUTDATED;
-                                        } else {
-                                            item->color = COLOR_TITLEDB_INSTALLED;
-                                        }
-                                    } else {
-                                        item->color = COLOR_TITLEDB_NOT_INSTALLED;
-                                    }
-
                                     item->data = titledbInfo;
+
+                                    task_populate_titledb_update_status(item);
 
                                     linked_list_iter iter;
                                     linked_list_iterate(data->items, &iter);

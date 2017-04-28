@@ -21,24 +21,23 @@
 #define TEXTURE_LOGO 11
 #define TEXTURE_SELECTION_OVERLAY 12
 #define TEXTURE_SCROLL_BAR 13
-#define TEXTURE_BUTTON_SMALL 14
-#define TEXTURE_BUTTON_LARGE 15
-#define TEXTURE_PROGRESS_BAR_BG 16
-#define TEXTURE_PROGRESS_BAR_CONTENT 17
-#define TEXTURE_META_INFO_BOX 18
-#define TEXTURE_META_INFO_BOX_SHADOW 19
-#define TEXTURE_BATTERY_CHARGING 20
-#define TEXTURE_BATTERY_0 21
-#define TEXTURE_BATTERY_1 22
-#define TEXTURE_BATTERY_2 23
-#define TEXTURE_BATTERY_3 24
-#define TEXTURE_BATTERY_4 25
-#define TEXTURE_BATTERY_5 26
-#define TEXTURE_WIFI_DISCONNECTED 27
-#define TEXTURE_WIFI_0 28
-#define TEXTURE_WIFI_1 29
-#define TEXTURE_WIFI_2 30
-#define TEXTURE_WIFI_3 31
+#define TEXTURE_BUTTON 14
+#define TEXTURE_PROGRESS_BAR_BG 15
+#define TEXTURE_PROGRESS_BAR_CONTENT 16
+#define TEXTURE_META_INFO_BOX 17
+#define TEXTURE_META_INFO_BOX_SHADOW 18
+#define TEXTURE_BATTERY_CHARGING 19
+#define TEXTURE_BATTERY_0 20
+#define TEXTURE_BATTERY_1 21
+#define TEXTURE_BATTERY_2 22
+#define TEXTURE_BATTERY_3 23
+#define TEXTURE_BATTERY_4 24
+#define TEXTURE_BATTERY_5 25
+#define TEXTURE_WIFI_DISCONNECTED 26
+#define TEXTURE_WIFI_0 27
+#define TEXTURE_WIFI_1 28
+#define TEXTURE_WIFI_2 29
+#define TEXTURE_WIFI_3 30
 
 #define MAX_COLORS 14
 
@@ -64,7 +63,6 @@ u32 screen_allocate_free_texture();
 void screen_load_texture(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
 void screen_load_texture_file(u32 id, const char* path, bool linearFilter);
 void screen_load_texture_tiled(u32 id, void* tiledData, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter);
-void screen_load_texture_screenshot(u32 id, gfxScreen_t screen);
 void screen_unload_texture(u32 id);
 void screen_get_texture_size(u32* width, u32* height, u32 id);
 void screen_begin_frame();

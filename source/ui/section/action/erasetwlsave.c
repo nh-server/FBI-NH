@@ -93,7 +93,7 @@ static bool action_erase_twl_save_error(void* data, u32 index, Result res) {
     erase_twl_save_data* eraseData = (erase_twl_save_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Erase cancelled.", COLOR_TEXT, false, eraseData->title, ui_draw_title_info, NULL);
+        prompt_display_notify("Failure", "Erase cancelled.", COLOR_TEXT, eraseData->title, ui_draw_title_info, NULL);
     } else {
         error_display_res(eraseData->title, ui_draw_title_info, res, "Failed to erase save.");
     }
@@ -109,7 +109,7 @@ static void action_erase_twl_save_update(ui_view* view, void* data, float* progr
         info_destroy(view);
 
         if(R_SUCCEEDED(eraseData->eraseInfo.result)) {
-            prompt_display("Success", "Save erased.", COLOR_TEXT, false, eraseData->title, ui_draw_title_info, NULL);
+            prompt_display_notify("Success", "Save erased.", COLOR_TEXT, eraseData->title, ui_draw_title_info, NULL);
         }
 
         free(data);
@@ -125,8 +125,8 @@ static void action_erase_twl_save_update(ui_view* view, void* data, float* progr
     snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s", util_get_display_size(eraseData->eraseInfo.currProcessed), util_get_display_size_units(eraseData->eraseInfo.currProcessed), util_get_display_size(eraseData->eraseInfo.currTotal), util_get_display_size_units(eraseData->eraseInfo.currTotal), util_get_display_size(eraseData->eraseInfo.copyBytesPerSecond), util_get_display_size_units(eraseData->eraseInfo.copyBytesPerSecond));
 }
 
-static void action_erase_twl_save_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
+static void action_erase_twl_save_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
         erase_twl_save_data* eraseData = (erase_twl_save_data*) data;
 
         Result res = task_data_op(&eraseData->eraseInfo);
@@ -182,5 +182,5 @@ void action_erase_twl_save(linked_list* items, list_item* selected) {
 
     data->eraseInfo.finished = true;
 
-    prompt_display("Confirmation", "Erase the save of the selected title?", COLOR_TEXT, true, data, action_erase_twl_save_draw_top, action_erase_twl_save_onresponse);
+    prompt_display_yes_no("Confirmation", "Erase the save of the selected title?", COLOR_TEXT, data, action_erase_twl_save_draw_top, action_erase_twl_save_onresponse);
 }

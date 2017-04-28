@@ -255,6 +255,7 @@ void task_free_title(list_item* item);
 void task_clear_titles(linked_list* items);
 Result task_populate_titles(populate_titles_data* data);
 
+void task_populate_titledb_update_status(list_item* item);
 void task_free_titledb(list_item* item);
 void task_clear_titledb(linked_list* items);
 Result task_populate_titledb(populate_titledb_data* data);

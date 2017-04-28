@@ -23,7 +23,7 @@ static void action_import_seed_update(ui_view* view, void* data, float* progress
     info_destroy(view);
 
     if(R_SUCCEEDED(res)) {
-        prompt_display("Success", "Seed imported.", COLOR_TEXT, false, info, ui_draw_title_info, NULL);
+        prompt_display_notify("Success", "Seed imported.", COLOR_TEXT, info, ui_draw_title_info, NULL);
     } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
         error_display(NULL, NULL, "Failed to import seed.\nHTTP server returned response code %d", responseCode);
     } else {
@@ -31,12 +31,12 @@ static void action_import_seed_update(ui_view* view, void* data, float* progress
     }
 }
 
-static void action_import_seed_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
+static void action_import_seed_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
         info_display("Importing Seed", "", false, data, action_import_seed_update, ui_draw_title_info);
     }
 }
 
 void action_import_seed(linked_list* items, list_item* selected) {
-    prompt_display("Confirmation", "Import the seed of the selected title?", COLOR_TEXT, true, selected->data, ui_draw_title_info, action_import_seed_onresponse);
+    prompt_display_yes_no("Confirmation", "Import the seed of the selected title?", COLOR_TEXT, selected->data, ui_draw_title_info, action_import_seed_onresponse);
 }

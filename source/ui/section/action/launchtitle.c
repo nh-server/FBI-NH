@@ -29,12 +29,12 @@ static void action_launch_title_update(ui_view* view, void* data, float* progres
     }
 }
 
-static void action_launch_title_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
+static void action_launch_title_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
         info_display("Launching Title", "", false, data, action_launch_title_update, ui_draw_title_info);
     }
 }
 
 void action_launch_title(linked_list* items, list_item* selected) {
-    prompt_display("Confirmation", "Launch the selected title?", COLOR_TEXT, true, selected->data, ui_draw_title_info, action_launch_title_onresponse);
+    prompt_display_yes_no("Confirmation", "Launch the selected title?", COLOR_TEXT, selected->data, ui_draw_title_info, action_launch_title_onresponse);
 }

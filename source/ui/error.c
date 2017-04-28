@@ -577,7 +577,7 @@ static void error_draw_top(ui_view* view, void* data, float x1, float y1, float 
     }
 }
 
-static void error_onresponse(ui_view* view, void* data, bool response) {
+static void error_onresponse(ui_view* view, void* data, u32 response) {
     free(data);
 }
 
@@ -596,7 +596,7 @@ ui_view* error_display(void* data, void (*drawTop)(ui_view* view, void* data, fl
     vsnprintf(errorData->fullText, 4096, text, list);
     va_end(list);
 
-    return prompt_display("Error", errorData->fullText, COLOR_TEXT, false, errorData, error_draw_top, error_onresponse);
+    return prompt_display_notify("Error", errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
 }
 
 ui_view* error_display_res(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), Result result, const char* text, ...) {
@@ -621,7 +621,7 @@ ui_view* error_display_res(void* data, void (*drawTop)(ui_view* view, void* data
     int description = R_DESCRIPTION(result);
     snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDesc: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
 
-    return prompt_display("Error", errorData->fullText, COLOR_TEXT, false, errorData, error_draw_top, error_onresponse);
+    return prompt_display_notify("Error", errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
 }
 
 ui_view* error_display_errno(void* data, void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2), int err, const char* text, ...) {
@@ -646,5 +646,5 @@ ui_view* error_display_errno(void* data, void (*drawTop)(ui_view* view, void* da
 
     snprintf(errorData->fullText, 4096, "%s\nI/O Error: %s (%d)", textBuf, strerror(err), err);
 
-    return prompt_display("Error", errorData->fullText, COLOR_TEXT, false, errorData, error_draw_top, error_onresponse);
+    return prompt_display_notify("Error", errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);
 }

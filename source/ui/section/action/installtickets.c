@@ -25,6 +25,7 @@ typedef struct {
 
     bool delete;
     bool cdn;
+    bool selectCdnVersion;
 
     data_op_data installInfo;
 } install_tickets_data;
@@ -122,7 +123,7 @@ static Result action_install_tickets_close_dst(void* data, u32 index, bool succe
         Result res = AM_InstallTicketFinish(handle);
         if(R_SUCCEEDED(res) && installData->cdn) {
             volatile bool done = false;
-            action_install_cdn_noprompt(&done, &((file_info*) ((list_item*) linked_list_get(&installData->contents, index))->data)->ticketInfo, false);
+            action_install_cdn_noprompt(&done, &((file_info*) ((list_item*) linked_list_get(&installData->contents, index))->data)->ticketInfo, false, installData->selectCdnVersion);
 
             while(!done) {
                 svcSleepThread(100000000);
@@ -159,7 +160,7 @@ static bool action_install_tickets_error(void* data, u32 index, Result res) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
     if(res == R_FBI_CANCELLED) {
-        prompt_display("Failure", "Install cancelled.", COLOR_TEXT, false, NULL, NULL, NULL);
+        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, NULL, NULL, NULL);
         return false;
     } else {
         ui_view* view = error_display_res(data, action_install_tickets_draw_top, res, "Failed to install ticket.");
@@ -196,7 +197,7 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
         info_destroy(view);
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
-            prompt_display("Success", "Install finished.", COLOR_TEXT, false, NULL, NULL, NULL);
+            prompt_display_notify("Success", "Install finished.", COLOR_TEXT, NULL, NULL, NULL);
         }
 
         action_install_tickets_free_data(installData);
@@ -212,10 +213,15 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
     snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal), util_get_display_size(installData->installInfo.copyBytesPerSecond), util_get_display_size_units(installData->installInfo.copyBytesPerSecond));
 }
 
-static void action_install_tickets_cdn_check_onresponse(ui_view* view, void* data, bool response) {
+#define CDN_PROMPT_DEFAULT_VERSION 0
+#define CDN_PROMPT_SELECT_VERSION 1
+#define CDN_PROMPT_NO 2
+
+static void action_install_tickets_cdn_check_onresponse(ui_view* view, void* data, u32 response) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
-    installData->cdn = response;
+    installData->cdn = response != CDN_PROMPT_NO;
+    installData->selectCdnVersion = response == CDN_PROMPT_SELECT_VERSION;
 
     Result res = task_data_op(&installData->installInfo);
     if(R_SUCCEEDED(res)) {
@@ -227,9 +233,11 @@ static void action_install_tickets_cdn_check_onresponse(ui_view* view, void* dat
     }
 }
 
-static void action_install_tickets_onresponse(ui_view* view, void* data, bool response) {
-    if(response) {
-        prompt_display("Optional", "Install ticket titles from CDN?", COLOR_TEXT, true, data, action_install_tickets_draw_top, action_install_tickets_cdn_check_onresponse);
+static void action_install_tickets_onresponse(ui_view* view, void* data, u32 response) {
+    if(response == PROMPT_YES) {
+        static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
+        static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
+        prompt_display_multi_choice("Optional", "Install ticket titles from CDN?", COLOR_TEXT, options, optionButtons, 3, data, action_install_tickets_draw_top, action_install_tickets_cdn_check_onresponse);
     } else {
         action_install_tickets_free_data((install_tickets_data*) data);
     }
@@ -258,7 +266,7 @@ static void action_install_tickets_loading_update(ui_view* view, void* data, flo
             loadingData->installData->installInfo.total = linked_list_size(&loadingData->installData->contents);
             loadingData->installData->installInfo.processed = loadingData->installData->installInfo.total;
 
-            prompt_display("Confirmation", loadingData->message, COLOR_TEXT, true, loadingData->installData, action_install_tickets_draw_top, action_install_tickets_onresponse);
+            prompt_display_yes_no("Confirmation", loadingData->message, COLOR_TEXT, loadingData->installData, action_install_tickets_draw_top, action_install_tickets_onresponse);
         } else {
             error_display_res(NULL, NULL, loadingData->popData.result, "Failed to populate ticket list.");
 
