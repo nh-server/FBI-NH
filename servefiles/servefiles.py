@@ -12,13 +12,12 @@ import urllib
 try:
     from SimpleHTTPServer import SimpleHTTPRequestHandler
     from SocketServer import TCPServer
-    from urlparse import urljoin
-    from urllib import pathname2url, quote
+    from urllib import quote
+    input = raw_input
 except ImportError:
     from http.server import SimpleHTTPRequestHandler
     from socketserver import TCPServer
-    from urllib.parse import urljoin, quote
-    from urllib.request import pathname2url
+    from urllib.parse import quote
 
 interactive = False
     
@@ -39,15 +38,15 @@ accepted_extension = ('.cia', '.tik', '.cetk')
 hostPort = 8080 # Default value
 
 if interactive:
-    target_ip = raw_input("The IP of your 3DS: ")
-    target_path = raw_input("The file you want to send (.cia, .tik, or .cetk): ")
+    target_ip = input("The IP of your 3DS: ")
+    target_path = input("The file you want to send (.cia, .tik, or .cetk): ")
     
-    hostIp = raw_input("Host IP (or press Enter to have the script detect host IP):")
+    hostIp = input("Host IP (or press Enter to have the script detect host IP):")
     if hostIp == '':
         print('Detecting host IP...') 
         hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
     else:
-        hostPort = raw_input("Host port (or press Enter to keep default, 8080):")
+        hostPort = input("Host port (or press Enter to keep default, 8080):")
         if hostPort == '':
             hostPort = 8080 # Default
     
