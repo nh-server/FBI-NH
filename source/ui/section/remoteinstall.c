@@ -346,7 +346,7 @@ static void remoteinstall_qr_update(ui_view* view, void* data, float* progress, 
 
     svcWaitSynchronization(installData->captureInfo.mutex, U64_MAX);
 
-    screen_load_texture(installData->tex, installData->captureInfo.buffer, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16), QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT, GPU_RGB565, false);
+    screen_load_texture_untiled(installData->tex, installData->captureInfo.buffer, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16), QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT, GPU_RGB565, false);
 
     for(int x = 0; x < w; x++) {
         for(int y = 0; y < h; y++) {
