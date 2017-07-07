@@ -190,7 +190,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                         }
 
                         titleInfo->meta.texture = screen_allocate_free_texture();
-                        screen_load_texture(titleInfo->meta.texture, icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
+                        screen_load_texture_untiled(titleInfo->meta.texture, icon, sizeof(icon), 32, 32, GPU_RGBA5551, false);
                     }
 
                     free(bnr);
