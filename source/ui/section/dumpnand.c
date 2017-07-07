@@ -122,7 +122,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
     }
 
     *progress = dumpData->currTotal != 0 ? (float) ((double) dumpData->currProcessed / (double) dumpData->currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s", util_get_display_size(dumpData->currProcessed), util_get_display_size_units(dumpData->currProcessed), util_get_display_size(dumpData->currTotal), util_get_display_size_units(dumpData->currTotal), util_get_display_size(dumpData->copyBytesPerSecond), util_get_display_size_units(dumpData->copyBytesPerSecond));
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", util_get_display_size(dumpData->currProcessed), util_get_display_size_units(dumpData->currProcessed), util_get_display_size(dumpData->currTotal), util_get_display_size_units(dumpData->currTotal), util_get_display_size(dumpData->copyBytesPerSecond), util_get_display_size_units(dumpData->copyBytesPerSecond), util_get_display_eta(dumpData->estimatedRemainingSeconds));
 }
 
 static void dumpnand_onresponse(ui_view* view, void* data, u32 response) {
