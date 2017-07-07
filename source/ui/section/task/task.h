@@ -107,6 +107,7 @@ typedef struct data_op_data_s {
     bool copyEmpty;
 
     u32 copyBytesPerSecond;
+    u32 estimatedRemainingSeconds;
 
     u32 processed;
     u32 total;

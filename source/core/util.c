@@ -526,6 +526,18 @@ Result util_close_archive(FS_Archive archive) {
     return FSUSER_CloseArchive(archive);
 }
 
+const char* util_get_display_eta(u32 seconds) {
+    static char disp[9];
+
+    u8 hours     = seconds / 3600;
+    seconds     -= hours * 3600;
+    u8 minutes   = seconds / 60;
+    seconds     -= minutes* 60;
+
+    snprintf(disp, 9, "%02u:%02u:%02u", hours, minutes, (u8) seconds);
+    return disp;
+}
+
 double util_get_display_size(u64 size) {
     double s = size;
     if(s > 1024) {

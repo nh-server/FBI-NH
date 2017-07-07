@@ -76,6 +76,7 @@ Result util_open_archive(FS_Archive* archive, FS_ArchiveID id, FS_Path path);
 Result util_ref_archive(FS_Archive archive);
 Result util_close_archive(FS_Archive archive);
 
+const char* util_get_display_eta(u32 seconds);
 double util_get_display_size(u64 size);
 const char* util_get_display_size_units(u64 size);
 

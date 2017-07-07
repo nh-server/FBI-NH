@@ -144,7 +144,7 @@ static void action_export_twl_save_update(ui_view* view, void* data, float* prog
     }
 
     *progress = exportData->exportInfo.currTotal != 0 ? (float) ((double) exportData->exportInfo.currProcessed / (double) exportData->exportInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s", util_get_display_size(exportData->exportInfo.currProcessed), util_get_display_size_units(exportData->exportInfo.currProcessed), util_get_display_size(exportData->exportInfo.currTotal), util_get_display_size_units(exportData->exportInfo.currTotal), util_get_display_size(exportData->exportInfo.copyBytesPerSecond), util_get_display_size_units(exportData->exportInfo.copyBytesPerSecond));
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", util_get_display_size(exportData->exportInfo.currProcessed), util_get_display_size_units(exportData->exportInfo.currProcessed), util_get_display_size(exportData->exportInfo.currTotal), util_get_display_size_units(exportData->exportInfo.currTotal), util_get_display_size(exportData->exportInfo.copyBytesPerSecond), util_get_display_size_units(exportData->exportInfo.copyBytesPerSecond), util_get_display_eta(exportData->exportInfo.estimatedRemainingSeconds));
 }
 
 static void action_export_twl_save_onresponse(ui_view* view, void* data, u32 response) {
