@@ -68,6 +68,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                     if(buffer != NULL) {
                         u32 dstHandle = 0;
 
+                        u64 ioStartTime = 0;
                         u64 lastBytesPerSecondUpdate = osGetTime();
                         u32 bytesSinceUpdate = 0;
 
@@ -102,6 +103,15 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                             u64 elapsed = time - lastBytesPerSecondUpdate;
                             if(elapsed >= 1000) {
                                 data->copyBytesPerSecond = (u32) (bytesSinceUpdate / (elapsed / 1000.0f));
+
+                                if (ioStartTime != 0) {
+                                        data->estimatedRemainingSeconds = (u32) ((data->currTotal - data->currProcessed) / (data->currProcessed / ((time - ioStartTime) / 1000.0f)));
+                                } else {
+                                        data->estimatedRemainingSeconds = 0;
+                                }
+                                if (ioStartTime == 0 && data->currProcessed > 0) {
+                                        ioStartTime = time;
+                                }
 
                                 bytesSinceUpdate = 0;
                                 lastBytesPerSecondUpdate = time;
