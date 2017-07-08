@@ -296,6 +296,10 @@ static void remoteinstall_qr_draw_top(ui_view* view, void* data, float x1, float
     remoteinstall_qr_data* installData = (remoteinstall_qr_data*) data;
 
     if(installData->tex != 0) {
+        svcWaitSynchronization(installData->captureInfo.mutex, U64_MAX);
+        screen_load_texture_untiled(installData->tex, installData->captureInfo.buffer, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16), QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT, GPU_RGB565, false);
+        svcReleaseMutex(installData->captureInfo.mutex);
+
         screen_draw_texture(installData->tex, 0, 0, QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT);
     }
 }
@@ -345,8 +349,6 @@ static void remoteinstall_qr_update(ui_view* view, void* data, float* progress, 
     uint8_t* qrBuf = quirc_begin(installData->qrContext, &w, &h);
 
     svcWaitSynchronization(installData->captureInfo.mutex, U64_MAX);
-
-    screen_load_texture_untiled(installData->tex, installData->captureInfo.buffer, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16), QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT, GPU_RGB565, false);
 
     for(int x = 0; x < w; x++) {
         for(int y = 0; y < h; y++) {

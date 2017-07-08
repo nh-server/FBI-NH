@@ -328,7 +328,21 @@ u32 screen_allocate_free_texture() {
     return id;
 }
 
-static void screen_prepare_texture(u32 id, u32 width, u32 height, u32 pow2Size, u32 pow2Width, u32 pow2Height, GPU_TEXCOLOR format, bool linearFilter) {
+static void screen_prepare_texture(u32* pow2SizeOut, u32* pow2WidthOut, u32* pow2HeightOut, u32* pixelSizeOut, u32 id, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
+    u32 pixelSize = size / width / height;
+
+    u32 pow2Width = screen_next_pow_2(width);
+    if(pow2Width < 64) {
+        pow2Width = 64;
+    }
+
+    u32 pow2Height = screen_next_pow_2(height);
+    if(pow2Height < 64) {
+        pow2Height = 64;
+    }
+
+    u32 pow2Size = pow2Width * pow2Height * pixelSize;
+
     if(textures[id].tex.data != NULL && (textures[id].tex.size != pow2Size || textures[id].tex.width != pow2Width || textures[id].tex.height != pow2Height || textures[id].tex.fmt != format)) {
         C3D_TexDelete(&textures[id].tex);
     }
@@ -343,6 +357,22 @@ static void screen_prepare_texture(u32 id, u32 width, u32 height, u32 pow2Size, 
     textures[id].allocated = true;
     textures[id].width = width;
     textures[id].height = height;
+
+    if(pow2SizeOut != NULL) {
+        *pow2SizeOut = pow2Size;
+    }
+
+    if(pow2WidthOut != NULL) {
+        *pow2WidthOut = pow2Width;
+    }
+
+    if(pow2HeightOut != NULL) {
+        *pow2HeightOut = pow2Height;
+    }
+
+    if(pixelSizeOut != NULL) {
+        *pixelSizeOut = pixelSize;
+    }
 }
 
 void screen_load_texture_tiled(u32 id, void* data, u32 size, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
@@ -351,20 +381,11 @@ void screen_load_texture_tiled(u32 id, void* data, u32 size, u32 width, u32 heig
         return;
     }
 
-    u32 pixelSize = size / width / height;
-
-    u32 pow2Width = screen_next_pow_2(width);
-    if(pow2Width < 64) {
-        pow2Width = 64;
-    }
-
-    u32 pow2Height = screen_next_pow_2(height);
-    if(pow2Height < 64) {
-        pow2Height = 64;
-    }
-
-    u32 pow2Size = pow2Width * pow2Height * pixelSize;
-    screen_prepare_texture(id, width, height, pow2Size, pow2Width, pow2Height, format, linearFilter);
+    u32 pow2Width = 0;
+    u32 pow2Height = 0;
+    u32 pow2Size = 0;
+    u32 pixelSize = 0;
+    screen_prepare_texture(&pow2Size, &pow2Width, &pow2Height, &pixelSize, id, size, width, height, format, linearFilter);
 
     if(width != pow2Width || height != pow2Height) {
         memset(textures[id].tex.data, 0, pow2Size);
@@ -394,20 +415,11 @@ void screen_load_texture_untiled(u32 id, void* data, u32 size, u32 width, u32 he
         return;
     }
 
-    u32 pixelSize = size / width / height;
-
-    u32 pow2Width = screen_next_pow_2(width);
-    if(pow2Width < 64) {
-        pow2Width = 64;
-    }
-
-    u32 pow2Height = screen_next_pow_2(height);
-    if(pow2Height < 64) {
-        pow2Height = 64;
-    }
-
-    u32 pow2Size = pow2Width * pow2Height * pixelSize;
-    screen_prepare_texture(id, width, height, pow2Size, pow2Width, pow2Height, format, linearFilter);
+    u32 pow2Width = 0;
+    u32 pow2Height = 0;
+    u32 pow2Size = 0;
+    u32 pixelSize = 0;
+    screen_prepare_texture(&pow2Size, &pow2Width, &pow2Height, &pixelSize, id, size, width, height, format, linearFilter);
 
     memset(textures[id].tex.data, 0, pow2Size);
 
