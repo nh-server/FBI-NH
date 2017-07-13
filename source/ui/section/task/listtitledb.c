@@ -22,11 +22,12 @@ void task_populate_titledb_update_status(list_item* item) {
     info->installedVersion = info->installed ? entry.version : (u16) 0;
 
     if(info->installed) {
-        if(info->installedVersion < info->latestVersion) {
+        // TODO: Latest version disabled pending TitleDB pull request.
+        /*if(info->installedVersion < info->latestVersion) {
             item->color = COLOR_TITLEDB_OUTDATED;
-        } else {
+        } else {*/
             item->color = COLOR_TITLEDB_INSTALLED;
-        }
+        //}
     } else {
         item->color = COLOR_TITLEDB_NOT_INSTALLED;
     }
@@ -87,13 +88,13 @@ static void task_populate_titledb_thread(void* arg) {
                                         if(subVal->type == json_string) {
                                             if(strncmp(name, "titleid", nameLen) == 0) {
                                                 titledbInfo->titleId = strtoull(subVal->u.string.ptr, NULL, 16);
-                                            } else if(strncmp(name, "version", nameLen) == 0) {
+                                            /*} else if(strncmp(name, "version", nameLen) == 0) { // TODO: Latest version disabled pending TitleDB pull request.
                                                 u32 major = 0;
                                                 u32 minor = 0;
                                                 u32 micro = 0;
                                                 sscanf(subVal->u.string.ptr, "%lu.%lu.%lu", &major, &minor, &micro);
 
-                                                titledbInfo->latestVersion = ((u8) (major & 0x3F) << 10) | ((u8) (minor & 0x3F) << 4) | ((u8) (micro & 0xF));
+                                                titledbInfo->latestVersion = ((u8) (major & 0x3F) << 10) | ((u8) (minor & 0x3F) << 4) | ((u8) (micro & 0xF));*/
                                             } else if(strncmp(name, "name_s", nameLen) == 0) {
                                                 strncpy(titledbInfo->meta.shortDescription, subVal->u.string.ptr, sizeof(titledbInfo->meta.shortDescription));
                                             } else if(strncmp(name, "name_l", nameLen) == 0) {
@@ -124,7 +125,8 @@ static void task_populate_titledb_thread(void* arg) {
                                     linked_list_iterate(data->items, &iter);
 
                                     bool add = true;
-                                    while(linked_list_iter_has_next(&iter)) {
+                                    // TODO: Latest version disabled pending TitleDB pull request.
+                                    /*while(linked_list_iter_has_next(&iter)) {
                                         list_item* currItem = (list_item*) linked_list_iter_next(&iter);
                                         titledb_info* currTitledbInfo = (titledb_info*) currItem->data;
 
@@ -138,7 +140,7 @@ static void task_populate_titledb_thread(void* arg) {
 
                                             break;
                                         }
-                                    }
+                                    }*/
 
                                     if(add) {
                                         linked_list_add_sorted(data->items, item, NULL, task_populate_titledb_compare);
