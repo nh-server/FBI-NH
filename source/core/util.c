@@ -749,7 +749,6 @@ Result util_http_open_ranged(httpcContext* context, u32* responseCode, const cha
             if(R_SUCCEEDED(res = httpcSetSSLOpt(context, SSLCOPT_DisableVerify))
                && (!userAgent || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "User-Agent", HTTP_USER_AGENT)))
                && (rangeStart == 0 || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Range", range)))
-               && R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Accept-Encoding", "gzip, deflate"))
                && R_SUCCEEDED(res = httpcSetKeepAlive(context, HTTPC_KEEPALIVE_ENABLED))
                && R_SUCCEEDED(res = httpcBeginRequest(context))
                && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(context, &response, HTTP_TIMEOUT))) {
