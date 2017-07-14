@@ -13,7 +13,9 @@
 #include "../../core/screen.h"
 
 static list_item install = {"Install", COLOR_TEXT, action_install_titledb};
-static list_item update_all = {"Update All", COLOR_TEXT, action_update_titledb};
+
+// TODO: Updating disabled pending TitleDB pull request.
+//static list_item update_all = {"Update All", COLOR_TEXT, action_update_titledb};
 
 typedef struct {
     populate_titledb_data populateData;
