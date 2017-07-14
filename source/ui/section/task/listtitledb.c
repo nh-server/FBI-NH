@@ -22,12 +22,11 @@ void task_populate_titledb_update_status(list_item* item) {
     info->installedVersion = info->installed ? entry.version : (u16) 0;
 
     if(info->installed) {
-        // TODO: Latest version disabled pending TitleDB pull request.
-        /*if(info->installedVersion < info->latestVersion) {
+        if(info->installedVersion < info->latestVersion) {
             item->color = COLOR_TITLEDB_OUTDATED;
-        } else {*/
+        } else {
             item->color = COLOR_TITLEDB_INSTALLED;
-        //}
+        }
     } else {
         item->color = COLOR_TITLEDB_NOT_INSTALLED;
     }
@@ -65,7 +64,7 @@ static void task_populate_titledb_thread(void* arg) {
     char* text = (char*) calloc(sizeof(char), maxTextSize);
     if(text != NULL) {
         u32 textSize = 0;
-        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=titleid&only=version&only=name_s&only=name_l&only=publisher"))) {
+        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=updated_at&only=titleid&only=version&only=name_s&only=name_l&only=publisher"))) {
             json_value* json = json_parse(text, textSize);
             if(json != NULL) {
                 if(json->type == json_array) {
@@ -86,7 +85,9 @@ static void task_populate_titledb_thread(void* arg) {
                                         u32 nameLen = val->u.object.values[j].name_length;
                                         json_value* subVal = val->u.object.values[j].value;
                                         if(subVal->type == json_string) {
-                                            if(strncmp(name, "titleid", nameLen) == 0) {
+                                            if(strncmp(name, "updated_at", nameLen) == 0) {
+                                                strncpy(titledbInfo->updatedAt, subVal->u.string.ptr, sizeof(titledbInfo->updatedAt));
+                                            } else if(strncmp(name, "titleid", nameLen) == 0) {
                                                 titledbInfo->titleId = strtoull(subVal->u.string.ptr, NULL, 16);
                                             /*} else if(strncmp(name, "version", nameLen) == 0) { // TODO: Latest version disabled pending TitleDB pull request.
                                                 u32 major = 0;
@@ -125,13 +126,12 @@ static void task_populate_titledb_thread(void* arg) {
                                     linked_list_iterate(data->items, &iter);
 
                                     bool add = true;
-                                    // TODO: Latest version disabled pending TitleDB pull request.
-                                    /*while(linked_list_iter_has_next(&iter)) {
+                                    while(linked_list_iter_has_next(&iter)) {
                                         list_item* currItem = (list_item*) linked_list_iter_next(&iter);
                                         titledb_info* currTitledbInfo = (titledb_info*) currItem->data;
 
                                         if(titledbInfo->titleId == currTitledbInfo->titleId) {
-                                            if(titledbInfo->latestVersion >= currTitledbInfo->latestVersion) {
+                                            if(strncmp(titledbInfo->updatedAt, currTitledbInfo->updatedAt, sizeof(titledbInfo->updatedAt)) >= 0) {
                                                 linked_list_iter_remove(&iter);
                                                 task_free_titledb(currItem);
                                             } else {
@@ -140,7 +140,7 @@ static void task_populate_titledb_thread(void* arg) {
 
                                             break;
                                         }
-                                    }*/
+                                    }
 
                                     if(add) {
                                         linked_list_add_sorted(data->items, item, NULL, task_populate_titledb_compare);

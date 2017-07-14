@@ -76,6 +76,7 @@ typedef struct titledb_info_s {
     u16 installedVersion;
     u16 latestVersion;
     u64 size;
+    char updatedAt[32];
     bool installed;
     meta_info meta;
 } titledb_info;
