@@ -58,6 +58,7 @@ static void task_capture_cam_thread(void* arg) {
 
                                     svcWaitSynchronization(data->mutex, U64_MAX);
                                     memcpy(data->buffer, buffer, bufferSize);
+                                    GSPGPU_FlushDataCache(data->buffer, bufferSize);
                                     svcReleaseMutex(data->mutex);
 
                                     res = CAMU_SetReceiving(&events[EVENT_RECV], buffer, PORT_CAM1, bufferSize, (s16) transferUnit);
