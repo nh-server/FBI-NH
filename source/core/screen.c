@@ -346,6 +346,7 @@ static void screen_prepare_texture(u32* pow2WidthOut, u32* pow2HeightOut, u32 id
 
     if(textures[id].tex.data != NULL && (textures[id].tex.width != pow2Width || textures[id].tex.height != pow2Height || textures[id].tex.fmt != format)) {
         C3D_TexDelete(&textures[id].tex);
+        textures[id].tex.data = NULL;
     }
 
     if(textures[id].tex.data == NULL && !C3D_TexInit(&textures[id].tex, (u16) pow2Width, (u16) pow2Height, format)) {
