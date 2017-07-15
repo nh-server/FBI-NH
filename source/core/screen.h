@@ -72,6 +72,6 @@ void screen_draw_texture(u32 id, float x, float y, float width, float height);
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height);
 float screen_get_font_height(float scaleY);
 void screen_get_string_size(float* width, float* height, const char* text, float scaleX, float scaleY);
-void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapX);
+void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapWidth);
 void screen_draw_string(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines);
 void screen_draw_string_wrap(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, float wrapX);

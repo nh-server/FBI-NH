@@ -569,7 +569,7 @@ float screen_get_font_height(float scaleY) {
     return scaleY * fontGetInfo()->lineFeed;
 }
 
-static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine, bool wrap, float wrapX) {
+static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine, bool wrap, float wrapWidth) {
     float w = 0;
     float h = 0;
     float lineWidth = 0;
@@ -584,7 +584,7 @@ static void screen_get_string_size_internal(float* width, float* height, const c
         while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
             p += units;
 
-            if(code == '\n' || (wrap && lineWidth + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapX)) {
+            if(code == '\n' || (wrap && lineWidth + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapWidth)) {
                 lastAlign = p;
 
                 if(lineWidth > w) {
@@ -627,8 +627,8 @@ void screen_get_string_size(float* width, float* height, const char* text, float
     screen_get_string_size_internal(width, height, text, scaleX, scaleY, false, false, 0);
 }
 
-void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapX) {
-    screen_get_string_size_internal(width, height, text, scaleX, scaleY, false, true, wrapX);
+void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapWidth) {
+    screen_get_string_size_internal(width, height, text, scaleX, scaleY, false, true, wrapWidth);
 }
 
 static void screen_draw_string_internal(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, bool wrap, float wrapX) {
@@ -653,10 +653,10 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
     screen_set_blend(blendColor, true, true);
 
     float stringWidth;
-    screen_get_string_size_internal(&stringWidth, NULL, text, scaleX, scaleY, false, wrap, wrapX);
+    screen_get_string_size_internal(&stringWidth, NULL, text, scaleX, scaleY, false, wrap, wrapX - x);
 
     float lineWidth;
-    screen_get_string_size_internal(&lineWidth, NULL, text, scaleX, scaleY, true, wrap, wrapX);
+    screen_get_string_size_internal(&lineWidth, NULL, text, scaleX, scaleY, true, wrap, wrapX - x);
 
     float currX = x;
     if(centerLines) {
@@ -675,7 +675,7 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
         if(code == '\n' || (wrap && currX + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapX)) {
             lastAlign = p;
 
-            screen_get_string_size_internal(&lineWidth, NULL, (const char*) p, scaleX, scaleY, true, wrap, wrapX);
+            screen_get_string_size_internal(&lineWidth, NULL, (const char*) p, scaleX, scaleY, true, wrap, wrapX - x);
 
             currX = x;
             if(centerLines) {
