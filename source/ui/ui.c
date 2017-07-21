@@ -611,10 +611,10 @@ void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x
 
     ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
 
-    char updatedDate[32];
-    char updatedTime[32];
+    char updatedDate[32] = "";
+    char updatedTime[32] = "";
 
-    sscanf(info->updatedAt, "%[^T]T%[^Z]Z", updatedDate, updatedTime);
+    sscanf(info->updatedAt, "%31[^T]T%31[^Z]Z", updatedDate, updatedTime);
 
     char infoText[512];
 
