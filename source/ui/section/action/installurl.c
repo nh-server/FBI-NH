@@ -70,8 +70,8 @@ static void action_install_url_draw_top(ui_view* view, void* data, float x1, flo
             float urlHeight = 0;
             screen_get_string_size_wrap(&urlWidth, &urlHeight, installData->urls[index], 0.5f, 0.5f, x2 - x1 - 10);
 
-            float urlX = (x2 - x1 - urlWidth) / 2;
-            screen_draw_string_wrap(installData->urls[index], urlX, urlY, 0.5f, 0.5f, COLOR_TEXT, false, urlX + urlWidth + 1);
+            float urlX = x1 + (x2 - x1 - urlWidth) / 2;
+            screen_draw_string_wrap(installData->urls[index], urlX, urlY, 0.5f, 0.5f, COLOR_TEXT, true, urlX + urlWidth + 1);
 
             urlY += urlHeight;
             index++;
@@ -81,9 +81,9 @@ static void action_install_url_draw_top(ui_view* view, void* data, float x1, flo
         float urlHeight = 0;
         screen_get_string_size_wrap(&urlWidth, &urlHeight, installData->urls[installData->installInfo.processed], 0.5f, 0.5f, x2 - x1 - 10);
 
-        float urlX = (x2 - x1 - urlWidth) / 2;
-        float urlY = (y2 - y1 - urlHeight) / 2;
-        screen_draw_string_wrap(installData->urls[installData->installInfo.processed], urlX, urlY, 0.5f, 0.5f, COLOR_TEXT, false, urlX + urlWidth + 1);
+        float urlX = x1 + (x2 - x1 - urlWidth) / 2;
+        float urlY = y1 + (y2 - y1 - urlHeight) / 2;
+        screen_draw_string_wrap(installData->urls[installData->installInfo.processed], urlX, urlY, 0.5f, 0.5f, COLOR_TEXT, true, urlX + urlWidth + 1);
     }
 }
 
