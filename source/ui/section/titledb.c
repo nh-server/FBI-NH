@@ -80,7 +80,16 @@ static void titledb_action_open(linked_list* items, list_item* selected) {
 }
 
 static void titledb_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    if(selected != NULL && selected->data != NULL) {
+    titledb_data* listData = (titledb_data*) data;
+
+    if(!listData->populateData.itemsListed) {
+        static const char* text = "Loading title list, please wait...\nNOTE: Cancelling may take up to 15 seconds.";
+
+        float textWidth;
+        float textHeight;
+        screen_get_string_size(&textWidth, &textHeight, text, 0.5f, 0.5f);
+        screen_draw_string(text, x1 + (x2 - x1 - textWidth) / 2, y1 + (y2 - y1 - textHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
+    } else if(selected != NULL && selected->data != NULL) {
         ui_draw_titledb_info(view, selected->data, x1, y1, x2, y2);
     }
 }

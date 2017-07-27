@@ -68,6 +68,9 @@ static void task_populate_titledb_thread(void* arg) {
             json_value* json = json_parse(text, textSize);
             if(json != NULL) {
                 if(json->type == json_array) {
+                    linked_list titles;
+                    linked_list_init(&titles);
+
                     for(u32 i = 0; i < json->u.array.length && R_SUCCEEDED(res); i++) {
                         svcWaitSynchronization(task_get_pause_event(), U64_MAX);
                         if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
@@ -123,7 +126,7 @@ static void task_populate_titledb_thread(void* arg) {
                                     task_populate_titledb_update_status(item);
 
                                     linked_list_iter iter;
-                                    linked_list_iterate(data->items, &iter);
+                                    linked_list_iterate(&titles, &iter);
 
                                     bool add = true;
                                     while(linked_list_iter_has_next(&iter)) {
@@ -143,7 +146,7 @@ static void task_populate_titledb_thread(void* arg) {
                                     }
 
                                     if(add) {
-                                        linked_list_add_sorted(data->items, item, NULL, task_populate_titledb_compare);
+                                        linked_list_add_sorted(&titles, item, NULL, task_populate_titledb_compare);
                                     } else {
                                         task_free_titledb(item);
                                     }
@@ -157,6 +160,21 @@ static void task_populate_titledb_thread(void* arg) {
                             }
                         }
                     }
+
+                    linked_list_iter iter;
+                    linked_list_iterate(&titles, &iter);
+
+                    while(linked_list_iter_has_next(&iter)) {
+                        list_item* item = linked_list_iter_next(&iter);
+
+                        if(R_SUCCEEDED(res)) {
+                            linked_list_add(data->items, item);
+                        } else {
+                            task_free_titledb(item);
+                        }
+                    }
+
+                    linked_list_destroy(&titles);
                 } else {
                     res = R_FBI_BAD_DATA;
                 }
@@ -169,6 +187,8 @@ static void task_populate_titledb_thread(void* arg) {
     } else {
         res = R_FBI_OUT_OF_MEMORY;
     }
+
+    data->itemsListed = true;
 
     if(R_SUCCEEDED(res)) {
         linked_list_iter iter;
@@ -242,6 +262,7 @@ Result task_populate_titledb(populate_titledb_data* data) {
 
     task_clear_titledb(data->items);
 
+    data->itemsListed = false;
     data->finished = false;
     data->result = 0;
     data->cancelEvent = 0;
@@ -254,6 +275,7 @@ Result task_populate_titledb(populate_titledb_data* data) {
     }
 
     if(R_FAILED(res)) {
+        data->itemsListed = true;
         data->finished = true;
 
         if(data->cancelEvent != 0) {

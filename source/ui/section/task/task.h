@@ -217,6 +217,7 @@ typedef struct populate_titles_data_s {
 typedef struct populate_titledb_data_s {
     linked_list* items;
 
+    volatile bool itemsListed;
     volatile bool finished;
     Result result;
     Handle cancelEvent;
