@@ -250,6 +250,7 @@ void task_free_system_save_data(list_item* item);
 void task_clear_system_save_data(linked_list* items);
 Result task_populate_system_save_data(populate_system_save_data_data* data);
 
+void task_populate_tickets_update_use(list_item* item);
 void task_free_ticket(list_item* item);
 void task_clear_tickets(linked_list* items);
 Result task_populate_tickets(populate_tickets_data* data);
