@@ -18,6 +18,26 @@ static int task_populate_tickets_compare_ids(const void* e1, const void* e2) {
     return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
 }
 
+void task_populate_tickets_update_use(list_item* item) {
+    if(item == NULL) {
+        return;
+    }
+
+    ticket_info* info = (ticket_info*) item->data;
+
+    info->inUse = false;
+
+    AM_TitleEntry entry;
+    for(FS_MediaType mediaType = MEDIATYPE_NAND; mediaType != MEDIATYPE_GAME_CARD; mediaType++) {
+        if(R_SUCCEEDED(AM_GetTitleInfo(mediaType, 1, &info->titleId, &entry))) {
+            info->inUse = true;
+            break;
+        }
+    }
+
+    item->color = info->inUse ? COLOR_TICKET_IN_USE : COLOR_TICKET_NOT_IN_USE;
+}
+
 static void task_populate_tickets_thread(void* arg) {
     populate_tickets_data* data = (populate_tickets_data*) arg;
 
@@ -41,19 +61,11 @@ static void task_populate_tickets_thread(void* arg) {
                         ticket_info* ticketInfo = (ticket_info*) calloc(1, sizeof(ticket_info));
                         if(ticketInfo != NULL) {
                             ticketInfo->titleId = ticketIds[i];
-                            ticketInfo->inUse = false;
-
-                            AM_TitleEntry entry;
-                            for(FS_MediaType mediaType = MEDIATYPE_NAND; mediaType != MEDIATYPE_GAME_CARD; mediaType++) {
-                                if(R_SUCCEEDED(AM_GetTitleInfo(mediaType, 1, &ticketInfo->titleId, &entry))) {
-                                    ticketInfo->inUse = true;
-                                    break;
-                                }
-                            }
 
                             snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", ticketIds[i]);
-                            item->color = ticketInfo->inUse ? COLOR_TICKET_IN_USE : COLOR_TICKET_NOT_IN_USE;
                             item->data = ticketInfo;
+
+                            task_populate_tickets_update_use(item);
 
                             linked_list_add(data->items, item);
                         } else {

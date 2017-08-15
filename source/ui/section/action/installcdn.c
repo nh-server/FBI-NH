@@ -19,6 +19,7 @@
 #define CONTENTS_MAX 256
 
 typedef struct {
+    list_item* item;
     ticket_info* ticket;
     volatile bool* done;
     bool finishedPrompt;
@@ -220,6 +221,10 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 
         if(R_SUCCEEDED(installData->installInfo.result) && R_SUCCEEDED(res)) {
             if(installData->finishedPrompt) {
+                if(installData->item != NULL) {
+                    task_populate_tickets_update_use(installData->item);
+                }
+
                 prompt_display_notify("Success", "Install finished.", COLOR_TEXT, installData->ticket, ui_draw_ticket_info, NULL);
             }
         } else {
@@ -291,7 +296,7 @@ static void action_install_cdn_version_onresponse(ui_view* view, void* data, Swk
     }
 }
 
-void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt, bool promptVersion) {
+void action_install_cdn_noprompt_internal(volatile bool* done, ticket_info* info, bool finishedPrompt, bool promptVersion, list_item* item) {
     install_cdn_data* data = (install_cdn_data*) calloc(1, sizeof(install_cdn_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate install CDN data.");
@@ -299,6 +304,7 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
         return;
     }
 
+    data->item = item;
     data->ticket = info;
     data->done = done;
     data->finishedPrompt = finishedPrompt;
@@ -349,18 +355,24 @@ void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool fi
     }
 }
 
+void action_install_cdn_noprompt(volatile bool* done, ticket_info* info, bool finishedPrompt, bool promptVersion) {
+    action_install_cdn_noprompt_internal(done, info, finishedPrompt, promptVersion, NULL);
+}
+
 #define CDN_PROMPT_DEFAULT_VERSION 0
 #define CDN_PROMPT_SELECT_VERSION 1
 #define CDN_PROMPT_NO 2
 
 static void action_install_cdn_onresponse(ui_view* view, void* data, u32 response) {
     if(response != CDN_PROMPT_NO) {
-        action_install_cdn_noprompt(NULL, (ticket_info*) data, true, response == CDN_PROMPT_SELECT_VERSION);
+        list_item* item = (list_item*) data;
+
+        action_install_cdn_noprompt_internal(NULL, (ticket_info*) item->data, true, response == CDN_PROMPT_SELECT_VERSION, item);
     }
 }
 
 void action_install_cdn(linked_list* items, list_item* selected) {
     static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
     static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
-    prompt_display_multi_choice("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, options, optionButtons, 3, selected->data, ui_draw_ticket_info, action_install_cdn_onresponse);
+    prompt_display_multi_choice("Confirmation", "Install the selected title from the CDN?", COLOR_TEXT, options, optionButtons, 3, selected, ui_draw_ticket_info, action_install_cdn_onresponse);
 }
