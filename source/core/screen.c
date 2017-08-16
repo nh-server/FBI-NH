@@ -462,6 +462,7 @@ void screen_unload_texture(u32 id) {
     }
 
     C3D_TexDelete(&textures[id].tex);
+    textures[id].tex.data = NULL;
 
     textures[id].allocated = false;
     textures[id].width = 0;
