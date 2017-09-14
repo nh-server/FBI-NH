@@ -229,6 +229,8 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                         } else {
                             res = R_FBI_BAD_DATA;
                         }
+
+                        json_value_free(json);
                     } else {
                         res = R_FBI_PARSE_FAILED;
                     }

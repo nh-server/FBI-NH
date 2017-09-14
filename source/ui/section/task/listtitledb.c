@@ -178,6 +178,8 @@ static void task_populate_titledb_thread(void* arg) {
                 } else {
                     res = R_FBI_BAD_DATA;
                 }
+
+                json_value_free(json);
             } else {
                 res = R_FBI_PARSE_FAILED;
             }
