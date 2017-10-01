@@ -48,6 +48,8 @@ FS_Path util_make_binary_path(const void* data, u32 size);
 bool util_is_dir(FS_Archive archive, const char* path);
 Result util_ensure_dir(FS_Archive archive, const char* path);
 
+void util_get_file_name(char* out, const char* file, u32 size);
+
 void util_get_path_file(char* out, const char* path, u32 size);
 void util_get_parent_path(char* out, const char* path, u32 size);
 
@@ -90,5 +92,6 @@ u16* util_select_bnr_title(BNR* bnr);
 Result util_http_open(httpcContext* context, u32* responseCode, const char* url, bool userAgent);
 Result util_http_open_ranged(httpcContext* context, u32* responseCode, const char* url, bool userAgent, u32 rangeStart, u32 rangeEnd);
 Result util_http_get_size(httpcContext* context, u32* size);
+Result util_http_get_file_name(httpcContext* context, char* out, u32 size);
 Result util_http_read(httpcContext* context, u32* bytesRead, void* buffer, u32 size);
 Result util_http_close(httpcContext* context);
