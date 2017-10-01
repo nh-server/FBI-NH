@@ -34,12 +34,12 @@ elif len(sys.argv) < 3 or len(sys.argv) > 6:
     print('Usage: ' + sys.argv[0] + ' <target ip> <file / directory> [host ip] [host port]')
     sys.exit(1)
 
-accepted_extension = ('.cia', '.tik', '.cetk')
+accepted_extension = ('.cia', '.tik', '.cetk', '.3dsx')
 hostPort = 8080 # Default value
 
 if interactive:
     target_ip = input("The IP of your 3DS: ")
-    target_path = input("The file you want to send (.cia, .tik, or .cetk): ")
+    target_path = input("The file you want to send (.cia, .tik, .cetk, or .3dsx): ")
     
     hostIp = input("Host IP (or press Enter to have the script detect host IP):")
     if hostIp == '':

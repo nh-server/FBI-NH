@@ -13,8 +13,16 @@
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 
+typedef enum content_type_e {
+    CONTENT_CIA,
+    CONTENT_TICKET,
+    CONTENT_3DSX
+} content_type;
+
 typedef struct {
     char urls[INSTALL_URLS_MAX][INSTALL_URL_MAX];
+
+    char path3dsx[FILE_PATH_MAX];
 
     void* userData;
     void (*finished)(void* data);
@@ -25,10 +33,12 @@ typedef struct {
     bool cdnDecided;
 
     u32 responseCode;
-    bool ticket;
+    content_type contentType;
     u64 currTitleId;
     volatile bool n3dsContinue;
     ticket_info ticketInfo;
+    httpcContext* currContext;
+    char curr3dsxPath[FILE_PATH_MAX];
 
     data_op_data installInfo;
 } install_url_data;
@@ -105,6 +115,8 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
     if(context != NULL) {
         if(R_SUCCEEDED(res = util_http_open(context, &installData->responseCode, installData->urls[index], true))) {
             *handle = (u32) context;
+
+            installData->currContext = context;
         } else {
             free(context);
         }
@@ -116,6 +128,8 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
 }
 
 static Result action_install_url_close_src(void* data, u32 index, bool succeeded, u32 handle) {
+    ((install_url_data*) data)->currContext = NULL;
+
     return util_http_close((httpcContext*) handle);
 }
 
@@ -137,28 +151,15 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
     Result res = 0;
 
     installData->responseCode = 0;
-    installData->ticket = false;
+    installData->contentType = CONTENT_CIA;
     installData->currTitleId = 0;
     installData->n3dsContinue = false;
     memset(&installData->ticketInfo, 0, sizeof(installData->ticketInfo));
+    memset(&installData->curr3dsxPath, 0, sizeof(installData->curr3dsxPath));
 
-    if(*(u16*) initialReadBlock == 0x0100) {
-        if(!installData->cdnDecided) {
-            static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
-            static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
-            ui_view* view = prompt_display_multi_choice("Optional", "Install ticket titles from CDN?", COLOR_TEXT, options, optionButtons, 3, data, action_install_url_draw_top, action_install_url_cdn_check_onresponse);
-            if(view != NULL) {
-                svcWaitSynchronization(view->active, U64_MAX);
-            }
-        }
+    if(*(u16*) initialReadBlock == 0x2020) {
+        installData->contentType = CONTENT_CIA;
 
-        installData->ticket = true;
-        installData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
-        installData->ticketInfo.inUse = false;
-
-        AM_DeleteTicket(installData->ticketInfo.titleId);
-        res = AM_InstallTicketBegin(handle);
-    } else if(*(u16*) initialReadBlock == 0x2020) {
         u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
 
         FS_MediaType dest = util_get_title_destination(titleId);
@@ -191,6 +192,58 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
         if(R_SUCCEEDED(res = AM_StartCiaInstall(dest, handle))) {
             installData->currTitleId = titleId;
         }
+    } else if(*(u16*) initialReadBlock == 0x0100) {
+        installData->contentType = CONTENT_TICKET;
+
+        if(!installData->cdnDecided) {
+            static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
+            static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
+            ui_view* view = prompt_display_multi_choice("Optional", "Install ticket titles from CDN?", COLOR_TEXT, options, optionButtons, 3, data, action_install_url_draw_top, action_install_url_cdn_check_onresponse);
+            if(view != NULL) {
+                svcWaitSynchronization(view->active, U64_MAX);
+            }
+        }
+
+        installData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
+        installData->ticketInfo.inUse = false;
+
+        AM_DeleteTicket(installData->ticketInfo.titleId);
+        res = AM_InstallTicketBegin(handle);
+    } else if(*(u32*) initialReadBlock == 0x58534433) {
+        installData->contentType = CONTENT_3DSX;
+
+        FS_Archive sdmcArchive = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
+            char dir[FILE_PATH_MAX];
+            if(strlen(installData->path3dsx) > 0) {
+                util_get_parent_path(dir, installData->path3dsx, FILE_PATH_MAX);
+                strncpy(installData->curr3dsxPath, installData->path3dsx, FILE_PATH_MAX);
+            } else {
+                char filename[FILE_NAME_MAX];
+                if(R_FAILED(util_http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
+                    util_get_path_file(filename, installData->urls[index], FILE_NAME_MAX);
+                }
+
+                char name[FILE_NAME_MAX];
+                util_get_file_name(name, filename, FILE_NAME_MAX);
+
+                snprintf(dir, FILE_PATH_MAX, "/3ds/%s/", name);
+                snprintf(installData->curr3dsxPath, FILE_PATH_MAX, "/3ds/%s/%s.3dsx", name, name);
+            }
+
+            if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, dir))) {
+                FS_Path* path = util_make_path_utf8(installData->curr3dsxPath);
+                if(path != NULL) {
+                    res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
+
+                    util_free_path_utf8(path);
+                } else {
+                    res = R_FBI_OUT_OF_MEMORY;
+                }
+            }
+
+            FSUSER_CloseArchive(sdmcArchive);
+        }
     } else {
         res = R_FBI_BAD_DATA;
     }
@@ -201,10 +254,18 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
 static Result action_install_url_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     install_url_data* installData = (install_url_data*) data;
 
-    if(succeeded) {
-        Result res = 0;
+    Result res = 0;
 
-        if(installData->ticket) {
+    if(succeeded) {
+        if(installData->contentType == CONTENT_CIA) {
+            if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
+                util_import_seed(NULL, installData->currTitleId);
+
+                if(installData->currTitleId == 0x0004013800000002 || installData->currTitleId == 0x0004013820000002) {
+                    res = AM_InstallFirm(installData->currTitleId);
+                }
+            }
+        } else if(installData->contentType == CONTENT_TICKET) {
             res = AM_InstallTicketFinish(handle);
 
             if(R_SUCCEEDED(res) && installData->cdn) {
@@ -215,24 +276,32 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
                     svcSleepThread(100000000);
                 }
             }
-        } else {
-            if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-                util_import_seed(NULL, installData->currTitleId);
+        } else if(installData->contentType == CONTENT_3DSX) {
+            res = FSFILE_Close(handle);
+        }
+    } else {
+        if(installData->contentType == CONTENT_CIA) {
+            res = AM_CancelCIAInstall(handle);
+        } else if(installData->contentType == CONTENT_TICKET) {
+            res = AM_InstallTicketAbort(handle);
+        } else if(installData->contentType == CONTENT_3DSX) {
+            res = FSFILE_Close(handle);
 
-                if(installData->currTitleId == 0x0004013800000002 || installData->currTitleId == 0x0004013820000002) {
-                    res = AM_InstallFirm(installData->currTitleId);
+            FS_Archive sdmcArchive = 0;
+            if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
+                FS_Path* path = util_make_path_utf8(installData->curr3dsxPath);
+                if(path != NULL) {
+                    FSUSER_DeleteFile(sdmcArchive, *path);
+
+                    util_free_path_utf8(path);
                 }
+
+                FSUSER_CloseArchive(sdmcArchive);
             }
         }
-
-        return res;
-    } else {
-        if(installData->ticket) {
-            return AM_InstallTicketAbort(handle);
-        } else {
-            return AM_CancelCIAInstall(handle);
-        }
     }
+
+    return res;
 }
 
 static Result action_install_url_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
@@ -329,8 +398,8 @@ static void action_install_url_confirm_onresponse(ui_view* view, void* data, u32
     }
 }
 
-void action_install_url(const char* confirmMessage, const char* urls, void* userData, void (*finished)(void* data),
-                                                                                      void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
+void action_install_url(const char* confirmMessage, const char* urls, const char* path3dsx, void* userData, void (*finished)(void* data),
+                                                                                                            void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
     install_url_data* data = (install_url_data*) calloc(1, sizeof(install_url_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate URL install data.");
@@ -371,6 +440,10 @@ void action_install_url(const char* confirmMessage, const char* urls, void* user
         }
     }
 
+    if(path3dsx != NULL) {
+        strncpy(data->path3dsx, path3dsx, FILE_PATH_MAX);
+    }
+
     data->userData = userData;
     data->finished = finished;
     data->drawTop = drawTop;
@@ -380,10 +453,11 @@ void action_install_url(const char* confirmMessage, const char* urls, void* user
     data->cdnDecided = false;
 
     data->responseCode = 0;
-    data->ticket = false;
+    data->contentType = CONTENT_CIA;
     data->currTitleId = 0;
     data->n3dsContinue = false;
     memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
+    memset(&data->curr3dsxPath, 0, sizeof(data->curr3dsxPath));
 
     data->installInfo.data = data;
 

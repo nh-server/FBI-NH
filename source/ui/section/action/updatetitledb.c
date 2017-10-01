@@ -53,7 +53,7 @@ void action_update_titledb(linked_list* items, list_item* selected) {
                 }
             }
 
-            action_install_url("Update installed titles from TitleDB?", urls, updates, action_update_titledb_finished, action_update_titledb_draw_top);
+            action_install_url("Update installed titles from TitleDB?", urls, NULL, updates, action_update_titledb_finished, action_update_titledb_draw_top);
 
             free(urls);
         } else {
