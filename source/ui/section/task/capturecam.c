@@ -25,13 +25,15 @@ static void task_capture_cam_thread(void* arg) {
     u16* buffer = (u16*) calloc(1, bufferSize);
     if(buffer != NULL) {
         if(R_SUCCEEDED(res = camInit())) {
-            if(R_SUCCEEDED(res = CAMU_SetSize(SELECT_OUT1, SIZE_CTR_TOP_LCD, CONTEXT_A))
-               && R_SUCCEEDED(res = CAMU_SetOutputFormat(SELECT_OUT1, OUTPUT_RGB_565, CONTEXT_A))
-               && R_SUCCEEDED(res = CAMU_SetFrameRate(SELECT_OUT1, FRAME_RATE_30))
-               && R_SUCCEEDED(res = CAMU_SetNoiseFilter(SELECT_OUT1, true))
-               && R_SUCCEEDED(res = CAMU_SetAutoExposure(SELECT_OUT1, true))
-               && R_SUCCEEDED(res = CAMU_SetAutoWhiteBalance(SELECT_OUT1, true))
-               && R_SUCCEEDED(res = CAMU_Activate(SELECT_OUT1))) {
+            int cam = data->camera == CAMERA_OUTER ? SELECT_OUT1 : SELECT_IN1;
+
+            if(R_SUCCEEDED(res = CAMU_SetSize(cam, SIZE_CTR_TOP_LCD, CONTEXT_A))
+               && R_SUCCEEDED(res = CAMU_SetOutputFormat(cam, OUTPUT_RGB_565, CONTEXT_A))
+               && R_SUCCEEDED(res = CAMU_SetFrameRate(cam, FRAME_RATE_30))
+               && R_SUCCEEDED(res = CAMU_SetNoiseFilter(cam, true))
+               && R_SUCCEEDED(res = CAMU_SetAutoExposure(cam, true))
+               && R_SUCCEEDED(res = CAMU_SetAutoWhiteBalance(cam, true))
+               && R_SUCCEEDED(res = CAMU_Activate(cam))) {
                 u32 transferUnit = 0;
 
                 if(R_SUCCEEDED(res = CAMU_GetBufferErrorInterruptEvent(&events[EVENT_BUFFER_ERROR], PORT_CAM1))

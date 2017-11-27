@@ -81,10 +81,16 @@ typedef struct titledb_info_s {
     meta_info meta;
 } titledb_info;
 
+typedef enum capture_cam_camera_e {
+    CAMERA_OUTER,
+    CAMERA_INNER
+} capture_cam_camera;
+
 typedef struct capture_cam_data_s {
     u16* buffer;
     s16 width;
     s16 height;
+    capture_cam_camera camera;
 
     Handle mutex;
 

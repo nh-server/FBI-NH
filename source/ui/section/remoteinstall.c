@@ -316,6 +316,14 @@ static void remoteinstall_qr_update(ui_view* view, void* data, float* progress, 
         return;
     }
 
+    if(hidKeysDown() & KEY_X) {
+        remoteinstall_qr_stop_capture(installData);
+
+        installData->captureInfo.camera = installData->captureInfo.camera == CAMERA_OUTER ? CAMERA_INNER : CAMERA_OUTER;
+
+        return;
+    }
+
     if(!installData->capturing) {
         Result capRes = task_capture_cam(&installData->captureInfo);
         if(R_FAILED(capRes)) {
@@ -397,6 +405,8 @@ static void remoteinstall_scan_qr_code() {
     data->captureInfo.width = QR_IMAGE_WIDTH;
     data->captureInfo.height = QR_IMAGE_HEIGHT;
 
+    data->captureInfo.camera = CAMERA_OUTER;
+
     data->captureInfo.finished = true;
 
     data->qrContext = quirc_new();
@@ -424,7 +434,7 @@ static void remoteinstall_scan_qr_code() {
 
     data->tex = screen_allocate_free_texture();
 
-    info_display("QR Code Install", "B: Return", false, data, remoteinstall_qr_update, remoteinstall_qr_draw_top);
+    info_display("QR Code Install", "B: Return, X: Switch Camera", false, data, remoteinstall_qr_update, remoteinstall_qr_draw_top);
 }
 
 static void remoteinstall_manually_enter_urls_onresponse(ui_view* view, void* data, SwkbdButton button, const char* response) {
