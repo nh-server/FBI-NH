@@ -156,7 +156,13 @@ static void task_data_op_retry_onresponse(ui_view* view, void* data, u32 respons
 static void task_data_op_thread(void* arg) {
     data_op_data* data = (data_op_data*) arg;
 
+    bool reset = false;
     for(data->processed = 0; data->processed < data->total; data->processed++) {
+        if(reset) {
+            data->processed = 0;
+            reset = false;
+        }
+
         Result res = 0;
 
         if(R_SUCCEEDED(res = task_data_op_check_running(data, data->processed, NULL, NULL))) {
@@ -183,17 +189,19 @@ static void task_data_op_thread(void* arg) {
                     svcWaitSynchronization(errorView->active, U64_MAX);
                 }
 
-                if(proceed) {
-                    ui_view* retryView = prompt_display_yes_no("Confirmation", "Retry?", COLOR_TEXT, data, NULL, task_data_op_retry_onresponse);
-                    if(retryView != NULL) {
-                        svcWaitSynchronization(retryView->active, U64_MAX);
+                ui_view* retryView = prompt_display_yes_no("Confirmation", "Retry?", COLOR_TEXT, data, NULL, task_data_op_retry_onresponse);
+                if(retryView != NULL) {
+                    svcWaitSynchronization(retryView->active, U64_MAX);
 
-                        if(data->retryResponse) {
+                    if(data->retryResponse) {
+                        if(proceed) {
                             data->processed--;
+                        } else {
+                            reset = true;
                         }
+                    } else if(!proceed) {
+                        break;
                     }
-                } else {
-                    break;
                 }
             } else {
                 prompt_display_notify("Failure", "Operation cancelled.", COLOR_TEXT, NULL, NULL, NULL);
