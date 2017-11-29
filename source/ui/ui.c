@@ -618,16 +618,13 @@ void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x
 
     char infoText[512];
 
-    // TODO: Latest version disabled pending TitleDB pull request.
     snprintf(infoText, sizeof(infoText),
              "Title ID: %016llX\n"
              "Installed Version: %hu (%d.%d.%d)\n"
-             //"Latest Version: %hu (%d.%d.%d)\n"
              "Size: %.2f %s\n"
              "Updated At: %s %s",
              info->titleId,
              info->installedVersion, (info->installedVersion >> 10) & 0x3F, (info->installedVersion >> 4) & 0x3F, info->installedVersion & 0xF,
-             //info->latestVersion, (info->latestVersion >> 10) & 0x3F, (info->latestVersion >> 4) & 0x3F, info->latestVersion & 0xF,
              util_get_display_size(info->size), util_get_display_size_units(info->size),
              updatedDate, updatedTime);
 

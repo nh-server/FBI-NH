@@ -176,50 +176,37 @@ void screen_init() {
 
     char line[128];
     while(fgets(line, sizeof(line), fd) != NULL) {
-        char* newline = strchr(line, '\n');
-        if(newline != NULL) {
-            *newline = '\0';
-        }
+        char key[64];
+        u32 color = 0;
 
-        char* equals = strchr(line, '=');
-        if(equals != NULL) {
-            char key[64] = {'\0'};
-            char value[64] = {'\0'};
+        sscanf(line, "%63[^=]=%lx", key, &color);
 
-            strncpy(key, line, equals - line);
-            strncpy(value, equals + 1, strlen(equals) - 1);
-
-            u32 color = strtoul(value, NULL, 16);
-
-            if(strcasecmp(key, "text") == 0) {
-                color_config[COLOR_TEXT] = color;
-            } else if(strcasecmp(key, "nand") == 0) {
-                color_config[COLOR_NAND] = color;
-            } else if(strcasecmp(key, "sd") == 0) {
-                color_config[COLOR_SD] = color;
-            } else if(strcasecmp(key, "gamecard") == 0) {
-                color_config[COLOR_GAME_CARD] = color;
-            } else if(strcasecmp(key, "dstitle") == 0) {
-                color_config[COLOR_DS_TITLE] = color;
-            } else if(strcasecmp(key, "file") == 0) {
-                color_config[COLOR_FILE] = color;
-            } else if(strcasecmp(key, "directory") == 0) {
-                color_config[COLOR_DIRECTORY] = color;
-            } else if(strcasecmp(key, "enabled") == 0) {
-                color_config[COLOR_ENABLED] = color;
-            } else if(strcasecmp(key, "disabled") == 0) {
-                color_config[COLOR_DISABLED] = color;
-            } else if(strcasecmp(key, "titledboutdated") == 0) {
-                color_config[COLOR_TITLEDB_OUTDATED] = color;
-            } else if(strcasecmp(key, "titledbinstalled") == 0) {
-                color_config[COLOR_TITLEDB_INSTALLED] = color;
-            } else if(strcasecmp(key, "titledbnotinstalled") == 0) {
-                color_config[COLOR_TITLEDB_NOT_INSTALLED] = color;
-            } else if(strcasecmp(key, "ticketinuse") == 0) {
-                color_config[COLOR_TICKET_IN_USE] = color;
-            } else if(strcasecmp(key, "ticketnotinuse") == 0) {
-                color_config[COLOR_TICKET_NOT_IN_USE] = color;
-            }
+        if(strcasecmp(key, "text") == 0) {
+            color_config[COLOR_TEXT] = color;
+        } else if(strcasecmp(key, "nand") == 0) {
+            color_config[COLOR_NAND] = color;
+        } else if(strcasecmp(key, "sd") == 0) {
+            color_config[COLOR_SD] = color;
+        } else if(strcasecmp(key, "gamecard") == 0) {
+            color_config[COLOR_GAME_CARD] = color;
+        } else if(strcasecmp(key, "dstitle") == 0) {
+            color_config[COLOR_DS_TITLE] = color;
+        } else if(strcasecmp(key, "file") == 0) {
+            color_config[COLOR_FILE] = color;
+        } else if(strcasecmp(key, "directory") == 0) {
+            color_config[COLOR_DIRECTORY] = color;
+        } else if(strcasecmp(key, "enabled") == 0) {
+            color_config[COLOR_ENABLED] = color;
+        } else if(strcasecmp(key, "disabled") == 0) {
+            color_config[COLOR_DISABLED] = color;
+        } else if(strcasecmp(key, "titledbinstalled") == 0) {
+            color_config[COLOR_TITLEDB_INSTALLED] = color;
+        } else if(strcasecmp(key, "titledbnotinstalled") == 0) {
+            color_config[COLOR_TITLEDB_NOT_INSTALLED] = color;
+        } else if(strcasecmp(key, "ticketinuse") == 0) {
+            color_config[COLOR_TICKET_IN_USE] = color;
+        } else if(strcasecmp(key, "ticketnotinuse") == 0) {
+            color_config[COLOR_TICKET_NOT_IN_USE] = color;
         }
     }
 
