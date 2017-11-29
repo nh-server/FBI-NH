@@ -231,7 +231,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
                 snprintf(installData->curr3dsxPath, FILE_PATH_MAX, "/3ds/%s/%s.3dsx", name, name);
             }
 
-            if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, dir))) {
+            if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/3ds/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, dir))) {
                 FS_Path* path = util_make_path_utf8(installData->curr3dsxPath);
                 if(path != NULL) {
                     res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
