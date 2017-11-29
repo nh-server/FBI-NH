@@ -17,9 +17,32 @@
 void task_populate_titledb_update_status(list_item* item) {
     titledb_info* info = (titledb_info*) item->data;
 
-    AM_TitleEntry entry;
-    info->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->titleId), 1, &info->titleId, &entry));
-    info->installedVersion = info->installed ? entry.version : (u16) 0;
+    if(info->type == TITLEDB_TYPE_CIA) {
+        AM_TitleEntry entry;
+        info->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->titleId), 1, &info->titleId, &entry));
+        info->installedVersion = info->installed ? entry.version : (u16) 0;
+    } else if(info->type == TITLEDB_TYPE_3DSX) {
+        info->installed = false;
+        info->installedVersion = 0;
+
+        char name[FILE_NAME_MAX];
+        util_escape_file_name(name, info->meta.shortDescription, sizeof(name));
+
+        char path3dsx[FILE_PATH_MAX];
+        snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
+        
+        FS_Path* fsPath = util_make_path_utf8(path3dsx);
+        if(fsPath != NULL) {
+            Handle handle = 0;
+            if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
+                info->installed = true;
+
+                FSFILE_Close(handle);
+            }
+
+            util_free_path_utf8(fsPath);
+        }
+    }
 
     if(info->installed) {
         item->color = COLOR_TITLEDB_INSTALLED;
@@ -127,7 +150,7 @@ static void task_populate_titledb_thread(void* arg) {
                                         list_item* currItem = (list_item*) linked_list_iter_next(&iter);
                                         titledb_info* currTitledbInfo = (titledb_info*) currItem->data;
 
-                                        if(titledbInfo->titleId == currTitledbInfo->titleId) {
+                                        if(titledbInfo->titleId == currTitledbInfo->titleId && (titledbInfo->type == TITLEDB_TYPE_CIA || strncmp(titledbInfo->meta.shortDescription, currTitledbInfo->meta.shortDescription, sizeof(titledbInfo->meta.shortDescription)) == 0)) {
                                             if(strncmp(titledbInfo->updatedAt, currTitledbInfo->updatedAt, sizeof(titledbInfo->updatedAt)) >= 0) {
                                                 linked_list_iter_remove(&iter);
                                                 task_free_titledb(currItem);
