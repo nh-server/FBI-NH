@@ -81,7 +81,6 @@ typedef struct titledb_info_s {
     u32 id;
     u64 titleId;
     u16 installedVersion;
-    u16 latestVersion;
     u64 size;
     char updatedAt[32];
     bool installed;
