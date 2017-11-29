@@ -156,20 +156,9 @@ static Result action_install_tickets_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_install_tickets_error(void* data, u32 index, Result res) {
-    install_tickets_data* installData = (install_tickets_data*) data;
-
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, NULL, NULL, NULL);
-        return false;
-    } else {
-        ui_view* view = error_display_res(data, action_install_tickets_draw_top, res, "Failed to install ticket.");
-        if(view != NULL) {
-            svcWaitSynchronization(view->active, U64_MAX);
-        }
-    }
-
-    return index < installData->installInfo.total - 1;
+static bool action_install_tickets_error(void* data, u32 index, Result res, ui_view** errorView) {
+    *errorView = error_display_res(data, action_install_tickets_draw_top, res, "Failed to install ticket.");
+    return true;
 }
 
 static void action_install_tickets_free_data(install_tickets_data* data) {

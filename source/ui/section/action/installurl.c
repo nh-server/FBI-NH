@@ -324,37 +324,27 @@ static Result action_install_url_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_install_url_error(void* data, u32 index, Result res) {
+static bool action_install_url_error(void* data, u32 index, Result res, ui_view** errorView) {
     install_url_data* installData = (install_url_data*) data;
 
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, NULL, NULL, NULL);
-        return false;
-    } else if(res != R_FBI_WRONG_SYSTEM) {
+    if(res != R_FBI_WRONG_SYSTEM) {
         char* url = installData->urls[index];
-
-        ui_view* view = NULL;
-
         if(res == R_FBI_HTTP_RESPONSE_CODE) {
             if(strlen(url) > 38) {
-                view = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, installData->responseCode);
+                *errorView = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, installData->responseCode);
             } else {
-                view = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, installData->responseCode);
+                *errorView = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, installData->responseCode);
             }
         } else {
             if(strlen(url) > 38) {
-                view = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
+                *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
             } else {
-                view = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
+                *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
             }
-        }
-
-        if(view != NULL) {
-            svcWaitSynchronization(view->active, U64_MAX);
         }
     }
 
-    return index < installData->installInfo.total - 1;
+    return true;
 }
 
 static void action_install_url_install_update(ui_view* view, void* data, float* progress, char* text) {

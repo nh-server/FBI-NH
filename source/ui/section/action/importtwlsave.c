@@ -97,16 +97,9 @@ static Result action_import_twl_save_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_import_twl_save_error(void* data, u32 index, Result res) {
-    import_twl_save_data* importData = (import_twl_save_data*) data;
-
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Import cancelled.", COLOR_TEXT, importData->title, ui_draw_title_info, NULL);
-    } else {
-        error_display_res(importData->title, ui_draw_title_info, res, "Failed to import save.");
-    }
-
-    return false;
+static bool action_import_twl_save_error(void* data, u32 index, Result res, ui_view** errorView) {
+    *errorView = error_display_res(((import_twl_save_data*) data)->title, ui_draw_title_info, res, "Failed to import save.");
+    return true;
 }
 
 static void action_import_twl_save_update(ui_view* view, void* data, float* progress, char* text) {

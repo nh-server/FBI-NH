@@ -193,20 +193,9 @@ static Result action_install_cias_restore(void* data, u32 index) {
     return 0;
 }
 
-bool action_install_cias_error(void* data, u32 index, Result res) {
-    install_cias_data* installData = (install_cias_data*) data;
-
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, NULL, NULL, NULL);
-        return false;
-    } else if(res != R_FBI_WRONG_SYSTEM) {
-        ui_view* view = error_display_res(data, action_install_cias_draw_top, res, "Failed to install CIA file.");
-        if(view != NULL) {
-            svcWaitSynchronization(view->active, U64_MAX);
-        }
-    }
-
-    return index < installData->installInfo.total - 1;
+bool action_install_cias_error(void* data, u32 index, Result res, ui_view** errorView) {
+    *errorView = error_display_res(data, action_install_cias_draw_top, res, "Failed to install CIA file.");
+    return true;
 }
 
 static void action_install_cias_free_data(install_cias_data* data) {

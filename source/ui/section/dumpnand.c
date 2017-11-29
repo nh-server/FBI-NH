@@ -91,14 +91,9 @@ static Result dumpnand_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool dumpnand_error(void* data, u32 index, Result res) {
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Dump cancelled.", COLOR_TEXT, NULL, NULL, NULL);
-    } else {
-        error_display_res(NULL, NULL, res, "Failed to dump NAND.");
-    }
-
-    return false;
+static bool dumpnand_error(void* data, u32 index, Result res, ui_view** errorView) {
+    *errorView = error_display_res(NULL, NULL, res, "Failed to dump NAND.");
+    return true;
 }
 
 static void dumpnand_update(ui_view* view, void* data, float* progress, char* text) {
