@@ -19,7 +19,7 @@ static void action_update_titledb_finished(void* data) {
 
 void action_install_titledb(linked_list* items, list_item* selected) {
     char url[64];
-    snprintf(url, INSTALL_URL_MAX, "https://3ds.titledb.com/v1/cia/%lu/download", ((titledb_info*) selected->data)->id);
+    snprintf(url, INSTALL_URL_MAX, "https://3ds.titledb.com/v1/%s/%lu/download", ((titledb_info*) selected->data)->type == TITLEDB_TYPE_CIA ? "cia" : "tdsx", ((titledb_info*) selected->data)->id);
 
     action_install_url("Install the selected title from TitleDB?", url, NULL, selected, action_update_titledb_finished, action_install_titledb_draw_top);
 }
