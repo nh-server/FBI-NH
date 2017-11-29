@@ -183,15 +183,17 @@ static void task_data_op_thread(void* arg) {
                     svcWaitSynchronization(errorView->active, U64_MAX);
                 }
 
-                ui_view* retryView = prompt_display_yes_no("Confirmation", "Retry?", COLOR_TEXT, data, NULL, task_data_op_retry_onresponse);
-                if(retryView != NULL) {
-                    svcWaitSynchronization(retryView->active, U64_MAX);
+                if(proceed) {
+                    ui_view* retryView = prompt_display_yes_no("Confirmation", "Retry?", COLOR_TEXT, data, NULL, task_data_op_retry_onresponse);
+                    if(retryView != NULL) {
+                        svcWaitSynchronization(retryView->active, U64_MAX);
 
-                    if(data->retryResponse) {
-                        data->processed--;
-                    } else if(!proceed) {
-                        break;
+                        if(data->retryResponse) {
+                            data->processed--;
+                        }
                     }
+                } else {
+                    break;
                 }
             } else {
                 prompt_display_notify("Failure", "Operation cancelled.", COLOR_TEXT, NULL, NULL, NULL);
