@@ -83,20 +83,9 @@ static Result action_delete_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_delete_error(void* data, u32 index, Result res) {
-    delete_data* deleteData = (delete_data*) data;
-
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Delete cancelled.", COLOR_TEXT, NULL, NULL, NULL);
-        return false;
-    } else {
-        ui_view* view = error_display_res(data, action_delete_draw_top, res, "Failed to delete content.");
-        if(view != NULL) {
-            svcWaitSynchronization(view->active, U64_MAX);
-        }
-    }
-
-    return index < deleteData->deleteInfo.total - 1;
+static bool action_delete_error(void* data, u32 index, Result res, ui_view** errorView) {
+    *errorView = error_display_res(data, action_delete_draw_top, res, "Failed to delete content.");
+    return true;
 }
 
 static void action_delete_free_data(delete_data* data) {

@@ -5,6 +5,7 @@
 
 typedef struct linked_list_s linked_list;
 typedef struct list_item_s list_item;
+typedef struct ui_view_s ui_view;
 
 typedef struct meta_info_s {
     char shortDescription[0x100];
@@ -147,12 +148,15 @@ typedef struct data_op_data_s {
     Result (*restore)(void* data, u32 index);
 
     // Errors
-    bool (*error)(void* data, u32 index, Result res);
+    bool (*error)(void* data, u32 index, Result res, ui_view** errorView);
 
     // General
     volatile bool finished;
     Result result;
     Handle cancelEvent;
+
+    // Internal
+    volatile bool retryResponse;
 } data_op_data;
 
 typedef struct populate_ext_save_data_data_s {

@@ -89,16 +89,9 @@ static Result action_erase_twl_save_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_erase_twl_save_error(void* data, u32 index, Result res) {
-    erase_twl_save_data* eraseData = (erase_twl_save_data*) data;
-
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Erase cancelled.", COLOR_TEXT, eraseData->title, ui_draw_title_info, NULL);
-    } else {
-        error_display_res(eraseData->title, ui_draw_title_info, res, "Failed to erase save.");
-    }
-
-    return false;
+static bool action_erase_twl_save_error(void* data, u32 index, Result res, ui_view** errorView) {
+    *errorView = error_display_res(((erase_twl_save_data*) data)->title, ui_draw_title_info, res, "Failed to erase save.");
+    return true;
 }
 
 static void action_erase_twl_save_update(ui_view* view, void* data, float* progress, char* text) {

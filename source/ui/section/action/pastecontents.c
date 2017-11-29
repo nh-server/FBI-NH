@@ -225,20 +225,9 @@ static Result action_paste_contents_restore(void* data, u32 index) {
     return 0;
 }
 
-static bool action_paste_contents_error(void* data, u32 index, Result res) {
-    paste_contents_data* pasteData = (paste_contents_data*) data;
-
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Paste cancelled.", COLOR_TEXT, NULL, NULL, NULL);
-        return false;
-    } else {
-        ui_view* view = error_display_res(data, action_paste_contents_draw_top, res, "Failed to paste content.");
-        if(view != NULL) {
-            svcWaitSynchronization(view->active, U64_MAX);
-        }
-    }
-
-    return index < pasteData->pasteInfo.total - 1;
+static bool action_paste_contents_error(void* data, u32 index, Result res, ui_view** errorView) {
+    *errorView = error_display_res(data, action_paste_contents_draw_top, res, "Failed to paste content.");
+    return true;
 }
 
 static void action_paste_contents_free_data(paste_contents_data* data) {

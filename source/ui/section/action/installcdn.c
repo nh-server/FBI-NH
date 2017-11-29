@@ -173,15 +173,14 @@ static Result action_install_cdn_restore(void* data, u32 index) {
     return AM_InstallTitleResume(util_get_title_destination(installData->ticket->titleId), installData->ticket->titleId);
 }
 
-bool action_install_cdn_error(void* data, u32 index, Result res) {
+bool action_install_cdn_error(void* data, u32 index, Result res, ui_view** errorView) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
-    if(res == R_FBI_CANCELLED) {
-        prompt_display_notify("Failure", "Install cancelled.", COLOR_TEXT, installData->ticket, ui_draw_ticket_info, NULL);
-    } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
-        error_display(installData->ticket, ui_draw_ticket_info, "Failed to install CDN title.\nHTTP server returned response code %d", installData->responseCode);
+    const char* itemType = index == 0 ? "TMD" : "content";
+    if(res == R_FBI_HTTP_RESPONSE_CODE) {
+        *errorView = error_display(installData->ticket, ui_draw_ticket_info, "Failed to install %s from CDN.\nHTTP server returned response code %d", itemType, installData->responseCode);
     } else {
-        error_display_res(installData->ticket, ui_draw_ticket_info, res, "Failed to install CDN title.");
+        *errorView = error_display_res(installData->ticket, ui_draw_ticket_info, res, "Failed to install %s from CDN.", itemType);
     }
 
     return false;
