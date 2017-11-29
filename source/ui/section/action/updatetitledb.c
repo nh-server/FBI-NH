@@ -49,7 +49,7 @@ void action_update_titledb(linked_list* items, list_item* selected) {
 
                 if(info->installed && info->installedVersion < info->latestVersion) {
                     linked_list_add(updates, item);
-                    pos += snprintf(urls + pos, (INSTALL_URL_MAX * INSTALL_URLS_MAX) - pos, "https://3ds.titledb.com/v1/cia/%lu/download\n", info->id);
+                    pos += snprintf(urls + pos, (INSTALL_URL_MAX * INSTALL_URLS_MAX) - pos, "https://3ds.titledb.com/v1/%s/%lu/download\n", info->type == TITLEDB_TYPE_CIA ? "cia" : "tdsx", info->id);
                 }
             }
 

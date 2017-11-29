@@ -63,8 +63,11 @@ static void task_populate_titledb_thread(void* arg) {
     u32 maxTextSize = 256 * 1024;
     char* text = (char*) calloc(sizeof(char), maxTextSize);
     if(text != NULL) {
+        char url[256];
+        snprintf(url, sizeof(url), "https://api.titledb.com/v1/%sonly=id&only=size&only=updated_at&only=version&only=name_s&only=name_l&only=publisher", data->type == TITLEDB_TYPE_CIA ? "cia?only=titleid&" : "smdh?");
+
         u32 textSize = 0;
-        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=updated_at&only=titleid&only=version&only=name_s&only=name_l&only=publisher"))) {
+        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, url))) {
             json_value* json = json_parse(text, textSize);
             if(json != NULL) {
                 if(json->type == json_array) {
@@ -83,6 +86,8 @@ static void task_populate_titledb_thread(void* arg) {
                             if(item != NULL) {
                                 titledb_info* titledbInfo = (titledb_info*) calloc(1, sizeof(titledb_info));
                                 if(titledbInfo != NULL) {
+                                    titledbInfo->type = data->type;
+
                                     for(u32 j = 0; j < val->u.object.length; j++) {
                                         char* name = val->u.object.values[j].name;
                                         u32 nameLen = val->u.object.values[j].name_length;
@@ -206,7 +211,7 @@ static void task_populate_titledb_thread(void* arg) {
             titledb_info* titledbInfo = (titledb_info*) item->data;
 
             char url[128];
-            snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/cia/%lu/icon_l.bin", titledbInfo->id);
+            snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/%s/%lu/icon_l.bin", data->type == TITLEDB_TYPE_CIA ? "cia" : "smdh", titledbInfo->id);
 
             u8 icon[0x1200];
             u32 iconSize = 0;
