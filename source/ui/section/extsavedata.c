@@ -23,6 +23,7 @@ typedef struct {
 
     bool showSD;
     bool showNAND;
+    bool sortById;
     bool sortByName;
 
     bool populated;
@@ -116,7 +117,23 @@ static void extsavedata_options_update(ui_view* view, void* data, linked_list* i
         bool* val = (bool*) selected->data;
         *val = !(*val);
 
-        selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+        if(*val && (val == &listData->sortById || val == &listData->sortByName)) {
+            if(val == &listData->sortById) {
+                listData->sortByName = false;
+            } else if(val == &listData->sortByName) {
+                listData->sortById = false;
+            }
+
+            linked_list_iter iter;
+            linked_list_iterate(items, &iter);
+            while(linked_list_iter_has_next(&iter)) {
+                list_item* item = (list_item*) linked_list_iter_next(&iter);
+
+                item->color = *(bool*) item->data ? COLOR_ENABLED : COLOR_DISABLED;
+            }
+        } else {
+            selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+        }
 
         listData->populated = false;
     }
@@ -124,6 +141,7 @@ static void extsavedata_options_update(ui_view* view, void* data, linked_list* i
     if(linked_list_size(items) == 0) {
         extsavedata_options_add_entry(items, "Show SD", &listData->showSD);
         extsavedata_options_add_entry(items, "Show NAND", &listData->showNAND);
+        extsavedata_options_add_entry(items, "Sort by ID", &listData->sortById);
         extsavedata_options_add_entry(items, "Sort by name", &listData->sortByName);
     }
 }
@@ -208,17 +226,22 @@ static int extsavedata_compare(void* data, const void* p1, const void* p2) {
     list_item* info1 = (list_item*) p1;
     list_item* info2 = (list_item*) p2;
 
-    ext_save_data_info* title1 = (ext_save_data_info*) info1->data;
-    ext_save_data_info* title2 = (ext_save_data_info*) info2->data;
+    ext_save_data_info* data1 = (ext_save_data_info*) info1->data;
+    ext_save_data_info* data2 = (ext_save_data_info*) info2->data;
 
-    if(title1->mediaType > title2->mediaType) {
+    if(data1->mediaType > data2->mediaType) {
         return -1;
-    } else if(title1->mediaType < title2->mediaType) {
+    } else if(data1->mediaType < data2->mediaType) {
         return 1;
     } else {
-        if(listData->sortByName) {
-            bool title1HasName = title1->hasMeta && !util_is_string_empty(title1->meta.shortDescription);
-            bool title2HasName = title2->hasMeta && !util_is_string_empty(title2->meta.shortDescription);
+        if(listData->sortById) {
+            u64 id1 = data1->extSaveDataId;
+            u64 id2 = data2->extSaveDataId;
+
+            return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+        } else if(listData->sortByName) {
+            bool title1HasName = data1->hasMeta && !util_is_string_empty(data1->meta.shortDescription);
+            bool title2HasName = data2->hasMeta && !util_is_string_empty(data2->meta.shortDescription);
 
             if(title1HasName && !title2HasName) {
                 return -1;
@@ -228,10 +251,7 @@ static int extsavedata_compare(void* data, const void* p1, const void* p2) {
                 return strcasecmp(info1->name, info2->name);
             }
         } else {
-            u64 id1 = title1->extSaveDataId;
-            u64 id2 = title2->extSaveDataId;
-
-            return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+            return 0;
         }
     }
 }
@@ -252,6 +272,7 @@ void extsavedata_open() {
 
     data->showSD = true;
     data->showNAND = true;
+    data->sortById = false;
     data->sortByName = true;
 
     list_display("Ext Save Data", "A: Select, B: Return, X: Refresh, Select: Options", data, extsavedata_update, extsavedata_draw_top);
