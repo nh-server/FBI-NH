@@ -33,7 +33,9 @@ typedef struct {
     bool showGameCard;
     bool showSD;
     bool showNAND;
+    bool sortById;
     bool sortByName;
+    bool sortBySize;
 
     bool populated;
 } titles_data;
@@ -151,7 +153,28 @@ static void titles_options_update(ui_view* view, void* data, linked_list* items,
         bool* val = (bool*) selected->data;
         *val = !(*val);
 
-        selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+        if(*val && (val == &listData->sortById || val == &listData->sortByName || val == &listData->sortBySize)) {
+            if(val == &listData->sortById) {
+                listData->sortByName = false;
+                listData->sortBySize = false;
+            } else if(val == &listData->sortByName) {
+                listData->sortById = false;
+                listData->sortBySize = false;
+            } else if(val == &listData->sortBySize) {
+                listData->sortById = false;
+                listData->sortByName = false;
+            }
+
+            linked_list_iter iter;
+            linked_list_iterate(items, &iter);
+            while(linked_list_iter_has_next(&iter)) {
+                list_item* item = (list_item*) linked_list_iter_next(&iter);
+
+                item->color = *(bool*) item->data ? COLOR_ENABLED : COLOR_DISABLED;
+            }
+        } else {
+            selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+        }
 
         listData->populated = false;
     }
@@ -160,7 +183,9 @@ static void titles_options_update(ui_view* view, void* data, linked_list* items,
         titles_options_add_entry(items, "Show game card", &listData->showGameCard);
         titles_options_add_entry(items, "Show SD", &listData->showSD);
         titles_options_add_entry(items, "Show NAND", &listData->showNAND);
+        titles_options_add_entry(items, "Sort by ID", &listData->sortById);
         titles_options_add_entry(items, "Sort by name", &listData->sortByName);
+        titles_options_add_entry(items, "Sort by size", &listData->sortBySize);
     }
 }
 
@@ -260,7 +285,12 @@ static int titles_compare(void* data, const void* p1, const void* p2) {
         } else if(title1->twl && !title2->twl) {
             return 1;
         } else {
-            if(listData->sortByName) {
+            if(listData->sortById) {
+                u64 id1 = title1->titleId;
+                u64 id2 = title2->titleId;
+
+                return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+            } else if(listData->sortByName) {
                 bool title1HasName = title1->hasMeta && !util_is_string_empty(title1->meta.shortDescription);
                 bool title2HasName = title2->hasMeta && !util_is_string_empty(title2->meta.shortDescription);
 
@@ -271,11 +301,13 @@ static int titles_compare(void* data, const void* p1, const void* p2) {
                 } else {
                     return strcasecmp(info1->name, info2->name);
                 }
-            } else {
-                u64 id1 = title1->titleId;
-                u64 id2 = title2->titleId;
+            } else if(listData->sortBySize) {
+                u64 size1 = title1->installedSize;
+                u64 size2 = title2->installedSize;
 
-                return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
+                return size1 > size2 ? -1 : size1 < size2 ? 1 : 0;
+            } else {
+                return 0;
             }
         }
     }
@@ -298,7 +330,9 @@ void titles_open() {
     data->showGameCard = true;
     data->showSD = true;
     data->showNAND = true;
+    data->sortById = false;
     data->sortByName = true;
+    data->sortBySize = false;
 
     list_display("Titles", "A: Select, B: Return, X: Refresh, Select: Options", data, titles_update, titles_draw_top);
 }
