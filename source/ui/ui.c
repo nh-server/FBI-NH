@@ -618,23 +618,15 @@ void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x
 
     char infoText[512];
 
-    if(info->type == TITLEDB_TYPE_CIA) {
-        snprintf(infoText, sizeof(infoText),
-                 "Title ID: %016llX\n"
-                 "Installed Version: %hu (%d.%d.%d)\n"
-                 "Size: %.2f %s\n"
-                 "Updated At: %s %s",
-                 info->titleId,
-                 info->installedVersion, (info->installedVersion >> 10) & 0x3F, (info->installedVersion >> 4) & 0x3F, info->installedVersion & 0xF,
-                 util_get_display_size(info->size), util_get_display_size_units(info->size),
-                 updatedDate, updatedTime);
-    } else {
-        snprintf(infoText, sizeof(infoText),
-                 "Size: %.2f %s\n"
-                 "Updated At: %s %s",
-                 util_get_display_size(info->size), util_get_display_size_units(info->size),
-                 updatedDate, updatedTime);
-    }
+    snprintf(infoText, sizeof(infoText),
+             "Title ID: %016llX\n"
+             "Installed Version: %hu (%d.%d.%d)\n"
+             "Size: %.2f %s\n"
+             "Updated At: %s %s",
+             info->titleId,
+             info->installedVersion, (info->installedVersion >> 10) & 0x3F, (info->installedVersion >> 4) & 0x3F, info->installedVersion & 0xF,
+             util_get_display_size(info->size), util_get_display_size_units(info->size),
+             updatedDate, updatedTime);
 
     float infoWidth;
     screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
