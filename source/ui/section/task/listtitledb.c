@@ -17,32 +17,9 @@
 void task_populate_titledb_update_status(list_item* item) {
     titledb_info* info = (titledb_info*) item->data;
 
-    if(info->type == TITLEDB_TYPE_CIA) {
-        AM_TitleEntry entry;
-        info->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->titleId), 1, &info->titleId, &entry));
-        info->installedVersion = info->installed ? entry.version : (u16) 0;
-    } else if(info->type == TITLEDB_TYPE_3DSX) {
-        info->installed = false;
-        info->installedVersion = 0;
-
-        char name[FILE_NAME_MAX];
-        util_escape_file_name(name, info->meta.shortDescription, sizeof(name));
-
-        char path3dsx[FILE_PATH_MAX];
-        snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
-        
-        FS_Path* fsPath = util_make_path_utf8(path3dsx);
-        if(fsPath != NULL) {
-            Handle handle = 0;
-            if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
-                info->installed = true;
-
-                FSFILE_Close(handle);
-            }
-
-            util_free_path_utf8(fsPath);
-        }
-    }
+    AM_TitleEntry entry;
+    info->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->titleId), 1, &info->titleId, &entry));
+    info->installedVersion = info->installed ? entry.version : (u16) 0;
 
     if(info->installed) {
         item->color = COLOR_TITLEDB_INSTALLED;
@@ -82,11 +59,8 @@ static void task_populate_titledb_thread(void* arg) {
     u32 maxTextSize = 256 * 1024;
     char* text = (char*) calloc(sizeof(char), maxTextSize);
     if(text != NULL) {
-        char url[256];
-        snprintf(url, sizeof(url), "https://api.titledb.com/v1/%sonly=id&only=size&only=updated_at&only=version&only=name_s&only=name_l&only=publisher", data->type == TITLEDB_TYPE_CIA ? "cia?only=titleid&" : "smdh?");
-
         u32 textSize = 0;
-        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, url))) {
+        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=updated_at&only=titleid&only=name_s&only=name_l&only=publisher"))) {
             json_value* json = json_parse(text, textSize);
             if(json != NULL) {
                 if(json->type == json_array) {
@@ -105,8 +79,6 @@ static void task_populate_titledb_thread(void* arg) {
                             if(item != NULL) {
                                 titledb_info* titledbInfo = (titledb_info*) calloc(1, sizeof(titledb_info));
                                 if(titledbInfo != NULL) {
-                                    titledbInfo->type = data->type;
-
                                     for(u32 j = 0; j < val->u.object.length; j++) {
                                         char* name = val->u.object.values[j].name;
                                         u32 nameLen = val->u.object.values[j].name_length;
@@ -223,7 +195,7 @@ static void task_populate_titledb_thread(void* arg) {
             titledb_info* titledbInfo = (titledb_info*) item->data;
 
             char url[128];
-            snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/%s/%lu/icon_l.bin", data->type == TITLEDB_TYPE_CIA ? "cia" : "smdh", titledbInfo->id);
+            snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/cia/%lu/icon_l.bin", titledbInfo->id);
 
             u8 icon[0x1200];
             u32 iconSize = 0;

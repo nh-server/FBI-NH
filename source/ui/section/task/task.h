@@ -71,13 +71,7 @@ typedef struct file_info_s {
     ticket_info ticketInfo;
 } file_info;
 
-typedef enum titledb_type_e {
-    TITLEDB_TYPE_CIA,
-    TITLEDB_TYPE_3DSX
-} titledb_type;
-
 typedef struct titledb_info_s {
-    titledb_type type;
     u32 id;
     u64 titleId;
     u16 installedVersion;
@@ -231,7 +225,6 @@ typedef struct populate_titles_data_s {
 
 typedef struct populate_titledb_data_s {
     linked_list* items;
-    titledb_type type;
 
     volatile bool itemsListed;
     volatile bool finished;
