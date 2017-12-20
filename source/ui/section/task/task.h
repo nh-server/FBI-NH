@@ -74,6 +74,7 @@ typedef struct file_info_s {
 typedef struct titledb_info_s {
     u32 id;
     u64 titleId;
+    char version[32];
     u16 installedVersion;
     u64 size;
     char updatedAt[32];
