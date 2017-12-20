@@ -60,7 +60,7 @@ static void task_populate_titledb_thread(void* arg) {
     char* text = (char*) calloc(sizeof(char), maxTextSize);
     if(text != NULL) {
         u32 textSize = 0;
-        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=updated_at&only=titleid&only=name_s&only=name_l&only=publisher"))) {
+        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=updated_at&only=titleid&only=version&only=name_s&only=name_l&only=publisher"))) {
             json_value* json = json_parse(text, textSize);
             if(json != NULL) {
                 if(json->type == json_array) {
@@ -88,6 +88,8 @@ static void task_populate_titledb_thread(void* arg) {
                                                 strncpy(titledbInfo->updatedAt, subVal->u.string.ptr, sizeof(titledbInfo->updatedAt));
                                             } else if(strncmp(name, "titleid", nameLen) == 0) {
                                                 titledbInfo->titleId = strtoull(subVal->u.string.ptr, NULL, 16);
+                                            } else if(strncmp(name, "version", nameLen) == 0) {
+                                                strncpy(titledbInfo->version, subVal->u.string.ptr, sizeof(titledbInfo->version));
                                             } else if(strncmp(name, "name_s", nameLen) == 0) {
                                                 strncpy(titledbInfo->meta.shortDescription, subVal->u.string.ptr, sizeof(titledbInfo->meta.shortDescription));
                                             } else if(strncmp(name, "name_l", nameLen) == 0) {
@@ -122,7 +124,7 @@ static void task_populate_titledb_thread(void* arg) {
                                         list_item* currItem = (list_item*) linked_list_iter_next(&iter);
                                         titledb_info* currTitledbInfo = (titledb_info*) currItem->data;
 
-                                        if(titledbInfo->titleId == currTitledbInfo->titleId && (titledbInfo->type == TITLEDB_TYPE_CIA || strncmp(titledbInfo->meta.shortDescription, currTitledbInfo->meta.shortDescription, sizeof(titledbInfo->meta.shortDescription)) == 0)) {
+                                        if(titledbInfo->titleId == currTitledbInfo->titleId) {
                                             if(strncmp(titledbInfo->updatedAt, currTitledbInfo->updatedAt, sizeof(titledbInfo->updatedAt)) >= 0) {
                                                 linked_list_iter_remove(&iter);
                                                 task_free_titledb(currItem);
