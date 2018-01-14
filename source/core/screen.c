@@ -24,6 +24,7 @@ static C3D_Mtx projection_top;
 static C3D_Mtx projection_bottom;
 
 static C3D_Tex* glyph_sheets;
+static float font_scale;
 
 static u8 base_alpha = 0xFF;
 
@@ -167,6 +168,8 @@ void screen_init() {
         tex->height = glyphInfo->sheetHeight;
         tex->param = GPU_TEXTURE_MAG_FILTER(GPU_LINEAR) | GPU_TEXTURE_MIN_FILTER(GPU_LINEAR) | GPU_TEXTURE_WRAP_S(GPU_CLAMP_TO_EDGE) | GPU_TEXTURE_WRAP_T(GPU_CLAMP_TO_EDGE);
     }
+
+    font_scale = 30.0f / glyphInfo->cellHeight; // 30 is cellHeight in J machines
 
     FILE* fd = screen_open_resource("textcolor.cfg");
     if(fd == NULL) {
@@ -558,6 +561,9 @@ float screen_get_font_height(float scaleY) {
 }
 
 static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine, bool wrap, float wrapWidth) {
+    scaleX *= font_scale;
+    scaleY *= font_scale;
+
     float w = 0;
     float h = 0;
     float lineWidth = 0;
@@ -620,6 +626,8 @@ void screen_get_string_size_wrap(float* width, float* height, const char* text, 
 }
 
 static void screen_draw_string_internal(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, bool wrap, float wrapX) {
+    // Note: Do not just multiply scaleX and scaleY by font_scale, as they would then be double-scaled when passed into screen_get_string_size_internal.
+
     if(text == NULL) {
         return;
     }
@@ -660,7 +668,7 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
     while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
         p += units;
 
-        if(code == '\n' || (wrap && currX + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapX)) {
+        if(code == '\n' || (wrap && currX + scaleX * font_scale * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapX)) {
             lastAlign = p;
 
             screen_get_string_size_internal(&lineWidth, NULL, (const char*) p, scaleX, scaleY, true, wrap, wrapX - x);
@@ -670,7 +678,7 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
                 currX += (stringWidth - lineWidth) / 2;
             }
 
-            y += scaleY * fontGetInfo()->lineFeed;
+            y += scaleY * font_scale * fontGetInfo()->lineFeed;
         }
 
         if(code != '\n') {
@@ -683,7 +691,7 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
             }
 
             fontGlyphPos_s data;
-            fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), GLYPH_POS_CALC_VTXCOORD, scaleX, scaleY);
+            fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
 
             if(data.sheetIndex != lastSheet) {
                 lastSheet = data.sheetIndex;
