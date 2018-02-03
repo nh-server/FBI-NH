@@ -2,6 +2,7 @@
 #include <malloc.h>
 
 #include <3ds.h>
+#include <curl/curl.h>
 
 #include "core/clipboard.h"
 #include "core/screen.h"
@@ -114,6 +115,12 @@ Result init_services() {
 
 static u32 old_time_limit = UINT32_MAX;
 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
+FILE* dbg;
+
 void init() {
     gfxInitDefault();
 
@@ -146,6 +153,8 @@ void init() {
     }
 
     AM_InitializeExternalTitleDatabase(false);
+
+    curl_global_init(CURL_GLOBAL_ALL);
 
     screen_init();
     ui_init();

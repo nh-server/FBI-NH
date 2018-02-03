@@ -4,9 +4,9 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <3ds.h>
-#include <unistd.h>
 
 #include "section.h"
 #include "action/action.h"
@@ -20,7 +20,7 @@
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
-#include "../../quirc/quirc_internal.h"
+#include "../../libs/quirc/quirc_internal.h"
 
 static bool remoteinstall_get_last_urls(char* out, size_t size) {
     if(out == NULL || size == 0) {

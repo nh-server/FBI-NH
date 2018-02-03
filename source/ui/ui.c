@@ -611,10 +611,33 @@ void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x
 
     ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
 
+    char infoText[1024];
+
+    snprintf(infoText, sizeof(infoText),
+             "%s\n"
+             "\n"
+             "Category: %s\n",
+             info->headline,
+             info->category);
+
+    float infoWidth;
+    screen_get_string_size_wrap(&infoWidth, NULL, infoText, 0.5f, 0.5f, x2 - x1 - 10);
+
+    // TODO: Wrap by word, not character?
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string_wrap(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true, infoX + infoWidth + 1);
+}
+
+void ui_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    titledb_info* info = (titledb_info*) data;
+
+    ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
+
     char updatedDate[32] = "";
     char updatedTime[32] = "";
 
-    sscanf(info->updatedAt, "%31[^T]T%31[^Z]Z", updatedDate, updatedTime);
+    sscanf(info->cia.updatedAt, "%31[^T]T%31[^Z]Z", updatedDate, updatedTime);
 
     char infoText[512];
 
@@ -624,10 +647,38 @@ void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x
              "Installed Version: %hu (%d.%d.%d)\n"
              "Size: %.2f %s\n"
              "Updated At: %s %s",
-             info->titleId,
-             info->version,
-             info->installedVersion, (info->installedVersion >> 10) & 0x3F, (info->installedVersion >> 4) & 0x3F, info->installedVersion & 0xF,
-             util_get_display_size(info->size), util_get_display_size_units(info->size),
+             info->cia.titleId,
+             info->cia.version,
+             info->cia.installedVersion, (info->cia.installedVersion >> 10) & 0x3F, (info->cia.installedVersion >> 4) & 0x3F, info->cia.installedVersion & 0xF,
+             util_get_display_size(info->cia.size), util_get_display_size_units(info->cia.size),
+             updatedDate, updatedTime);
+
+    float infoWidth;
+    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
+
+    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+    float infoY = y1 + (y2 - y1) / 2 - 8;
+    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
+}
+
+void ui_draw_titledb_info_tdsx(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
+    titledb_info* info = (titledb_info*) data;
+
+    ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
+
+    char updatedDate[32] = "";
+    char updatedTime[32] = "";
+
+    sscanf(info->tdsx.updatedAt, "%31[^T]T%31[^Z]Z", updatedDate, updatedTime);
+
+    char infoText[512];
+
+    snprintf(infoText, sizeof(infoText),
+             "TitleDB Version: %s\n"
+             "Size: %.2f %s\n"
+             "Updated At: %s %s",
+             info->tdsx.version,
+             util_get_display_size(info->tdsx.size), util_get_display_size_units(info->tdsx.size),
              updatedDate, updatedTime);
 
     float infoWidth;

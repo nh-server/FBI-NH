@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <jansson.h>
 
 #include "section.h"
 #include "action/action.h"
@@ -12,7 +13,6 @@
 #include "../ui.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
-#include "../../json/json.h"
 
 static void update_check_update(ui_view* view, void* data, float* progress, char* text) {
     bool hasUpdate = false;
@@ -21,90 +21,49 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     Result res = 0;
     u32 responseCode = 0;
 
-    httpcContext context;
-    if(R_SUCCEEDED(res = util_http_open(&context, &responseCode, "https://api.github.com/repos/Steveice10/FBI/releases/latest", true))) {
-        u32 size = 0;
-        if(R_SUCCEEDED(res = util_http_get_size(&context, &size))) {
-            char* jsonText = (char*) calloc(sizeof(char), size);
-            if(jsonText != NULL) {
-                u32 bytesRead = 0;
-                if(R_SUCCEEDED(res = util_http_read(&context, &bytesRead, (u8*) jsonText, size))) {
-                    json_value* json = json_parse(jsonText, size);
-                    if(json != NULL) {
-                        if(json->type == json_object) {
-                            json_value* name = NULL;
-                            json_value* assets = NULL;
+    json_t* json = NULL;
+    if(R_SUCCEEDED(res = util_download_json("https://api.github.com/repos/Steveice10/FBI/releases/latest", &json, 16 * 1024))) {
+        if(json_is_object(json)) {
+            json_t* name = json_object_get(json, "name");
+            json_t* assets = json_object_get(json, "assets");
 
-                            for(u32 i = 0; i < json->u.object.length; i++) {
-                                json_value* val = json->u.object.values[i].value;
-                                if(strncmp(json->u.object.values[i].name, "name", json->u.object.values[i].name_length) == 0 && val->type == json_string) {
-                                    name = val;
-                                } else if(strncmp(json->u.object.values[i].name, "assets", json->u.object.values[i].name_length) == 0 && val->type == json_array) {
-                                    assets = val;
+            if(json_is_string(name) && json_is_array(assets)) {
+                char versionString[16];
+                snprintf(versionString, sizeof(versionString), "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+
+                if(strncmp(json_string_value(name), versionString, json_string_length(name)) != 0) {
+                    const char* url = NULL;
+
+                    for(u32 i = 0; i < json_array_size(assets); i++) {
+                        json_t* val = json_array_get(assets, i);
+                        if(json_is_object(val)) {
+                            json_t* assetName = json_object_get(val, "name");
+                            json_t* assetUrl = json_object_get(val, "browser_download_url");
+
+                            if(json_is_string(assetName) && json_is_string(assetUrl)) {
+                                if(strncmp(json_string_value(assetName), util_get_3dsx_path() != NULL ? "FBI.3dsx" : "FBI.cia", json_string_length(assetName)) == 0) {
+                                    url = json_string_value(assetUrl);
+                                    break;
                                 }
                             }
-
-                            if(name != NULL && assets != NULL) {
-                                char versionString[16];
-                                snprintf(versionString, sizeof(versionString), "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
-
-                                if(strncmp(name->u.string.ptr, versionString, name->u.string.length) != 0) {
-                                    char* url = NULL;
-
-                                    for(u32 i = 0; i < assets->u.array.length; i++) {
-                                        json_value* val = assets->u.array.values[i];
-                                        if(val->type == json_object) {
-                                            json_value* assetName = NULL;
-                                            json_value* assetUrl = NULL;
-
-                                            for(u32 j = 0; j < val->u.object.length; j++) {
-                                                json_value* subVal = val->u.object.values[j].value;
-                                                if(strncmp(val->u.object.values[j].name, "name", val->u.object.values[j].name_length) == 0 && subVal->type == json_string) {
-                                                    assetName = subVal;
-                                                } else if(strncmp(val->u.object.values[j].name, "browser_download_url", val->u.object.values[j].name_length) == 0 && subVal->type == json_string) {
-                                                    assetUrl = subVal;
-                                                }
-                                            }
-
-                                            if(assetName != NULL && assetUrl != NULL) {
-                                                if(strncmp(assetName->u.string.ptr, util_get_3dsx_path() != NULL ? "FBI.3dsx" : "FBI.cia", assetName->u.string.length) == 0) {
-                                                    url = assetUrl->u.string.ptr;
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    if(url != NULL) {
-                                        strncpy(updateURL, url, INSTALL_URL_MAX);
-                                        hasUpdate = true;
-                                    } else {
-                                        res = R_FBI_BAD_DATA;
-                                    }
-                                }
-                            } else {
-                                res = R_FBI_BAD_DATA;
-                            }
-                        } else {
-                            res = R_FBI_BAD_DATA;
                         }
+                    }
 
-                        json_value_free(json);
+                    if(url != NULL) {
+                        strncpy(updateURL, url, INSTALL_URL_MAX);
+                        hasUpdate = true;
                     } else {
-                        res = R_FBI_PARSE_FAILED;
+                        res = R_FBI_BAD_DATA;
                     }
                 }
-
-                free(jsonText);
             } else {
-                res = R_FBI_OUT_OF_MEMORY;
+                res = R_FBI_BAD_DATA;
             }
+        } else {
+            res = R_FBI_BAD_DATA;
         }
 
-        Result closeRes = util_http_close(&context);
-        if(R_SUCCEEDED(res)) {
-            res = closeRes;
-        }
+        json_decref(json);
     }
 
     ui_pop();

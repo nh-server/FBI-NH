@@ -56,4 +56,4 @@ void action_delete_secure_value(linked_list* items, list_item* selected);
 void action_install_url(const char* confirmMessage, const char* urls, const char* path3dsx, void* userData, void (*finished)(void* data),
                                                                                                             void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index));
 
-void action_install_titledb(linked_list* items, list_item* selected);
+void action_install_titledb(linked_list* items, list_item* selected, bool cia);

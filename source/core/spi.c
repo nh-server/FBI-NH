@@ -4,7 +4,7 @@
 #include <3ds.h>
 
 #include "spi.h"
-#include "../ui/error.h"
+#include "util.h"
 
 /*
  * Based on information from TWLSaveTool, by TuxSH.

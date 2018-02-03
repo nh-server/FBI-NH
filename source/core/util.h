@@ -1,5 +1,29 @@
 #pragma once
 
+typedef struct json_t json_t;
+
+#define R_FBI_CANCELLED MAKERESULT(RL_PERMANENT, RS_CANCELED, RM_APPLICATION, 1)
+#define R_FBI_HTTP_RESPONSE_CODE MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 2)
+#define R_FBI_WRONG_SYSTEM MAKERESULT(RL_PERMANENT, RS_NOTSUPPORTED, RM_APPLICATION, 3)
+#define R_FBI_INVALID_ARGUMENT MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_APPLICATION, 4)
+#define R_FBI_THREAD_CREATE_FAILED MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 5)
+#define R_FBI_PARSE_FAILED MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 6)
+#define R_FBI_BAD_DATA MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 7)
+#define R_FBI_TOO_MANY_REDIRECTS MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 8)
+
+#define R_FBI_CURL_INIT_FAILED MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 9)
+#define R_FBI_CURL_ERORR_BASE MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, 10)
+
+#define R_FBI_NOT_IMPLEMENTED MAKERESULT(RL_PERMANENT, RS_INTERNAL, RM_APPLICATION, RD_NOT_IMPLEMENTED)
+#define R_FBI_OUT_OF_MEMORY MAKERESULT(RL_FATAL, RS_OUTOFRESOURCE, RM_APPLICATION, RD_OUT_OF_MEMORY)
+#define R_FBI_OUT_OF_RANGE MAKERESULT(RL_PERMANENT, RS_INVALIDARG, RM_APPLICATION, RD_OUT_OF_RANGE)
+
+#define MAKE_HTTP_USER_AGENT_(major, minor, micro) ("Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/" #major "." #minor "." #micro)
+#define MAKE_HTTP_USER_AGENT(major, minor, micro) MAKE_HTTP_USER_AGENT_(major, minor, micro)
+#define HTTP_USER_AGENT MAKE_HTTP_USER_AGENT(VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO)
+
+#define HTTP_CONNECT_TIMEOUT 15
+
 typedef struct {
     u16 shortDescription[0x40];
     u16 longDescription[0x80];
@@ -54,6 +78,9 @@ void util_get_path_file(char* out, const char* path, u32 size);
 void util_get_parent_path(char* out, const char* path, u32 size);
 
 bool util_is_string_empty(const char* str);
+
+Result util_download(const char* url, u32* downloadedSize, void* buf, size_t size);
+Result util_download_json(const char* url, json_t** json, size_t maxSize);
 
 Result util_import_seed(u32* responseCode, u64 titleId);
 

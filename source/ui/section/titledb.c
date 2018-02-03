@@ -1,5 +1,6 @@
 #include <malloc.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <3ds.h>
 
@@ -23,10 +24,22 @@ typedef struct {
 typedef struct {
     linked_list* items;
     list_item* selected;
+} titledb_entry_data;
+
+typedef struct {
+    linked_list* items;
+    list_item* selected;
+    bool cia;
 } titledb_action_data;
 
 static void titledb_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
-    ui_draw_titledb_info(view, ((titledb_action_data*) data)->selected->data, x1, y1, x2, y2);
+    titledb_action_data* actionData = (titledb_action_data*) data;
+
+    if(actionData->cia) {
+        ui_draw_titledb_info_cia(view, actionData->selected->data, x1, y1, x2, y2);
+    } else {
+        ui_draw_titledb_info_tdsx(view, actionData->selected->data, x1, y1, x2, y2);
+    }
 }
 
 static void titledb_action_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
@@ -42,12 +55,12 @@ static void titledb_action_update(ui_view* view, void* data, linked_list* items,
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(linked_list*, list_item*) = (void(*)(linked_list*, list_item*)) selected->data;
+        void(*action)(linked_list*, list_item*, bool) = (void(*)(linked_list*, list_item*, bool)) selected->data;
 
         ui_pop();
         list_destroy(view);
 
-        action(actionData->items, actionData->selected);
+        action(actionData->items, actionData->selected, actionData->cia);
 
         free(data);
 
@@ -59,7 +72,7 @@ static void titledb_action_update(ui_view* view, void* data, linked_list* items,
     }
 }
 
-static void titledb_action_open(linked_list* items, list_item* selected) {
+static void titledb_action_open(linked_list* items, list_item* selected, bool cia) {
     titledb_action_data* data = (titledb_action_data*) calloc(1, sizeof(titledb_action_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate TitleDB action data.");
@@ -69,8 +82,87 @@ static void titledb_action_open(linked_list* items, list_item* selected) {
 
     data->items = items;
     data->selected = selected;
+    data->cia = cia;
 
     list_display("TitleDB Action", "A: Select, B: Return", data, titledb_action_update, titledb_action_draw_top);
+}
+
+static void titledb_entry_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
+    titledb_entry_data* entryData = (titledb_entry_data*) data;
+
+    if(selected != NULL) {
+        if(strncmp(selected->name, "CIA", sizeof(selected->name)) == 0) {
+            ui_draw_titledb_info_cia(view, entryData->selected->data, x1, y1, x2, y2);
+        } else if(strncmp(selected->name, "3DSX", sizeof(selected->name)) == 0) {
+            ui_draw_titledb_info_tdsx(view, entryData->selected->data, x1, y1, x2, y2);
+        }
+    }
+}
+
+static void titledb_entry_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
+    titledb_entry_data* entryData = (titledb_entry_data*) data;
+
+    if(hidKeysDown() & KEY_B) {
+        ui_pop();
+
+        linked_list_iter iter;
+        linked_list_iterate(items, &iter);
+
+        while(linked_list_iter_has_next(&iter)) {
+            free(linked_list_iter_next(&iter));
+            linked_list_iter_remove(&iter);
+        }
+
+        list_destroy(view);
+        free(data);
+
+        return;
+    }
+
+    if(selected != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        titledb_action_open(entryData->items, entryData->selected, (bool) selected->data);
+        return;
+    }
+
+    if(linked_list_size(items) == 0) {
+        titledb_info* info = (titledb_info*) entryData->selected->data;
+
+        if(info->cia.exists) {
+            list_item* item = (list_item*) calloc(1, sizeof(list_item));
+            if(item != NULL) {
+                strncpy(item->name, "CIA", sizeof(item->name));
+                item->data = (void*) true;
+                item->color = info->cia.installed ? COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+
+                linked_list_add(items, item);
+            }
+        }
+
+        if(info->tdsx.exists) {
+            list_item* item = (list_item*) calloc(1, sizeof(list_item));
+            if(item != NULL) {
+                strncpy(item->name, "3DSX", sizeof(item->name));
+                item->data = (void*) false;
+                item->color = info->tdsx.installed ? COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+
+                linked_list_add(items, item);
+            }
+        }
+    }
+}
+
+static void titledb_entry_open(linked_list* items, list_item* selected) {
+    titledb_entry_data* data = (titledb_entry_data*) calloc(1, sizeof(titledb_entry_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, "Failed to allocate TitleDB entry data.");
+
+        return;
+    }
+
+    data->items = items;
+    data->selected = selected;
+
+    list_display("TitleDB Entry", "A: Select, B: Return", data, titledb_entry_update, titledb_entry_draw_top);
 }
 
 static void titledb_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
@@ -132,7 +224,7 @@ static void titledb_update(ui_view* view, void* data, linked_list* items, list_i
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        titledb_action_open(items, selected);
+        titledb_entry_open(items, selected);
         return;
     }
 }

@@ -4,10 +4,12 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <curl/curl.h>
 
 #include "error.h"
 #include "prompt.h"
 #include "../core/screen.h"
+#include "../core/util.h"
 
 static const char* level_to_string(Result res) {
     switch(R_LEVEL(res)) {
@@ -502,7 +504,13 @@ static const char* description_to_string(Result res) {
                     return "Bad data";
                 case R_FBI_TOO_MANY_REDIRECTS:
                     return "Too many redirects";
+                case R_FBI_CURL_INIT_FAILED:
+                    return "Failed to initialize CURL.";
                 default:
+                    if(res >= R_FBI_CURL_ERORR_BASE && res < R_FBI_CURL_ERORR_BASE + CURL_LAST) {
+                        return curl_easy_strerror((CURLcode) (res - R_FBI_CURL_ERORR_BASE));
+                    }
+
                     break;
             }
         default:

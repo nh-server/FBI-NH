@@ -5,9 +5,10 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <curl/curl.h>
+#include <jansson.h>
 
 #include "util.h"
-#include "../ui/error.h"
 #include "../ui/list.h"
 #include "../ui/section/task/task.h"
 #include "linkedlist.h"
@@ -268,6 +269,92 @@ bool util_is_string_empty(const char* str) {
     return true;
 }
 
+typedef struct {
+    u8* buf;
+    u32 size;
+
+    u32 pos;
+} download_data;
+
+static size_t util_download_write_callback(void* contents, size_t size, size_t nmemb, void* userp) {
+    download_data* data = (download_data*) userp;
+
+    size_t realSize = size * nmemb;
+    size_t remaining = data->size - data->pos;
+    size_t copy = realSize < remaining ? realSize : remaining;
+
+    memcpy(&data->buf[data->pos], contents, copy);
+    data->pos += copy;
+
+    return copy;
+}
+
+Result util_download(const char* url, u32* downloadedSize, void* buf, size_t size) {
+    if(url == NULL || buf == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    Result res = 0;
+
+    CURL* curl = curl_easy_init();
+    if(curl != NULL) {
+        download_data readData = {buf, size, 0};
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, util_download_write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &readData);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, true);
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING,  "");
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_CONNECT_TIMEOUT);
+
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false); // TODO: Certificates?
+
+        CURLcode ret = curl_easy_perform(curl);
+        if(ret == CURLE_OK) {
+            if(downloadedSize != NULL) {
+                *downloadedSize = readData.pos;
+            }
+        } else {
+            res = R_FBI_CURL_ERORR_BASE + ret;
+        }
+
+        curl_easy_cleanup(curl);
+    } else {
+        res = R_FBI_CURL_INIT_FAILED;
+    }
+
+    return res;
+}
+
+Result util_download_json(const char* url, json_t** json, size_t maxSize) {
+    if(url == NULL || json == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    Result res = 0;
+
+    char* text = (char*) calloc(sizeof(char), maxSize);
+    if(text != NULL) {
+        u32 textSize = 0;
+        if(R_SUCCEEDED(res = util_download(url, &textSize, text, maxSize))) {
+            json_error_t error;
+            json_t* parsed = json_loads(text, 0, &error);
+            if(parsed != NULL) {
+                *json = parsed;
+            } else {
+                res = R_FBI_PARSE_FAILED;
+            }
+        }
+
+        free(text);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    return res;
+}
+
 static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
     u32 *cmdbuf = getThreadCommandBuffer();
 
@@ -313,15 +400,9 @@ Result util_import_seed(u32* responseCode, u64 titleId) {
                 char url[128];
                 snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
 
-                httpcContext context;
-                if(R_SUCCEEDED(res = util_http_open(&context, responseCode, url, false))) {
-                    u32 bytesRead = 0;
-                    res = util_http_read(&context, &bytesRead, seed, sizeof(seed));
-
-                    Result closeRes = util_http_close(&context);
-                    if(R_SUCCEEDED(res)) {
-                        res = closeRes;
-                    }
+                u32 downloadedSize = 0;
+                if(R_SUCCEEDED(res = util_download(url, &downloadedSize, seed, sizeof(seed))) && downloadedSize != sizeof(seed)) {
+                    res = R_FBI_BAD_DATA;
                 }
             } else {
                 res = R_FBI_OUT_OF_RANGE;
@@ -694,11 +775,7 @@ u16* util_select_bnr_title(BNR* bnr) {
     return bnr->titles[systemLanguage];
 }
 
-#define HTTP_TIMEOUT 15000000000
-
-#define MAKE_HTTP_USER_AGENT_(major, minor, micro) ("Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/" #major "." #minor "." #micro)
-#define MAKE_HTTP_USER_AGENT(major, minor, micro) MAKE_HTTP_USER_AGENT_(major, minor, micro)
-#define HTTP_USER_AGENT MAKE_HTTP_USER_AGENT(VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO)
+#define HTTPC_TIMEOUT 15000000000
 
 Result util_http_open(httpcContext* context, u32* responseCode, const char* url, bool userAgent) {
     return util_http_open_ranged(context, responseCode, url, userAgent, 0, 0);
@@ -731,7 +808,7 @@ Result util_http_open_ranged(httpcContext* context, u32* responseCode, const cha
                && (rangeStart == 0 || R_SUCCEEDED(res = httpcAddRequestHeaderField(context, "Range", range)))
                && R_SUCCEEDED(res = httpcSetKeepAlive(context, HTTPC_KEEPALIVE_ENABLED))
                && R_SUCCEEDED(res = httpcBeginRequest(context))
-               && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(context, &response, HTTP_TIMEOUT))) {
+               && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(context, &response, HTTPC_TIMEOUT))) {
                 if(response == 301 || response == 302 || response == 303) {
                     redirectCount++;
 
@@ -816,7 +893,7 @@ Result util_http_read(httpcContext* context, u32* bytesRead, void* buffer, u32 s
 
         u32 outPos = 0;
         while(res == HTTPC_RESULTCODE_DOWNLOADPENDING && outPos < size) {
-            if(R_SUCCEEDED(res = httpcReceiveDataTimeout(context, &((u8*) buffer)[outPos], size - outPos, HTTP_TIMEOUT)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING) {
+            if(R_SUCCEEDED(res = httpcReceiveDataTimeout(context, &((u8*) buffer)[outPos], size - outPos, HTTPC_TIMEOUT)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING) {
                 Result posRes = 0;
                 u32 currPos = 0;
                 if(R_SUCCEEDED(posRes = httpcGetDownloadSizeState(context, &currPos, NULL))) {

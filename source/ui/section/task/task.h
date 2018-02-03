@@ -71,14 +71,44 @@ typedef struct file_info_s {
     ticket_info ticketInfo;
 } file_info;
 
+typedef struct titledb_cia_info_s {
+    bool exists;
+
+    u32 id;
+    char updatedAt[32];
+    char version[32];
+    u64 size;
+    u64 titleId;
+
+    bool installed;
+    u16 installedVersion;
+} titledb_cia_info;
+
+typedef struct titledb_smdh_info_s {
+    bool exists;
+
+    u32 id;
+} titledb_smdh_info;
+
+typedef struct titledb_tdsx_info_s {
+    bool exists;
+
+    u32 id;
+    char updatedAt[32];
+    char version[32];
+    u64 size;
+    titledb_smdh_info smdh;
+
+    bool installed;
+} titledb_tdsx_info;
+
 typedef struct titledb_info_s {
     u32 id;
-    u64 titleId;
-    char version[32];
-    u16 installedVersion;
-    u64 size;
-    char updatedAt[32];
-    bool installed;
+    char category[64];
+    char headline[512];
+    titledb_cia_info cia;
+    titledb_tdsx_info tdsx;
+
     meta_info meta;
 } titledb_info;
 

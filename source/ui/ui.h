@@ -32,3 +32,5 @@ void ui_draw_system_save_data_info(ui_view* view, void* data, float x1, float y1
 void ui_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 void ui_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
+void ui_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, float x2, float y2);
+void ui_draw_titledb_info_tdsx(ui_view* view, void* data, float x1, float y1, float x2, float y2);
