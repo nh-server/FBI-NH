@@ -7,7 +7,6 @@
 
 #include "task.h"
 #include "../../list.h"
-#include "../../error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"

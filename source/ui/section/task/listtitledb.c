@@ -4,44 +4,55 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <jansson.h>
 
 #include "task.h"
 #include "../../list.h"
-#include "../../error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
-#include "../../../json/json.h"
-#include "../../../stb_image/stb_image.h"
+#include "../../../libs/stb_image/stb_image.h"
+
+#define json_object_get_string(obj, name, def) (json_is_string(json_object_get(obj, name)) ? json_string_value(json_object_get(obj, name)) : def)
+#define json_object_get_integer(obj, name, def) (json_is_integer(json_object_get(obj, name)) ? json_integer_value(json_object_get(obj, name)) : def)
 
 void task_populate_titledb_update_status(list_item* item) {
     titledb_info* info = (titledb_info*) item->data;
 
-    AM_TitleEntry entry;
-    info->installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->titleId), 1, &info->titleId, &entry));
-    info->installedVersion = info->installed ? entry.version : (u16) 0;
+    if(info->cia.exists) {
+        AM_TitleEntry entry;
+        info->cia.installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->cia.titleId), 1, &info->cia.titleId, &entry));
+        info->cia.installedVersion = info->cia.installed ? entry.version : (u16) 0;
+    }
 
-    if(info->installed) {
+    if(info->tdsx.exists) {
+        info->tdsx.installed = false;
+
+        char name[FILE_NAME_MAX];
+        util_escape_file_name(name, info->meta.shortDescription, sizeof(name));
+
+        char path3dsx[FILE_PATH_MAX];
+        snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
+
+        FS_Path* fsPath = util_make_path_utf8(path3dsx);
+        if(fsPath != NULL) {
+            Handle handle = 0;
+            if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
+                FSFILE_Close(handle);
+
+                info->tdsx.installed = true;
+            }
+
+            util_free_path_utf8(fsPath);
+        }
+    }
+
+    // TODO: Outdated color(?)
+    if((info->cia.exists && info->cia.installed) || (info->tdsx.exists && info->tdsx.installed)) {
         item->color = COLOR_TITLEDB_INSTALLED;
     } else {
         item->color = COLOR_TITLEDB_NOT_INSTALLED;
     }
-}
-
-static Result task_populate_titledb_download(u32* downloadSize, void* buffer, u32 maxSize, const char* url) {
-    Result res = 0;
-
-    httpcContext context;
-    if(R_SUCCEEDED(res = util_http_open(&context, NULL, url, true))) {
-        res = util_http_read(&context, downloadSize, buffer, maxSize);
-
-        Result closeRes = util_http_close(&context);
-        if(R_SUCCEEDED(res)) {
-            res = closeRes;
-        }
-    }
-
-    return res;
 }
 
 static int task_populate_titledb_compare(void* userData, const void* p1, const void* p2) {
@@ -56,129 +67,114 @@ static void task_populate_titledb_thread(void* arg) {
 
     Result res = 0;
 
-    u32 maxTextSize = 256 * 1024;
-    char* text = (char*) calloc(sizeof(char), maxTextSize);
-    if(text != NULL) {
-        u32 textSize = 0;
-        if(R_SUCCEEDED(res = task_populate_titledb_download(&textSize, text, maxTextSize, "https://api.titledb.com/v1/cia?only=id&only=size&only=updated_at&only=titleid&only=version&only=name_s&only=name_l&only=publisher"))) {
-            json_value* json = json_parse(text, textSize);
-            if(json != NULL) {
-                if(json->type == json_array) {
-                    linked_list titles;
-                    linked_list_init(&titles);
+    json_t* root = NULL;
+    if(R_SUCCEEDED(res = util_download_json("https://api.titledb.com/v1/entry?nested=true"
+                                                    "&only=id&only=name&only=author&only=headline&only=category"
+                                                    "&only=cia.id&only=cia.updated_at&only=cia.version&only=cia.size&only=cia.titleid"
+                                                    "&only=tdsx.id&only=tdsx.updated_at&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
+                                            &root, 1024 * 1024))) {
+        if(json_is_array(root)) {
+            linked_list titles;
+            linked_list_init(&titles);
 
-                    for(u32 i = 0; i < json->u.array.length && R_SUCCEEDED(res); i++) {
-                        svcWaitSynchronization(task_get_pause_event(), U64_MAX);
-                        if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
-                            break;
-                        }
-
-                        json_value* val = json->u.array.values[i];
-                        if(val->type == json_object) {
-                            list_item* item = (list_item*) calloc(1, sizeof(list_item));
-                            if(item != NULL) {
-                                titledb_info* titledbInfo = (titledb_info*) calloc(1, sizeof(titledb_info));
-                                if(titledbInfo != NULL) {
-                                    for(u32 j = 0; j < val->u.object.length; j++) {
-                                        char* name = val->u.object.values[j].name;
-                                        u32 nameLen = val->u.object.values[j].name_length;
-                                        json_value* subVal = val->u.object.values[j].value;
-                                        if(subVal->type == json_string) {
-                                            if(strncmp(name, "updated_at", nameLen) == 0) {
-                                                strncpy(titledbInfo->updatedAt, subVal->u.string.ptr, sizeof(titledbInfo->updatedAt));
-                                            } else if(strncmp(name, "titleid", nameLen) == 0) {
-                                                titledbInfo->titleId = strtoull(subVal->u.string.ptr, NULL, 16);
-                                            } else if(strncmp(name, "version", nameLen) == 0) {
-                                                strncpy(titledbInfo->version, subVal->u.string.ptr, sizeof(titledbInfo->version));
-                                            } else if(strncmp(name, "name_s", nameLen) == 0) {
-                                                strncpy(titledbInfo->meta.shortDescription, subVal->u.string.ptr, sizeof(titledbInfo->meta.shortDescription));
-                                            } else if(strncmp(name, "name_l", nameLen) == 0) {
-                                                strncpy(titledbInfo->meta.longDescription, subVal->u.string.ptr, sizeof(titledbInfo->meta.longDescription));
-                                            } else if(strncmp(name, "publisher", nameLen) == 0) {
-                                                strncpy(titledbInfo->meta.publisher, subVal->u.string.ptr, sizeof(titledbInfo->meta.publisher));
-                                            }
-                                        } else if(subVal->type == json_integer) {
-                                            if(strncmp(name, "id", nameLen) == 0) {
-                                                titledbInfo->id = (u32) subVal->u.integer;
-                                            } else if(strncmp(name, "size", nameLen) == 0) {
-                                                titledbInfo->size = (u64) subVal->u.integer;
-                                            }
-                                        }
-                                    }
-
-                                    if(strlen(titledbInfo->meta.shortDescription) > 0) {
-                                        strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
-                                    } else {
-                                        snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titledbInfo->titleId);
-                                    }
-
-                                    item->data = titledbInfo;
-
-                                    task_populate_titledb_update_status(item);
-
-                                    linked_list_iter iter;
-                                    linked_list_iterate(&titles, &iter);
-
-                                    bool add = true;
-                                    while(linked_list_iter_has_next(&iter)) {
-                                        list_item* currItem = (list_item*) linked_list_iter_next(&iter);
-                                        titledb_info* currTitledbInfo = (titledb_info*) currItem->data;
-
-                                        if(titledbInfo->titleId == currTitledbInfo->titleId) {
-                                            if(strncmp(titledbInfo->updatedAt, currTitledbInfo->updatedAt, sizeof(titledbInfo->updatedAt)) >= 0) {
-                                                linked_list_iter_remove(&iter);
-                                                task_free_titledb(currItem);
-                                            } else {
-                                                add = false;
-                                            }
-
-                                            break;
-                                        }
-                                    }
-
-                                    if(add) {
-                                        linked_list_add_sorted(&titles, item, NULL, task_populate_titledb_compare);
-                                    } else {
-                                        task_free_titledb(item);
-                                    }
-                                } else {
-                                    free(item);
-
-                                    res = R_FBI_OUT_OF_MEMORY;
-                                }
-                            } else {
-                                res = R_FBI_OUT_OF_MEMORY;
-                            }
-                        }
-                    }
-
-                    linked_list_iter iter;
-                    linked_list_iterate(&titles, &iter);
-
-                    while(linked_list_iter_has_next(&iter)) {
-                        list_item* item = linked_list_iter_next(&iter);
-
-                        if(R_SUCCEEDED(res)) {
-                            linked_list_add(data->items, item);
-                        } else {
-                            task_free_titledb(item);
-                        }
-                    }
-
-                    linked_list_destroy(&titles);
-                } else {
-                    res = R_FBI_BAD_DATA;
+            for(u32 i = 0; i < json_array_size(root) && R_SUCCEEDED(res); i++) {
+                svcWaitSynchronization(task_get_pause_event(), U64_MAX);
+                if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
+                    break;
                 }
 
-                json_value_free(json);
-            } else {
-                res = R_FBI_PARSE_FAILED;
+                json_t* entry = json_array_get(root, i);
+                if(json_is_object(entry)) {
+                    list_item* item = (list_item*) calloc(1, sizeof(list_item));
+                    if(item != NULL) {
+                        titledb_info* titledbInfo = (titledb_info*) calloc(1, sizeof(titledb_info));
+                        if(titledbInfo != NULL) {
+                            titledbInfo->id = (u32) json_object_get_integer(entry, "id", 0);
+                            strncpy(titledbInfo->category, json_object_get_string(entry, "category", "Unknown"), sizeof(titledbInfo->category));
+                            strncpy(titledbInfo->headline, json_object_get_string(entry, "headline", ""), sizeof(titledbInfo->headline));
+                            strncpy(titledbInfo->meta.shortDescription, json_object_get_string(entry, "name", ""), sizeof(titledbInfo->meta.shortDescription));
+                            strncpy(titledbInfo->meta.publisher, json_object_get_string(entry, "author", ""), sizeof(titledbInfo->meta.publisher));
+
+                            json_t* cias = json_object_get(entry, "cia");
+                            if(json_is_array(cias)) {
+                                for(u32 j = 0; j < json_array_size(cias); j++) {
+                                    json_t* cia = json_array_get(cias, j);
+                                    if(json_is_object(cia)) {
+                                        const char* updatedAt = json_object_get_string(cia, "updated_at", "");
+                                        if(!titledbInfo->cia.exists || strncmp(updatedAt, titledbInfo->cia.updatedAt, sizeof(titledbInfo->cia.updatedAt)) >= 0) {
+                                            titledbInfo->cia.exists = true;
+
+                                            titledbInfo->cia.id = (u32) json_object_get_integer(cia, "id", 0);
+                                            strncpy(titledbInfo->cia.updatedAt, updatedAt, sizeof(titledbInfo->cia.updatedAt));
+                                            strncpy(titledbInfo->cia.version, json_object_get_string(cia, "version", "Unknown"), sizeof(titledbInfo->cia.version));
+                                            titledbInfo->cia.size = (u32) json_object_get_integer(cia, "size", 0);
+                                            titledbInfo->cia.titleId = strtoull(json_object_get_string(cia, "titleid", "0"), NULL, 16);
+                                        }
+                                    }
+                                }
+                            }
+
+                            json_t* tdsxs = json_object_get(entry, "tdsx");
+                            if(json_is_array(tdsxs)) {
+                                for(u32 j = 0; j < json_array_size(tdsxs); j++) {
+                                    json_t* tdsx = json_array_get(tdsxs, j);
+                                    if(json_is_object(tdsx)) {
+                                        const char* updatedAt = json_object_get_string(tdsx, "updated_at", "");
+                                        if(!titledbInfo->tdsx.exists || strncmp(updatedAt, titledbInfo->tdsx.updatedAt, sizeof(titledbInfo->tdsx.updatedAt)) >= 0) {
+                                            titledbInfo->tdsx.exists = true;
+
+                                            titledbInfo->tdsx.id = (u32) json_object_get_integer(tdsx, "id", 0);
+                                            strncpy(titledbInfo->tdsx.updatedAt, updatedAt, sizeof(titledbInfo->tdsx.updatedAt));
+                                            strncpy(titledbInfo->tdsx.version, json_object_get_string(tdsx, "version", "Unknown"), sizeof(titledbInfo->tdsx.version));
+                                            titledbInfo->tdsx.size = (u32) json_object_get_integer(tdsx, "size", 0);
+
+                                            json_t* smdh = json_object_get(tdsx, "smdh");
+                                            if(json_is_object(smdh)) {
+                                                titledbInfo->tdsx.smdh.exists = true;
+
+                                                titledbInfo->tdsx.smdh.id = (u32) json_object_get_integer(smdh, "id", 0);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
+                            item->data = titledbInfo;
+
+                            task_populate_titledb_update_status(item);
+
+                            linked_list_add_sorted(&titles, item, NULL, task_populate_titledb_compare);
+                        } else {
+                            free(item);
+
+                            res = R_FBI_OUT_OF_MEMORY;
+                        }
+                    } else {
+                        res = R_FBI_OUT_OF_MEMORY;
+                    }
+                }
             }
+
+            linked_list_iter iter;
+            linked_list_iterate(&titles, &iter);
+
+            while(linked_list_iter_has_next(&iter)) {
+                list_item* item = linked_list_iter_next(&iter);
+
+                if(R_SUCCEEDED(res)) {
+                    linked_list_add(data->items, item);
+                } else {
+                    task_free_titledb(item);
+                }
+            }
+
+            linked_list_destroy(&titles);
+        } else {
+            res = R_FBI_BAD_DATA;
         }
 
-        free(text);
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        json_decref(root);
     }
 
     data->itemsListed = true;
@@ -197,11 +193,17 @@ static void task_populate_titledb_thread(void* arg) {
             titledb_info* titledbInfo = (titledb_info*) item->data;
 
             char url[128];
-            snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/cia/%lu/icon_l.bin", titledbInfo->id);
+            if(titledbInfo->cia.exists) {
+                snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/cia/%lu/icon_l.bin", titledbInfo->cia.id);
+            } else if(titledbInfo->tdsx.exists && titledbInfo->tdsx.smdh.exists) {
+                snprintf(url, sizeof(url), "https://3ds.titledb.com/v1/smdh/%lu/icon_l.bin", titledbInfo->tdsx.smdh.id);
+            } else {
+                continue;
+            }
 
             u8 icon[0x1200];
             u32 iconSize = 0;
-            if(R_SUCCEEDED(task_populate_titledb_download(&iconSize, &icon, sizeof(icon), url)) && iconSize == sizeof(icon)) {
+            if(R_SUCCEEDED(util_download(url, &iconSize, &icon, sizeof(icon))) && iconSize == sizeof(icon)) {
                 titledbInfo->meta.texture = screen_allocate_free_texture();
                 screen_load_texture_tiled(titledbInfo->meta.texture, icon, sizeof(icon), 48, 48, GPU_RGB565, false);
             }

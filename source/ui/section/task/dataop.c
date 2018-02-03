@@ -4,10 +4,10 @@
 #include <3ds.h>
 
 #include "task.h"
-#include "../../error.h"
 #include "../../prompt.h"
 #include "../../ui.h"
 #include "../../../core/screen.h"
+#include "../../../core/util.h"
 
 static Result task_data_op_check_running(data_op_data* data, u32 index, u32* srcHandle, u32* dstHandle) {
     Result res = 0;

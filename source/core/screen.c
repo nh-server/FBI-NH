@@ -6,7 +6,7 @@
 #include <3ds.h>
 #include <citro3d.h>
 
-#include "../stb_image/stb_image.h"
+#include "../libs/stb_image/stb_image.h"
 #include "screen.h"
 #include "util.h"
 
