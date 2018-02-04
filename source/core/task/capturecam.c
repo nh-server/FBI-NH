@@ -3,9 +3,9 @@
 
 #include <3ds.h>
 
+#include "capturecam.h"
 #include "task.h"
-#include "../../list.h"
-#include "../../../core/util.h"
+#include "../util.h"
 
 #define EVENT_CANCEL 0
 #define EVENT_RECV 1
@@ -25,7 +25,7 @@ static void task_capture_cam_thread(void* arg) {
     u16* buffer = (u16*) calloc(1, bufferSize);
     if(buffer != NULL) {
         if(R_SUCCEEDED(res = camInit())) {
-            int cam = data->camera == CAMERA_OUTER ? SELECT_OUT1 : SELECT_IN1;
+            u32 cam = data->camera == CAMERA_OUTER ? SELECT_OUT1 : SELECT_IN1;
 
             if(R_SUCCEEDED(res = CAMU_SetSize(cam, SIZE_CTR_TOP_LCD, CONTEXT_A))
                && R_SUCCEEDED(res = CAMU_SetOutputFormat(cam, OUTPUT_RGB_565, CONTEXT_A))

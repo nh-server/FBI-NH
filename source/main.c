@@ -7,10 +7,11 @@
 #include "core/clipboard.h"
 #include "core/screen.h"
 #include "core/util.h"
+#include "core/task/task.h"
 #include "ui/error.h"
 #include "ui/mainmenu.h"
+#include "ui/resources.h"
 #include "ui/ui.h"
-#include "ui/section/task/task.h"
 
 #define CURRENT_KPROCESS (*(void**) 0xFFFF9004)
 
@@ -157,6 +158,7 @@ void init() {
     curl_global_init(CURL_GLOBAL_ALL);
 
     screen_init();
+    resources_load();
     ui_init();
     task_init();
 }

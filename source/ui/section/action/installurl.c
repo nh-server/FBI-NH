@@ -5,13 +5,16 @@
 #include <3ds.h>
 
 #include "../action/action.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../error.h"
 #include "../../info.h"
 #include "../../prompt.h"
+#include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/data/cia.h"
+#include "../../../core/data/ticket.h"
 
 typedef enum content_type_e {
     CONTENT_CIA,
@@ -160,7 +163,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
     if(*(u16*) initialReadBlock == 0x2020) {
         installData->contentType = CONTENT_CIA;
 
-        u64 titleId = util_get_cia_title_id((u8*) initialReadBlock);
+        u64 titleId = cia_get_title_id((u8*) initialReadBlock);
 
         FS_MediaType dest = util_get_title_destination(titleId);
 
@@ -204,7 +207,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
             }
         }
 
-        installData->ticketInfo.titleId = util_get_ticket_title_id((u8*) initialReadBlock);
+        installData->ticketInfo.titleId = ticket_get_title_id((u8*) initialReadBlock);
         installData->ticketInfo.inUse = false;
 
         AM_DeleteTicket(installData->ticketInfo.titleId);
@@ -368,7 +371,14 @@ static void action_install_url_install_update(ui_view* view, void* data, float* 
     }
 
     *progress = installData->installInfo.currTotal != 0 ? (float) ((double) installData->installInfo.currProcessed / (double) installData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal), util_get_display_size(installData->installInfo.copyBytesPerSecond), util_get_display_size_units(installData->installInfo.copyBytesPerSecond), util_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", installData->installInfo.processed, installData->installInfo.total,
+             ui_get_display_size(installData->installInfo.currProcessed),
+             ui_get_display_size_units(installData->installInfo.currProcessed),
+             ui_get_display_size(installData->installInfo.currTotal),
+             ui_get_display_size_units(installData->installInfo.currTotal),
+             ui_get_display_size(installData->installInfo.copyBytesPerSecond),
+             ui_get_display_size_units(installData->installInfo.copyBytesPerSecond),
+             ui_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
 }
 
 static void action_install_url_confirm_onresponse(ui_view* view, void* data, u32 response) {

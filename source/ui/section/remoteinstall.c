@@ -10,16 +10,17 @@
 
 #include "section.h"
 #include "action/action.h"
-#include "task/task.h"
 #include "../error.h"
 #include "../info.h"
 #include "../kbd.h"
 #include "../list.h"
 #include "../prompt.h"
+#include "../resources.h"
 #include "../ui.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
+#include "../../core/task/capturecam.h"
 #include "../../libs/quirc/quirc_internal.h"
 
 static bool remoteinstall_get_last_urls(char* out, size_t size) {

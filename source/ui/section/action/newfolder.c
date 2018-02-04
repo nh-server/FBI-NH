@@ -4,12 +4,13 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../error.h"
 #include "../../info.h"
 #include "../../kbd.h"
 #include "../../list.h"
 #include "../../prompt.h"
+#include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
@@ -47,7 +48,7 @@ static void action_new_folder_onresponse(ui_view* view, void* data, SwkbdButton 
             list_item* folderItem = NULL;
             if(R_SUCCEEDED(task_create_file_item(&folderItem, parentDir->archive, path, FS_ATTRIBUTE_DIRECTORY))) {
                 linked_list_add(newFolderData->items, folderItem);
-                linked_list_sort(newFolderData->items, NULL, util_compare_file_infos);
+                linked_list_sort(newFolderData->items, NULL, task_compare_files);
             }
 
             prompt_display_notify("Success", "Folder created.", COLOR_TEXT, NULL, NULL, NULL);

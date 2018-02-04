@@ -5,6 +5,7 @@
 
 #include "list.h"
 #include "mainmenu.h"
+#include "resources.h"
 #include "ui.h"
 #include "section/section.h"
 #include "../core/linkedlist.h"

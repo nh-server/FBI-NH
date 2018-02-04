@@ -5,7 +5,6 @@
 
 #include "clipboard.h"
 #include "util.h"
-#include "../ui/section/task/task.h"
 
 static bool clipboard_has = false;
 static bool clipboard_contents_only;

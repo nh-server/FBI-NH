@@ -4,11 +4,12 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../error.h"
 #include "../../info.h"
 #include "../../list.h"
 #include "../../prompt.h"
+#include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
@@ -123,7 +124,14 @@ static void action_import_twl_save_update(ui_view* view, void* data, float* prog
     }
 
     *progress = importData->importInfo.currTotal != 0 ? (float) ((double) importData->importInfo.currProcessed / (double) importData->importInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", util_get_display_size(importData->importInfo.currProcessed), util_get_display_size_units(importData->importInfo.currProcessed), util_get_display_size(importData->importInfo.currTotal), util_get_display_size_units(importData->importInfo.currTotal), util_get_display_size(importData->importInfo.copyBytesPerSecond), util_get_display_size_units(importData->importInfo.copyBytesPerSecond), util_get_display_eta(importData->importInfo.estimatedRemainingSeconds));
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s",
+             ui_get_display_size(importData->importInfo.currProcessed),
+             ui_get_display_size_units(importData->importInfo.currProcessed),
+             ui_get_display_size(importData->importInfo.currTotal),
+             ui_get_display_size_units(importData->importInfo.currTotal),
+             ui_get_display_size(importData->importInfo.copyBytesPerSecond),
+             ui_get_display_size_units(importData->importInfo.copyBytesPerSecond),
+             ui_get_display_eta(importData->importInfo.estimatedRemainingSeconds));
 }
 
 static void action_import_twl_save_onresponse(ui_view* view, void* data, u32 response) {

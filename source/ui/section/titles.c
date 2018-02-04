@@ -6,9 +6,10 @@
 
 #include "section.h"
 #include "action/action.h"
-#include "task/task.h"
+#include "task/uitask.h"
 #include "../error.h"
 #include "../list.h"
+#include "../resources.h"
 #include "../ui.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"

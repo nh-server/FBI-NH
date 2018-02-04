@@ -4,11 +4,13 @@
 
 #include <3ds.h>
 
-#include "task.h"
+#include "uitask.h"
 #include "../../list.h"
+#include "../../resources.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/task/task.h"
 
 #define MAX_SYSTEM_SAVE_DATA 512
 

@@ -4,7 +4,7 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../error.h"
 #include "../../list.h"
 #include "../../ui.h"

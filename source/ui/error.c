@@ -8,6 +8,7 @@
 
 #include "error.h"
 #include "prompt.h"
+#include "resources.h"
 #include "../core/screen.h"
 #include "../core/util.h"
 

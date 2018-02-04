@@ -1,7 +1,7 @@
 #include <3ds.h>
 
 #include "task.h"
-#include "../../../core/util.h"
+#include "../util.h"
 
 static bool task_quit;
 
