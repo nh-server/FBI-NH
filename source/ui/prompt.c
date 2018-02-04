@@ -6,6 +6,7 @@
 
 #include "error.h"
 #include "prompt.h"
+#include "resources.h"
 #include "ui.h"
 #include "../core/screen.h"
 

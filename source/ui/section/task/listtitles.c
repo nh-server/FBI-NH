@@ -5,11 +5,15 @@
 
 #include <3ds.h>
 
-#include "task.h"
+#include "uitask.h"
 #include "../../list.h"
+#include "../../resources.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/data/bnr.h"
+#include "../../../core/data/smdh.h"
+#include "../../../core/task/task.h"
 
 static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaType mediaType, u64 titleId) {
     Result res = 0;
@@ -40,7 +44,7 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                             if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
                                 titleInfo->hasMeta = true;
 
-                                SMDH_title* smdhTitle = util_select_smdh_title(smdh);
+                                SMDH_title* smdhTitle = smdh_select_title(smdh);
 
                                 utf16_to_utf8((uint8_t*) item->name, smdhTitle->shortDescription, LIST_ITEM_NAME_MAX - 1);
 
@@ -138,7 +142,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                         titleInfo->hasMeta = true;
 
                         char title[0x100] = {'\0'};
-                        utf16_to_utf8((uint8_t*) title, util_select_bnr_title(bnr), sizeof(title) - 1);
+                        utf16_to_utf8((uint8_t*) title, bnr_select_title(bnr), sizeof(title) - 1);
 
                         if(strchr(title, '\n') == NULL) {
                             size_t len = strlen(title);

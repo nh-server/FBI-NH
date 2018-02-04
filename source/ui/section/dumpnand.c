@@ -6,10 +6,11 @@
 #include <3ds.h>
 
 #include "section.h"
-#include "task/task.h"
+#include "task/uitask.h"
 #include "../error.h"
 #include "../info.h"
 #include "../prompt.h"
+#include "../resources.h"
 #include "../ui.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
@@ -117,7 +118,11 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
     }
 
     *progress = dumpData->currTotal != 0 ? (float) ((double) dumpData->currProcessed / (double) dumpData->currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", util_get_display_size(dumpData->currProcessed), util_get_display_size_units(dumpData->currProcessed), util_get_display_size(dumpData->currTotal), util_get_display_size_units(dumpData->currTotal), util_get_display_size(dumpData->copyBytesPerSecond), util_get_display_size_units(dumpData->copyBytesPerSecond), util_get_display_eta(dumpData->estimatedRemainingSeconds));
+    snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s",
+             ui_get_display_size(dumpData->currProcessed), ui_get_display_size_units(dumpData->currProcessed),
+             ui_get_display_size(dumpData->currTotal), ui_get_display_size_units(dumpData->currTotal),
+             ui_get_display_size(dumpData->copyBytesPerSecond), ui_get_display_size_units(dumpData->copyBytesPerSecond),
+             ui_get_display_eta(dumpData->estimatedRemainingSeconds));
 }
 
 static void dumpnand_onresponse(ui_view* view, void* data, u32 response) {

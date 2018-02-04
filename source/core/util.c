@@ -8,10 +8,9 @@
 #include <curl/curl.h>
 #include <jansson.h>
 
-#include "util.h"
-#include "../ui/list.h"
-#include "../ui/section/task/task.h"
 #include "linkedlist.h"
+#include "util.h"
+#include "task/task.h"
 
 extern void cleanup();
 
@@ -428,62 +427,6 @@ FS_MediaType util_get_title_destination(u64 titleId) {
     return platform == 0x0003 || (platform == 0x0004 && ((category & 0x8011) != 0 || (category == 0x0000 && variation == 0x02))) ? MEDIATYPE_NAND : MEDIATYPE_SD;
 }
 
-static u32 sigSizes[6] = {0x240, 0x140, 0x80, 0x240, 0x140, 0x80};
-
-u64 util_get_cia_title_id(u8* cia) {
-    u32 headerSize = ((*(u32*) &cia[0x00]) + 0x3F) & ~0x3F;
-    u32 certSize = ((*(u32*) &cia[0x08]) + 0x3F) & ~0x3F;
-    u32 ticketSize = ((*(u32*) &cia[0x0C]) + 0x3F) & ~0x3F;
-
-    u8* tmd = &cia[headerSize + certSize + ticketSize];
-
-    return util_get_tmd_title_id(tmd);
-}
-
-Result util_get_cia_file_smdh(SMDH* smdh, Handle handle) {
-    Result res = 0;
-
-    if(smdh != NULL) {
-        u32 bytesRead = 0;
-
-        u32 header[8];
-        if(R_SUCCEEDED(res = FSFILE_Read(handle, &bytesRead, 0, header, sizeof(header))) && bytesRead == sizeof(header)) {
-            u32 headerSize = (header[0] + 0x3F) & ~0x3F;
-            u32 certSize = (header[2] + 0x3F) & ~0x3F;
-            u32 ticketSize = (header[3] + 0x3F) & ~0x3F;
-            u32 tmdSize = (header[4] + 0x3F) & ~0x3F;
-            u32 metaSize = (header[5] + 0x3F) & ~0x3F;
-            u64 contentSize = ((header[6] | ((u64) header[7] << 32)) + 0x3F) & ~0x3F;
-
-            if(metaSize >= 0x3AC0) {
-                res = FSFILE_Read(handle, &bytesRead, headerSize + certSize + ticketSize + tmdSize + contentSize + 0x400, smdh, sizeof(SMDH));
-            } else {
-                res = R_FBI_BAD_DATA;
-            }
-        }
-    } else {
-        res = R_FBI_INVALID_ARGUMENT;
-    }
-
-    return res;
-}
-
-u64 util_get_ticket_title_id(u8* ticket) {
-    return __builtin_bswap64(*(u64*) &ticket[sigSizes[ticket[0x03]] + 0x9C]);
-}
-
-u64 util_get_tmd_title_id(u8* tmd) {
-    return __builtin_bswap64(*(u64*) &tmd[sigSizes[tmd[0x03]] + 0x4C]);
-}
-
-u16 util_get_tmd_content_count(u8* tmd) {
-    return __builtin_bswap16(*(u16*) &tmd[sigSizes[tmd[0x03]] + 0x9E]);
-}
-
-u8* util_get_tmd_content_chunk(u8* tmd, u32 index) {
-    return &tmd[sigSizes[tmd[0x03]] + 0x9C4 + (index * 0x30)];
-}
-
 bool util_filter_cias(void* data, const char* name, u32 attributes) {
     if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
         return false;
@@ -500,31 +443,6 @@ bool util_filter_tickets(void* data, const char* name, u32 attributes) {
 
     size_t len = strlen(name);
     return (len >= 4 && strncasecmp(name + len - 4, ".tik", 4) == 0) || (len >= 5 && strncasecmp(name + len - 5, ".cetk", 5) == 0);
-}
-
-int util_compare_file_infos(void* userData, const void* p1, const void* p2) {
-    list_item* info1 = (list_item*) p1;
-    list_item* info2 = (list_item*) p2;
-
-    bool info1Base = strncmp(info1->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info1->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;
-    bool info2Base = strncmp(info2->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info2->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;
-
-    if(info1Base && !info2Base) {
-        return -1;
-    } else if(!info1Base && info2Base) {
-        return 1;
-    } else {
-        file_info* f1 = (file_info*) info1->data;
-        file_info* f2 = (file_info*) info2->data;
-
-        if((f1->attributes & FS_ATTRIBUTE_DIRECTORY) && !(f2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
-            return -1;
-        } else if(!(f1->attributes & FS_ATTRIBUTE_DIRECTORY) && (f2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
-            return 1;
-        } else {
-            return strncasecmp(f1->name, f2->name, FILE_NAME_MAX);
-        }
-    }
 }
 
 static char path_3dsx[FILE_PATH_MAX] = {'\0'};
@@ -619,58 +537,13 @@ Result util_close_archive(FS_Archive archive) {
     return FSUSER_CloseArchive(archive);
 }
 
-const char* util_get_display_eta(u32 seconds) {
-    static char disp[12];
-
-    u8 hours     = seconds / 3600;
-    seconds     -= hours * 3600;
-    u8 minutes   = seconds / 60;
-    seconds     -= minutes* 60;
-
-    snprintf(disp, 12, "%02u:%02u:%02u", hours, minutes, (u8) seconds);
-    return disp;
-}
-
-double util_get_display_size(u64 size) {
-    double s = size;
-    if(s > 1024) {
-        s /= 1024;
-    }
-
-    if(s > 1024) {
-        s /= 1024;
-    }
-
-    if(s > 1024) {
-        s /= 1024;
-    }
-
-    return s;
-}
-
-const char* util_get_display_size_units(u64 size) {
-    if(size > 1024 * 1024 * 1024) {
-        return "GiB";
-    }
-
-    if(size > 1024 * 1024) {
-        return "MiB";
-    }
-
-    if(size > 1024) {
-        return "KiB";
-    }
-
-    return "B";
-}
-
-void util_escape_file_name(char* out, const char* in, size_t size) {
+void util_escape_file_name(char* out, const char* file, size_t size) {
     static const char reservedChars[] = {'<', '>', ':', '"', '/', '\\', '|', '?', '*'};
 
     for(u32 i = 0; i < size; i++) {
         bool reserved = false;
         for(u32 j = 0; j < sizeof(reservedChars); j++) {
-            if(in[i] == reservedChars[j]) {
+            if(file[i] == reservedChars[j]) {
                 reserved = true;
                 break;
             }
@@ -679,100 +552,13 @@ void util_escape_file_name(char* out, const char* in, size_t size) {
         if(reserved) {
             out[i] = '_';
         } else {
-            out[i] = in[i];
+            out[i] = file[i];
         }
 
-        if(in[i] == '\0') {
+        if(file[i] == '\0') {
             break;
         }
     }
-}
-
-#define SMDH_NUM_REGIONS 7
-#define SMDH_ALL_REGIONS 0x7F
-
-static const char* smdh_region_strings[SMDH_NUM_REGIONS] = {
-        "Japan",
-        "North America",
-        "Europe",
-        "Australia",
-        "China",
-        "Korea",
-        "Taiwan"
-};
-
-void util_smdh_region_to_string(char* out, u32 region, size_t size) {
-    if(out == NULL) {
-        return;
-    }
-
-    if(region == 0) {
-        snprintf(out, size, "Unknown");
-    } else if((region & SMDH_ALL_REGIONS) == SMDH_ALL_REGIONS) {
-        snprintf(out, size, "Region Free");
-    } else {
-        size_t pos = 0;
-
-        for(u32 i = 0; i < SMDH_NUM_REGIONS; i++) {
-            if(region & (1 << i)) {
-                if(pos > 0) {
-                    pos += snprintf(out + pos, size - pos, ", ");
-                }
-
-                pos += snprintf(out + pos, size - pos, smdh_region_strings[i]);
-            }
-        }
-    }
-}
-
-static CFG_Language region_default_language[] = {
-        CFG_LANGUAGE_JP,
-        CFG_LANGUAGE_EN,
-        CFG_LANGUAGE_EN,
-        CFG_LANGUAGE_EN,
-        CFG_LANGUAGE_ZH,
-        CFG_LANGUAGE_KO,
-        CFG_LANGUAGE_ZH
-};
-
-SMDH_title* util_select_smdh_title(SMDH* smdh) {
-    char shortDescription[0x100] = {'\0'};
-
-    CFG_Language systemLanguage;
-    if(R_SUCCEEDED(CFGU_GetSystemLanguage((u8*) &systemLanguage))) {
-        utf16_to_utf8((uint8_t*) shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(shortDescription) - 1);
-    }
-
-    if(util_is_string_empty(shortDescription)) {
-        CFG_Region systemRegion;
-        if(R_SUCCEEDED(CFGU_SecureInfoGetRegion((u8*) &systemRegion))) {
-            systemLanguage = region_default_language[systemRegion];
-        } else {
-            systemLanguage = CFG_LANGUAGE_JP;
-        }
-    }
-
-    return &smdh->titles[systemLanguage];
-}
-
-u16* util_select_bnr_title(BNR* bnr) {
-    char title[0x100] = {'\0'};
-
-    CFG_Language systemLanguage;
-    if(R_SUCCEEDED(CFGU_GetSystemLanguage((u8*) &systemLanguage))) {
-        utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], sizeof(title) - 1);
-    }
-
-    if(util_is_string_empty(title)) {
-        CFG_Region systemRegion;
-        if(R_SUCCEEDED(CFGU_SecureInfoGetRegion((u8*) &systemRegion))) {
-            systemLanguage = region_default_language[systemRegion];
-        } else {
-            systemLanguage = CFG_LANGUAGE_JP;
-        }
-    }
-
-    return bnr->titles[systemLanguage];
 }
 
 #define HTTPC_TIMEOUT 15000000000

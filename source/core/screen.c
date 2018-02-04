@@ -37,22 +37,6 @@ static struct {
     u32 height;
 } textures[MAX_TEXTURES];
 
-static FILE* screen_open_resource(const char* path) {
-    u32 realPathSize = strlen(path) + 17;
-    char realPath[realPathSize];
-
-    snprintf(realPath, realPathSize, "sdmc:/fbi/theme/%s", path);
-    FILE* fd = fopen(realPath, "rb");
-
-    if(fd != NULL) {
-        return fd;
-    } else {
-        snprintf(realPath, realPathSize, "romfs:/%s", path);
-
-        return fopen(realPath, "rb");
-    }
-}
-
 static void screen_set_blend(u32 color, bool rgb, bool alpha) {
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     if(env == NULL) {
@@ -170,81 +154,6 @@ void screen_init() {
     }
 
     font_scale = 30.0f / glyphInfo->cellHeight; // 30 is cellHeight in J machines
-
-    FILE* fd = screen_open_resource("textcolor.cfg");
-    if(fd == NULL) {
-        util_panic("Failed to open text color config: %s\n", strerror(errno));
-        return;
-    }
-
-    char line[128];
-    while(fgets(line, sizeof(line), fd) != NULL) {
-        char key[64];
-        u32 color = 0;
-
-        sscanf(line, "%63[^=]=%lx", key, &color);
-
-        if(strcasecmp(key, "text") == 0) {
-            color_config[COLOR_TEXT] = color;
-        } else if(strcasecmp(key, "nand") == 0) {
-            color_config[COLOR_NAND] = color;
-        } else if(strcasecmp(key, "sd") == 0) {
-            color_config[COLOR_SD] = color;
-        } else if(strcasecmp(key, "gamecard") == 0) {
-            color_config[COLOR_GAME_CARD] = color;
-        } else if(strcasecmp(key, "dstitle") == 0) {
-            color_config[COLOR_DS_TITLE] = color;
-        } else if(strcasecmp(key, "file") == 0) {
-            color_config[COLOR_FILE] = color;
-        } else if(strcasecmp(key, "directory") == 0) {
-            color_config[COLOR_DIRECTORY] = color;
-        } else if(strcasecmp(key, "enabled") == 0) {
-            color_config[COLOR_ENABLED] = color;
-        } else if(strcasecmp(key, "disabled") == 0) {
-            color_config[COLOR_DISABLED] = color;
-        } else if(strcasecmp(key, "titledbinstalled") == 0) {
-            color_config[COLOR_TITLEDB_INSTALLED] = color;
-        } else if(strcasecmp(key, "titledbnotinstalled") == 0) {
-            color_config[COLOR_TITLEDB_NOT_INSTALLED] = color;
-        } else if(strcasecmp(key, "ticketinuse") == 0) {
-            color_config[COLOR_TICKET_IN_USE] = color;
-        } else if(strcasecmp(key, "ticketnotinuse") == 0) {
-            color_config[COLOR_TICKET_NOT_IN_USE] = color;
-        }
-    }
-
-    fclose(fd);
-
-    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BG, "bottom_screen_bg.png", true);
-    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_TOP_BAR, "bottom_screen_top_bar.png", true);
-    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_TOP_BAR_SHADOW, "bottom_screen_top_bar_shadow.png", true);
-    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR, "bottom_screen_bottom_bar.png", true);
-    screen_load_texture_file(TEXTURE_BOTTOM_SCREEN_BOTTOM_BAR_SHADOW, "bottom_screen_bottom_bar_shadow.png", true);
-    screen_load_texture_file(TEXTURE_TOP_SCREEN_BG, "top_screen_bg.png", true);
-    screen_load_texture_file(TEXTURE_TOP_SCREEN_TOP_BAR, "top_screen_top_bar.png", true);
-    screen_load_texture_file(TEXTURE_TOP_SCREEN_TOP_BAR_SHADOW, "top_screen_top_bar_shadow.png", true);
-    screen_load_texture_file(TEXTURE_TOP_SCREEN_BOTTOM_BAR, "top_screen_bottom_bar.png", true);
-    screen_load_texture_file(TEXTURE_TOP_SCREEN_BOTTOM_BAR_SHADOW, "top_screen_bottom_bar_shadow.png", true);
-    screen_load_texture_file(TEXTURE_LOGO, "logo.png", true);
-    screen_load_texture_file(TEXTURE_SELECTION_OVERLAY, "selection_overlay.png", true);
-    screen_load_texture_file(TEXTURE_SCROLL_BAR, "scroll_bar.png", true);
-    screen_load_texture_file(TEXTURE_BUTTON, "button.png", true);
-    screen_load_texture_file(TEXTURE_PROGRESS_BAR_BG, "progress_bar_bg.png", true);
-    screen_load_texture_file(TEXTURE_PROGRESS_BAR_CONTENT, "progress_bar_content.png", true);
-    screen_load_texture_file(TEXTURE_META_INFO_BOX, "meta_info_box.png", true);
-    screen_load_texture_file(TEXTURE_META_INFO_BOX_SHADOW, "meta_info_box_shadow.png", true);
-    screen_load_texture_file(TEXTURE_BATTERY_CHARGING, "battery_charging.png", true);
-    screen_load_texture_file(TEXTURE_BATTERY_0, "battery0.png", true);
-    screen_load_texture_file(TEXTURE_BATTERY_1, "battery1.png", true);
-    screen_load_texture_file(TEXTURE_BATTERY_2, "battery2.png", true);
-    screen_load_texture_file(TEXTURE_BATTERY_3, "battery3.png", true);
-    screen_load_texture_file(TEXTURE_BATTERY_4, "battery4.png", true);
-    screen_load_texture_file(TEXTURE_BATTERY_5, "battery5.png", true);
-    screen_load_texture_file(TEXTURE_WIFI_DISCONNECTED, "wifi_disconnected.png", true);
-    screen_load_texture_file(TEXTURE_WIFI_0, "wifi0.png", true);
-    screen_load_texture_file(TEXTURE_WIFI_1, "wifi1.png", true);
-    screen_load_texture_file(TEXTURE_WIFI_2, "wifi2.png", true);
-    screen_load_texture_file(TEXTURE_WIFI_3, "wifi3.png", true);
 }
 
 void screen_exit() {
@@ -285,6 +194,15 @@ void screen_exit() {
 
 void screen_set_base_alpha(u8 alpha) {
     base_alpha = alpha;
+}
+
+void screen_set_color(u32 id, u32 color) {
+    if(id >= MAX_COLORS) {
+        util_panic("Attempted to draw string with invalid color ID \"%lu\".", id);
+        return;
+    }
+
+    color_config[id] = color;
 }
 
 static u32 screen_next_pow_2(u32 i) {
@@ -401,15 +319,26 @@ void screen_load_texture_untiled(u32 id, void* data, u32 size, u32 width, u32 he
     C3D_TexFlush(&textures[id].tex);
 }
 
-void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
+void screen_load_texture_path(u32 id, const char* path, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
         util_panic("Attempted to load path \"%s\" to invalid texture ID \"%lu\".", path, id);
         return;
     }
 
-    FILE* fd = screen_open_resource(path);
+    FILE* fd = fopen(path, "rb");
     if(fd == NULL) {
         util_panic("Failed to load PNG file \"%s\": %s", path, strerror(errno));
+        return;
+    }
+
+    screen_load_texture_file(id, fd, linearFilter);
+
+    fclose(fd);
+}
+
+void screen_load_texture_file(u32 id, FILE* fd, bool linearFilter) {
+    if(id >= MAX_TEXTURES) {
+        util_panic("Attempted to load file to invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -417,10 +346,9 @@ void screen_load_texture_file(u32 id, const char* path, bool linearFilter) {
     int height;
     int depth;
     u8* image = stbi_load_from_file(fd, &width, &height, &depth, STBI_rgb_alpha);
-    fclose(fd);
 
     if(image == NULL || depth != STBI_rgb_alpha) {
-        util_panic("Failed to load PNG file \"%s\".", path);
+        util_panic("Failed to load PNG file to texture ID \"%lu\".", id);
         return;
     }
 

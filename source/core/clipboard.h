@@ -1,7 +1,5 @@
 #pragma once
 
-typedef struct file_info_s file_info;
-
 bool clipboard_has_contents();
 FS_Archive clipboard_get_archive();
 char* clipboard_get_path();

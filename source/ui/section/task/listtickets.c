@@ -4,11 +4,13 @@
 
 #include <3ds.h>
 
-#include "task.h"
+#include "uitask.h"
 #include "../../list.h"
+#include "../../resources.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/task/task.h"
 
 static int task_populate_tickets_compare_ids(const void* e1, const void* e2) {
     u64 id1 = *(u64*) e1;

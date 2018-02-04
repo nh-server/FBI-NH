@@ -6,10 +6,11 @@
 
 #include "section.h"
 #include "action/action.h"
-#include "task/task.h"
+#include "task/uitask.h"
 #include "../error.h"
 #include "../list.h"
 #include "../prompt.h"
+#include "../resources.h"
 #include "../ui.h"
 #include "../../core/clipboard.h"
 #include "../../core/linkedlist.h"

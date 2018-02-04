@@ -5,16 +5,18 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../error.h"
 #include "../../info.h"
 #include "../../kbd.h"
 #include "../../list.h"
 #include "../../prompt.h"
+#include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/data/tmd.h"
 
 #define CONTENTS_MAX 256
 
@@ -93,13 +95,13 @@ static Result action_install_cdn_open_dst(void* data, u32 index, void* initialRe
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(index == 0) {
-        installData->contentCount = util_get_tmd_content_count((u8*) initialReadBlock);
+        installData->contentCount = tmd_get_content_count((u8*) initialReadBlock);
         if(installData->contentCount > CONTENTS_MAX) {
             return R_FBI_OUT_OF_RANGE;
         }
 
         for(u32 i = 0; i < installData->contentCount; i++) {
-            u8* contentChunk = util_get_tmd_content_chunk((u8*) initialReadBlock, i);
+            u8* contentChunk = tmd_get_content_chunk((u8*) initialReadBlock, i);
 
             installData->contentIds[i] = __builtin_bswap32(*(u32*) &contentChunk[0x00]);
             installData->contentIndices[i] = __builtin_bswap16(*(u16*) &contentChunk[0x04]);
@@ -244,7 +246,14 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
     }
 
     *progress = installData->installInfo.currTotal != 0 ? (float) ((double) installData->installInfo.currProcessed / (double) installData->installInfo.currTotal) : 0;
-    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", installData->installInfo.processed, installData->installInfo.total, util_get_display_size(installData->installInfo.currProcessed), util_get_display_size_units(installData->installInfo.currProcessed), util_get_display_size(installData->installInfo.currTotal), util_get_display_size_units(installData->installInfo.currTotal), util_get_display_size(installData->installInfo.copyBytesPerSecond), util_get_display_size_units(installData->installInfo.copyBytesPerSecond), util_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
+    snprintf(text, PROGRESS_TEXT_MAX, "%lu / %lu\n%.2f %s / %.2f %s\n%.2f %s/s, ETA %s", installData->installInfo.processed, installData->installInfo.total,
+             ui_get_display_size(installData->installInfo.currProcessed),
+             ui_get_display_size_units(installData->installInfo.currProcessed),
+             ui_get_display_size(installData->installInfo.currTotal),
+             ui_get_display_size_units(installData->installInfo.currTotal),
+             ui_get_display_size(installData->installInfo.copyBytesPerSecond),
+             ui_get_display_size_units(installData->installInfo.copyBytesPerSecond),
+             ui_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
 }
 
 static void action_install_cdn_n3ds_onresponse(ui_view* view, void* data, u32 response) {

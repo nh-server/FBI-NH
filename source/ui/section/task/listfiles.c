@@ -5,13 +5,42 @@
 
 #include <3ds.h>
 
-#include "task.h"
+#include "uitask.h"
 #include "../../list.h"
+#include "../../resources.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/data/cia.h"
+#include "../../../core/data/smdh.h"
+#include "../../../core/task/task.h"
 
 #define MAX_FILES 1024
+
+int task_compare_files(void* userData, const void* p1, const void* p2) {
+    list_item* info1 = (list_item*) p1;
+    list_item* info2 = (list_item*) p2;
+
+    bool info1Base = strncmp(info1->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info1->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;
+    bool info2Base = strncmp(info2->name, "<current directory>", LIST_ITEM_NAME_MAX) == 0 || strncmp(info2->name, "<current file>", LIST_ITEM_NAME_MAX) == 0;
+
+    if(info1Base && !info2Base) {
+        return -1;
+    } else if(!info1Base && info2Base) {
+        return 1;
+    } else {
+        file_info* f1 = (file_info*) info1->data;
+        file_info* f2 = (file_info*) info2->data;
+
+        if((f1->attributes & FS_ATTRIBUTE_DIRECTORY) && !(f2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
+            return -1;
+        } else if(!(f1->attributes & FS_ATTRIBUTE_DIRECTORY) && (f2->attributes & FS_ATTRIBUTE_DIRECTORY)) {
+            return 1;
+        } else {
+            return strncasecmp(f1->name, f2->name, FILE_NAME_MAX);
+        }
+    }
+}
 
 Result task_create_file_item(list_item** out, FS_Archive archive, const char* path, u32 attributes) {
     Result res = 0;
@@ -71,9 +100,9 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
 
                                 SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
                                 if(smdh != NULL) {
-                                    if(R_SUCCEEDED(util_get_cia_file_smdh(smdh, fileHandle))) {
+                                    if(R_SUCCEEDED(cia_file_get_smdh(smdh, fileHandle))) {
                                         if(smdh->magic[0] == 'S' && smdh->magic[1] == 'M' && smdh->magic[2] == 'D' && smdh->magic[3] == 'H') {
-                                            SMDH_title* smdhTitle = util_select_smdh_title(smdh);
+                                            SMDH_title* smdhTitle = smdh_select_title(smdh);
 
                                             fileInfo->ciaInfo.hasMeta = true;
                                             utf16_to_utf8((uint8_t*) fileInfo->ciaInfo.meta.shortDescription, smdhTitle->shortDescription, sizeof(fileInfo->ciaInfo.meta.shortDescription) - 1);

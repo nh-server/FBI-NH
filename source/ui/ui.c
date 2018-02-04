@@ -5,10 +5,12 @@
 #include <3ds.h>
 #include <malloc.h>
 
+#include "resources.h"
 #include "ui.h"
-#include "section/task/task.h"
+#include "section/task/uitask.h"
 #include "../core/screen.h"
 #include "../core/util.h"
+#include "../core/data/smdh.h"
 
 #define MAX_UI_VIEWS 16
 
@@ -211,7 +213,8 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "SD: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "SD: %.1f %s",
+                     ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
@@ -222,7 +225,8 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "CTR NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "CTR NAND: %.1f %s",
+                     ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
@@ -233,7 +237,8 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL NAND: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL NAND: %.1f %s",
+                     ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
@@ -244,7 +249,8 @@ static void ui_draw_top(ui_view* ui) {
             }
 
             u64 size = (u64) resource.freeClusters * (u64) resource.clusterSize;
-            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL Photo: %.1f %s", util_get_display_size(size), util_get_display_size_units(size));
+            snprintf(currBuffer, sizeof(ui_free_space_buffer) - (currBuffer - ui_free_space_buffer), "TWL Photo: %.1f %s",
+                     ui_get_display_size(size), ui_get_display_size_units(size));
             currBuffer += strlen(currBuffer);
         }
 
@@ -353,6 +359,51 @@ bool ui_update() {
     }
 
     return ui != NULL;
+}
+
+const char* ui_get_display_eta(u32 seconds) {
+    static char disp[12];
+
+    u8 hours     = seconds / 3600;
+    seconds     -= hours * 3600;
+    u8 minutes   = seconds / 60;
+    seconds     -= minutes* 60;
+
+    snprintf(disp, 12, "%02u:%02u:%02u", hours, minutes, (u8) seconds);
+    return disp;
+}
+
+double ui_get_display_size(u64 size) {
+    double s = size;
+    if(s > 1024) {
+        s /= 1024;
+    }
+
+    if(s > 1024) {
+        s /= 1024;
+    }
+
+    if(s > 1024) {
+        s /= 1024;
+    }
+
+    return s;
+}
+
+const char* ui_get_display_size_units(u64 size) {
+    if(size > 1024 * 1024 * 1024) {
+        return "GiB";
+    }
+
+    if(size > 1024 * 1024) {
+        return "MiB";
+    }
+
+    if(size > 1024) {
+        return "KiB";
+    }
+
+    return "B";
 }
 
 void ui_draw_meta_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
@@ -483,7 +534,8 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
     infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "\n");
 
     if(!(info->attributes & FS_ATTRIBUTE_DIRECTORY)) {
-        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f %s\n", util_get_display_size(info->size), util_get_display_size_units(info->size));
+        infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f %s\n",
+                                ui_get_display_size(info->size), ui_get_display_size_units(info->size));
 
         if(info->isCia) {
             char regionString[64];
@@ -491,7 +543,7 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
             if(info->ciaInfo.hasMeta) {
                 ui_draw_meta_info(view, &info->ciaInfo.meta, x1, y1, x2, y2);
 
-                util_smdh_region_to_string(regionString, info->ciaInfo.meta.region, sizeof(regionString));
+                smdh_region_to_string(regionString, info->ciaInfo.meta.region, sizeof(regionString));
             } else {
                 snprintf(regionString, sizeof(regionString), "Unknown");
             }
@@ -504,7 +556,8 @@ void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, 
                      info->ciaInfo.titleId,
                      info->ciaInfo.version, (info->ciaInfo.version >> 10) & 0x3F, (info->ciaInfo.version >> 4) & 0x3F, info->ciaInfo.version & 0xF,
                      regionString,
-                     util_get_display_size(info->ciaInfo.installedSize), util_get_display_size_units(info->ciaInfo.installedSize));
+                                    ui_get_display_size(info->ciaInfo.installedSize),
+                                    ui_get_display_size_units(info->ciaInfo.installedSize));
         } else if(info->isTicket) {
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Ticket ID: %016llX", info->ticketInfo.titleId);
         }
@@ -577,7 +630,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
     if(info->hasMeta) {
         ui_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
 
-        util_smdh_region_to_string(regionString, info->meta.region, sizeof(regionString));
+        smdh_region_to_string(regionString, info->meta.region, sizeof(regionString));
     } else {
         snprintf(regionString, sizeof(regionString), "Unknown");
     }
@@ -596,7 +649,7 @@ void ui_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2,
              info->version, (info->version >> 10) & 0x3F, (info->version >> 4) & 0x3F, info->version & 0xF,
              info->productCode,
              regionString,
-             util_get_display_size(info->installedSize), util_get_display_size_units(info->installedSize));
+             ui_get_display_size(info->installedSize), ui_get_display_size_units(info->installedSize));
 
     float infoWidth;
     screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
@@ -650,7 +703,7 @@ void ui_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, flo
              info->cia.titleId,
              info->cia.version,
              info->cia.installedVersion, (info->cia.installedVersion >> 10) & 0x3F, (info->cia.installedVersion >> 4) & 0x3F, info->cia.installedVersion & 0xF,
-             util_get_display_size(info->cia.size), util_get_display_size_units(info->cia.size),
+             ui_get_display_size(info->cia.size), ui_get_display_size_units(info->cia.size),
              updatedDate, updatedTime);
 
     float infoWidth;
@@ -678,7 +731,7 @@ void ui_draw_titledb_info_tdsx(ui_view* view, void* data, float x1, float y1, fl
              "Size: %.2f %s\n"
              "Updated At: %s %s",
              info->tdsx.version,
-             util_get_display_size(info->tdsx.size), util_get_display_size_units(info->tdsx.size),
+             ui_get_display_size(info->tdsx.size), ui_get_display_size_units(info->tdsx.size),
              updatedDate, updatedTime);
 
     float infoWidth;

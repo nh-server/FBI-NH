@@ -4,6 +4,7 @@
 
 #include "error.h"
 #include "list.h"
+#include "resources.h"
 #include "ui.h"
 #include "../core/screen.h"
 #include "../core/linkedlist.h"

@@ -5,12 +5,13 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../error.h"
 #include "../../info.h"
 #include "../../kbd.h"
 #include "../../list.h"
 #include "../../prompt.h"
+#include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
@@ -71,7 +72,7 @@ static void action_rename_onresponse(ui_view* view, void* data, SwkbdButton butt
             strncpy(targetInfo->name, fileName, FILE_NAME_MAX);
             strncpy(targetInfo->path, dstPath, FILE_PATH_MAX);
 
-            linked_list_sort(renameData->items, NULL, util_compare_file_infos);
+            linked_list_sort(renameData->items, NULL, task_compare_files);
 
             prompt_display_notify("Success", "Renamed.", COLOR_TEXT, NULL, NULL, NULL);
         } else {

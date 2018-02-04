@@ -24,6 +24,10 @@ bool ui_push(ui_view* view);
 void ui_pop();
 bool ui_update();
 
+const char* ui_get_display_eta(u32 seconds);
+double ui_get_display_size(u64 size);
+const char* ui_get_display_size_units(u64 size);
+
 void ui_draw_meta_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 void ui_draw_ext_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 void ui_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);

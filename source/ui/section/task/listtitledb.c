@@ -6,11 +6,13 @@
 #include <3ds.h>
 #include <jansson.h>
 
-#include "task.h"
+#include "uitask.h"
 #include "../../list.h"
+#include "../../resources.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/task/task.h"
 #include "../../../libs/stb_image/stb_image.h"
 
 #define json_object_get_string(obj, name, def) (json_is_string(json_object_get(obj, name)) ? json_string_value(json_object_get(obj, name)) : def)

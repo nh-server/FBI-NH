@@ -2,7 +2,7 @@
 
 #include "action.h"
 #include "../section.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../list.h"
 #include "../../../core/util.h"
 

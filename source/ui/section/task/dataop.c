@@ -3,11 +3,13 @@
 
 #include <3ds.h>
 
-#include "task.h"
+#include "uitask.h"
 #include "../../prompt.h"
+#include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/task/task.h"
 
 static Result task_data_op_check_running(data_op_data* data, u32 index, u32* srcHandle, u32* dstHandle) {
     Result res = 0;
@@ -156,13 +158,7 @@ static void task_data_op_retry_onresponse(ui_view* view, void* data, u32 respons
 static void task_data_op_thread(void* arg) {
     data_op_data* data = (data_op_data*) arg;
 
-    bool reset = false;
     for(data->processed = 0; data->processed < data->total; data->processed++) {
-        if(reset) {
-            data->processed = 0;
-            reset = false;
-        }
-
         Result res = 0;
 
         if(R_SUCCEEDED(res = task_data_op_check_running(data, data->processed, NULL, NULL))) {
@@ -197,7 +193,7 @@ static void task_data_op_thread(void* arg) {
                         if(proceed) {
                             data->processed--;
                         } else {
-                            reset = true;
+                            data->processed = 0;
                         }
                     } else if(!proceed) {
                         break;

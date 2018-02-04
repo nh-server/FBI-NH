@@ -4,15 +4,17 @@
 #include <3ds.h>
 
 #include "action.h"
-#include "../task/task.h"
+#include "../task/uitask.h"
 #include "../../error.h"
 #include "../../info.h"
 #include "../../list.h"
 #include "../../prompt.h"
+#include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
+#include "../../../core/data/smdh.h"
 
 static void action_extract_smdh_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
