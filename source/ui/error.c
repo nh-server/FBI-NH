@@ -503,8 +503,6 @@ static const char* description_to_string(Result res) {
                     return "Bad data";
                 case R_FBI_TOO_MANY_REDIRECTS:
                     return "Too many redirects";
-                case R_FBI_QR_INIT_FAILED:
-                    return "Failed to initialize QR code parser.";
                 case R_FBI_CURL_INIT_FAILED:
                     return "Failed to initialize CURL.";
                 default:
