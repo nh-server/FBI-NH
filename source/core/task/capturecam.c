@@ -5,7 +5,7 @@
 
 #include "capturecam.h"
 #include "task.h"
-#include "../util.h"
+#include "../error.h"
 
 #define EVENT_CANCEL 0
 #define EVENT_RECV 1
@@ -99,7 +99,7 @@ static void task_capture_cam_thread(void* arg) {
 
         free(buffer);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     for(int i = 0; i < EVENT_COUNT; i++) {
@@ -117,7 +117,7 @@ static void task_capture_cam_thread(void* arg) {
 
 Result task_capture_cam(capture_cam_data* data) {
     if(data == NULL || data->buffer == NULL || data->width <= 0 || data->width > 640 || data->height <= 0 || data->height > 480) {
-        return R_FBI_INVALID_ARGUMENT;
+        return R_APP_INVALID_ARGUMENT;
     }
 
     data->mutex = 0;
@@ -130,7 +130,7 @@ Result task_capture_cam(capture_cam_data* data) {
 
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY)) && R_SUCCEEDED(res = svcCreateMutex(&data->mutex, false))) {
         if(threadCreate(task_capture_cam_thread, data, 0x10000, 0x1A, 0, true) == NULL) {
-            res = R_FBI_THREAD_CREATE_FAILED;
+            res = R_APP_THREAD_CREATE_FAILED;
         }
     }
 

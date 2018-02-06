@@ -12,6 +12,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -55,7 +56,7 @@ static Result action_delete_delete(void* data, u32 index) {
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     if(R_SUCCEEDED(res)) {

@@ -12,6 +12,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -64,7 +65,7 @@ static Result action_install_tickets_open_src(void* data, u32 index, u32* handle
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -97,7 +98,7 @@ static Result action_install_tickets_close_src(void* data, u32 index, bool succe
 
             util_free_path_utf8(fsPath);
         } else {
-            res = R_FBI_OUT_OF_MEMORY;
+            res = R_APP_OUT_OF_MEMORY;
         }
     }
 

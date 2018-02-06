@@ -13,6 +13,7 @@
 #include "../prompt.h"
 #include "../resources.h"
 #include "../ui.h"
+#include "../../core/error.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
 
@@ -54,14 +55,14 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                         strncpy(updateURL, url, DOWNLOAD_URL_MAX);
                         hasUpdate = true;
                     } else {
-                        res = R_FBI_BAD_DATA;
+                        res = R_APP_BAD_DATA;
                     }
                 }
             } else {
-                res = R_FBI_BAD_DATA;
+                res = R_APP_BAD_DATA;
             }
         } else {
-            res = R_FBI_BAD_DATA;
+            res = R_APP_BAD_DATA;
         }
 
         json_decref(json);

@@ -6,9 +6,9 @@
 #include <3ds.h>
 #include <citro3d.h>
 
-#include "../libs/stb_image/stb_image.h"
+#include "error.h"
 #include "screen.h"
-#include "util.h"
+#include "../libs/stb_image/stb_image.h"
 
 #include "default_shbin.h"
 
@@ -40,7 +40,7 @@ static struct {
 static void screen_set_blend(u32 color, bool rgb, bool alpha) {
     C3D_TexEnv* env = C3D_GetTexEnv(0);
     if(env == NULL) {
-        util_panic("Failed to retrieve combiner settings.");
+        error_panic("Failed to retrieve combiner settings.");
         return;
     }
 
@@ -65,7 +65,7 @@ static void screen_set_blend(u32 color, bool rgb, bool alpha) {
 
 void screen_init() {
     if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 4)) {
-        util_panic("Failed to initialize the GPU.");
+        error_panic("Failed to initialize the GPU.");
         return;
     }
 
@@ -75,7 +75,7 @@ void screen_init() {
 
     target_top = C3D_RenderTargetCreate(TOP_SCREEN_HEIGHT, TOP_SCREEN_WIDTH, GPU_RB_RGB8, 0);
     if(target_top == NULL) {
-        util_panic("Failed to initialize the top screen target.");
+        error_panic("Failed to initialize the top screen target.");
         return;
     }
 
@@ -84,7 +84,7 @@ void screen_init() {
 
     target_bottom = C3D_RenderTargetCreate(BOTTOM_SCREEN_HEIGHT, BOTTOM_SCREEN_WIDTH, GPU_RB_RGB8, 0);
     if(target_bottom == NULL) {
-        util_panic("Failed to initialize the bottom screen target.");
+        error_panic("Failed to initialize the bottom screen target.");
         return;
     }
 
@@ -96,13 +96,13 @@ void screen_init() {
 
     dvlb = DVLB_ParseFile((u32*) default_shbin, default_shbin_len);
     if(dvlb == NULL) {
-        util_panic("Failed to parse shader.");
+        error_panic("Failed to parse shader.");
         return;
     }
 
     Result progInitRes = shaderProgramInit(&program);
     if(R_FAILED(progInitRes)) {
-        util_panic("Failed to initialize shader program: 0x%08lX", progInitRes);
+        error_panic("Failed to initialize shader program: 0x%08lX", progInitRes);
         return;
     }
 
@@ -110,7 +110,7 @@ void screen_init() {
 
     Result progSetVshRes = shaderProgramSetVsh(&program, &dvlb->DVLE[0]);
     if(R_FAILED(progSetVshRes)) {
-        util_panic("Failed to set up vertex shader: 0x%08lX", progInitRes);
+        error_panic("Failed to set up vertex shader: 0x%08lX", progInitRes);
         return;
     }
 
@@ -118,7 +118,7 @@ void screen_init() {
 
     C3D_AttrInfo* attrInfo = C3D_GetAttrInfo();
     if(attrInfo == NULL) {
-        util_panic("Failed to retrieve attribute info.");
+        error_panic("Failed to retrieve attribute info.");
         return;
     }
 
@@ -132,14 +132,14 @@ void screen_init() {
 
     Result fontMapRes = fontEnsureMapped();
     if(R_FAILED(fontMapRes)) {
-        util_panic("Failed to map system font: 0x%08lX", fontMapRes);
+        error_panic("Failed to map system font: 0x%08lX", fontMapRes);
         return;
     }
 
     TGLP_s* glyphInfo = fontGetGlyphInfo();
     glyph_sheets = calloc(glyphInfo->nSheets, sizeof(C3D_Tex));
     if(glyph_sheets == NULL) {
-        util_panic("Failed to allocate font glyph texture data.");
+        error_panic("Failed to allocate font glyph texture data.");
         return;
     }
 
@@ -198,7 +198,7 @@ void screen_set_base_alpha(u8 alpha) {
 
 void screen_set_color(u32 id, u32 color) {
     if(id >= MAX_COLORS) {
-        util_panic("Attempted to draw string with invalid color ID \"%lu\".", id);
+        error_panic("Attempted to draw string with invalid color ID \"%lu\".", id);
         return;
     }
 
@@ -229,7 +229,7 @@ u32 screen_allocate_free_texture() {
     }
 
     if(id == 0) {
-        util_panic("Out of free textures.");
+        error_panic("Out of free textures.");
         return 0;
     }
 
@@ -238,7 +238,7 @@ u32 screen_allocate_free_texture() {
 
 static void screen_prepare_texture(u32* pow2WidthOut, u32* pow2HeightOut, u32 id, u32 width, u32 height, GPU_TEXCOLOR format, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to prepare invalid texture ID \"%lu\".", id);
+        error_panic("Attempted to prepare invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -258,7 +258,7 @@ static void screen_prepare_texture(u32* pow2WidthOut, u32* pow2HeightOut, u32 id
     }
 
     if(textures[id].tex.data == NULL && !C3D_TexInit(&textures[id].tex, (u16) pow2Width, (u16) pow2Height, format)) {
-        util_panic("Failed to initialize texture with ID \"%lu\".", id);
+        error_panic("Failed to initialize texture with ID \"%lu\".", id);
         return;
     }
 
@@ -321,13 +321,13 @@ void screen_load_texture_untiled(u32 id, void* data, u32 size, u32 width, u32 he
 
 void screen_load_texture_path(u32 id, const char* path, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to load path \"%s\" to invalid texture ID \"%lu\".", path, id);
+        error_panic("Attempted to load path \"%s\" to invalid texture ID \"%lu\".", path, id);
         return;
     }
 
     FILE* fd = fopen(path, "rb");
     if(fd == NULL) {
-        util_panic("Failed to load PNG file \"%s\": %s", path, strerror(errno));
+        error_panic("Failed to load PNG file \"%s\": %s", path, strerror(errno));
         return;
     }
 
@@ -338,7 +338,7 @@ void screen_load_texture_path(u32 id, const char* path, bool linearFilter) {
 
 void screen_load_texture_file(u32 id, FILE* fd, bool linearFilter) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to load file to invalid texture ID \"%lu\".", id);
+        error_panic("Attempted to load file to invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -348,7 +348,7 @@ void screen_load_texture_file(u32 id, FILE* fd, bool linearFilter) {
     u8* image = stbi_load_from_file(fd, &width, &height, &depth, STBI_rgb_alpha);
 
     if(image == NULL || depth != STBI_rgb_alpha) {
-        util_panic("Failed to load PNG file to texture ID \"%lu\".", id);
+        error_panic("Failed to load PNG file to texture ID \"%lu\".", id);
         return;
     }
 
@@ -375,7 +375,7 @@ void screen_load_texture_file(u32 id, FILE* fd, bool linearFilter) {
 
 void screen_unload_texture(u32 id) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to unload invalid texture ID \"%lu\".", id);
+        error_panic("Attempted to unload invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -389,7 +389,7 @@ void screen_unload_texture(u32 id) {
 
 void screen_get_texture_size(u32* width, u32* height, u32 id) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to get size of invalid texture ID \"%lu\".", id);
+        error_panic("Attempted to get size of invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -404,7 +404,7 @@ void screen_get_texture_size(u32* width, u32* height, u32 id) {
 
 void screen_begin_frame() {
     if(!C3D_FrameBegin(C3D_FRAME_SYNCDRAW)) {
-        util_panic("Failed to begin frame.");
+        error_panic("Failed to begin frame.");
         return;
     }
 }
@@ -415,7 +415,7 @@ void screen_end_frame() {
 
 void screen_select(gfxScreen_t screen) {
     if(!C3D_FrameDrawOn(screen == GFX_TOP ? target_top : target_bottom)) {
-        util_panic("Failed to select render target.");
+        error_panic("Failed to select render target.");
         return;
     }
 
@@ -442,7 +442,7 @@ static void screen_draw_quad(float x1, float y1, float x2, float y2, float left,
 
 void screen_draw_texture(u32 id, float x, float y, float width, float height) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to draw invalid texture ID \"%lu\".", id);
+        error_panic("Attempted to draw invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -464,7 +464,7 @@ void screen_draw_texture(u32 id, float x, float y, float width, float height) {
 
 void screen_draw_texture_crop(u32 id, float x, float y, float width, float height) {
     if(id >= MAX_TEXTURES) {
-        util_panic("Attempted to draw invalid texture ID \"%lu\".", id);
+        error_panic("Attempted to draw invalid texture ID \"%lu\".", id);
         return;
     }
 
@@ -561,7 +561,7 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
     }
 
     if(colorId >= MAX_COLORS) {
-        util_panic("Attempted to draw string with invalid color ID \"%lu\".", colorId);
+        error_panic("Attempted to draw string with invalid color ID \"%lu\".", colorId);
         return;
     }
 

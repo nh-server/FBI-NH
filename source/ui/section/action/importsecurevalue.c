@@ -10,6 +10,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -37,7 +38,7 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     ui_pop();

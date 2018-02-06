@@ -8,6 +8,7 @@
 #include "uitask.h"
 #include "../../list.h"
 #include "../../resources.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -148,10 +149,10 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
         } else {
             free(item);
 
-            res = R_FBI_OUT_OF_MEMORY;
+            res = R_APP_OUT_OF_MEMORY;
         }
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -245,7 +246,7 @@ static void task_populate_files_thread(void* arg) {
 
                             free(entries);
                         } else {
-                            res = R_FBI_OUT_OF_MEMORY;
+                            res = R_APP_OUT_OF_MEMORY;
                         }
 
                         FSDIR_Close(dirHandle);
@@ -253,7 +254,7 @@ static void task_populate_files_thread(void* arg) {
 
                     util_free_path_utf8(fsPath);
                 } else {
-                    res = R_FBI_OUT_OF_MEMORY;
+                    res = R_APP_OUT_OF_MEMORY;
                 }
             }
         }
@@ -306,7 +307,7 @@ void task_clear_files(linked_list* items) {
 
 Result task_populate_files(populate_files_data* data) {
     if(data == NULL || data->items == NULL) {
-        return R_FBI_INVALID_ARGUMENT;
+        return R_APP_INVALID_ARGUMENT;
     }
 
     task_clear_files(data->items);
@@ -318,7 +319,7 @@ Result task_populate_files(populate_files_data* data) {
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
         if(threadCreate(task_populate_files_thread, data, 0x10000, 0x19, 1, true) == NULL) {
-            res = R_FBI_THREAD_CREATE_FAILED;
+            res = R_APP_THREAD_CREATE_FAILED;
         }
     }
 

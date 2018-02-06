@@ -12,6 +12,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/clipboard.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
@@ -100,7 +101,7 @@ static Result action_paste_contents_make_dst_directory(void* data, u32 index) {
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -117,7 +118,7 @@ static Result action_paste_contents_open_src(void* data, u32 index, u32* handle)
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -170,7 +171,7 @@ static Result action_paste_contents_open_dst(void* data, u32 index, void* initia
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;

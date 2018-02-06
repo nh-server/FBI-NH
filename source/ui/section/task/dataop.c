@@ -9,6 +9,8 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
+#include "../../../core/http.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 #include "../../../core/task/task.h"
@@ -17,7 +19,7 @@ static Result task_data_op_check_running(data_op_data* data, u32 index, u32* src
     Result res = 0;
 
     if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
-        res = R_FBI_CANCELLED;
+        res = R_APP_CANCELLED;
     } else {
         bool suspended = svcWaitSynchronization(task_get_suspend_event(), 0) != 0;
         if(suspended) {
@@ -69,7 +71,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                             res = data->closeDst(data->data, index, true, dstHandle);
                         }
                     } else {
-                        res = R_FBI_BAD_DATA;
+                        res = R_APP_BAD_DATA;
                     }
                 } else {
                     u8* buffer = (u8*) calloc(1, data->bufferSize);
@@ -136,7 +138,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
 
                         free(buffer);
                     } else {
-                        res = R_FBI_OUT_OF_MEMORY;
+                        res = R_APP_OUT_OF_MEMORY;
                     }
                 }
             }
@@ -179,15 +181,15 @@ static Result task_download_execute(const char* url, void* data, size_t write_ca
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
 
             if(responseCode >= 400) {
-                return R_FBI_HTTP_ERROR_BASE + ret;
+                return R_APP_HTTP_ERROR_BASE + ret;
             }
         } else {
-            res = R_FBI_CURL_ERROR_BASE + ret;
+            res = R_APP_CURL_ERROR_BASE + ret;
         }
 
         curl_easy_cleanup(curl);
     } else {
-        res = R_FBI_CURL_INIT_FAILED;
+        res = R_APP_CURL_INIT_FAILED;
     }
 
     return res;
@@ -216,7 +218,7 @@ static size_t task_download_sync_write_callback(char* ptr, size_t size, size_t n
 Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_t size) {
 #ifdef USE_CURL
     if(url == NULL || buf == NULL) {
-        return R_FBI_INVALID_ARGUMENT;
+        return R_APP_INVALID_ARGUMENT;
     }
 
     Result res = 0;
@@ -233,10 +235,10 @@ Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_
     Result res = 0;
 
     httpcContext context;
-    if(R_SUCCEEDED(res = util_http_open(&context, url, true))) {
-        res = util_http_read(&context, downloadedSize, buf, size);
+    if(R_SUCCEEDED(res = http_open(&context, url, true))) {
+        res = http_read(&context, downloadedSize, buf, size);
 
-        Result closeRes = util_http_close(&context);
+        Result closeRes = http_close(&context);
         if(R_SUCCEEDED(res)) {
             res = closeRes;
         }
@@ -248,7 +250,7 @@ Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_
 
 Result task_download_json_sync(const char* url, json_t** json, size_t maxSize) {
     if(url == NULL || json == NULL) {
-        return R_FBI_INVALID_ARGUMENT;
+        return R_APP_INVALID_ARGUMENT;
     }
 
     Result res = 0;
@@ -262,13 +264,13 @@ Result task_download_json_sync(const char* url, json_t** json, size_t maxSize) {
             if(parsed != NULL) {
                 *json = parsed;
             } else {
-                res = R_FBI_PARSE_FAILED;
+                res = R_APP_PARSE_FAILED;
             }
         }
 
         free(text);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -321,10 +323,10 @@ Result task_download_seed_sync(u64 titleId) {
 
                 u32 downloadedSize = 0;
                 if(R_SUCCEEDED(res = task_download_sync(url, &downloadedSize, seed, sizeof(seed))) && downloadedSize != sizeof(seed)) {
-                    res = R_FBI_BAD_DATA;
+                    res = R_APP_BAD_DATA;
                 }
             } else {
-                res = R_FBI_OUT_OF_RANGE;
+                res = R_APP_OUT_OF_RANGE;
             }
         }
 
@@ -332,7 +334,7 @@ Result task_download_seed_sync(u64 titleId) {
             res = FSUSER_AddSeed(titleId, seed);
         }
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -468,7 +470,7 @@ static Result task_data_op_download(data_op_data* data, u32 index) {
 
         free(buffer);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -507,7 +509,10 @@ static void task_data_op_thread(void* arg) {
         data->result = res;
 
         if(R_FAILED(res)) {
-            if(res != R_FBI_CANCELLED) {
+            if(res == R_APP_CANCELLED) {
+                prompt_display_notify("Failure", "Operation cancelled.", COLOR_TEXT, NULL, NULL, NULL);
+                break;
+            } else if(res != R_APP_SKIPPED) {
                 ui_view* errorView = NULL;
                 bool proceed = data->error(data->data, data->processed, res, &errorView);
 
@@ -529,9 +534,6 @@ static void task_data_op_thread(void* arg) {
                         break;
                     }
                 }
-            } else {
-                prompt_display_notify("Failure", "Operation cancelled.", COLOR_TEXT, NULL, NULL, NULL);
-                break;
             }
         }
     }
@@ -545,7 +547,7 @@ static void task_data_op_thread(void* arg) {
 
 Result task_data_op(data_op_data* data) {
     if(data == NULL) {
-        return R_FBI_INVALID_ARGUMENT;
+        return R_APP_INVALID_ARGUMENT;
     }
 
     data->processed = 0;
@@ -560,7 +562,7 @@ Result task_data_op(data_op_data* data) {
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
         if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true) == NULL) {
-            res = R_FBI_THREAD_CREATE_FAILED;
+            res = R_APP_THREAD_CREATE_FAILED;
         }
     }
 

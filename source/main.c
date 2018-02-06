@@ -5,12 +5,11 @@
 #include <curl/curl.h>
 
 #include "core/clipboard.h"
+#include "core/error.h"
 #include "core/screen.h"
 #include "core/util.h"
 #include "core/task/task.h"
-#include "ui/error.h"
 #include "ui/mainmenu.h"
-#include "ui/resources.h"
 #include "ui/ui.h"
 
 #define CURRENT_KPROCESS (*(void**) 0xFFFF9004)
@@ -104,7 +103,7 @@ Result init_services() {
                && INIT_SERVICE(socInit(soc_buffer, 0x100000), (void (*)()) socExit));
         }
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     if(R_FAILED(res)) {
@@ -121,19 +120,19 @@ void init() {
 
     Result romfsRes = romfsInit();
     if(R_FAILED(romfsRes)) {
-        util_panic("Failed to mount RomFS: %08lX", romfsRes);
+        error_panic("Failed to mount RomFS: %08lX", romfsRes);
         return;
     }
 
     if(R_FAILED(init_services())) {
         if(!attempt_patch_pid()) {
-            util_panic("Kernel backdoor not installed.\nPlease run a kernel exploit and try again.");
+            error_panic("Kernel backdoor not installed.\nPlease run a kernel exploit and try again.");
             return;
         }
 
         Result initRes = init_services();
         if(R_FAILED(initRes)) {
-            util_panic("Failed to initialize services: %08lX", initRes);
+            error_panic("Failed to initialize services: %08lX", initRes);
             return;
         }
     }
@@ -143,7 +142,7 @@ void init() {
     APT_GetAppCpuTimeLimit(&old_time_limit);
     Result cpuRes = APT_SetAppCpuTimeLimit(30);
     if(R_FAILED(cpuRes)) {
-        util_panic("Failed to set syscore CPU time limit: %08lX", cpuRes);
+        error_panic("Failed to set syscore CPU time limit: %08lX", cpuRes);
         return;
     }
 
@@ -152,7 +151,6 @@ void init() {
     curl_global_init(CURL_GLOBAL_ALL);
 
     screen_init();
-    resources_load();
     ui_init();
     task_init();
 }

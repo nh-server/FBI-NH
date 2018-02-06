@@ -5,6 +5,7 @@
 #include <3ds.h>
 
 #include "resources.h"
+#include "../core/error.h"
 #include "../core/screen.h"
 #include "../core/util.h"
 #include "../core/task/task.h"
@@ -27,7 +28,7 @@ static FILE* resources_open_file(const char* path) {
 static void resources_load_texture(u32 id, const char* name) {
     FILE* fd = resources_open_file(name);
     if(fd == NULL) {
-        util_panic("Failed to open texture \"%s\": %s\n", name, strerror(errno));
+        error_panic("Failed to open texture \"%s\": %s\n", name, strerror(errno));
         return;
     }
 
@@ -39,7 +40,7 @@ static void resources_load_texture(u32 id, const char* name) {
 void resources_load() {
     FILE* fd = resources_open_file("textcolor.cfg");
     if(fd == NULL) {
-        util_panic("Failed to open text color config: %s\n", strerror(errno));
+        error_panic("Failed to open text color config: %s\n", strerror(errno));
         return;
     }
 
