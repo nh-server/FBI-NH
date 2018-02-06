@@ -10,9 +10,9 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/http.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 #include "../../../core/task/task.h"
 
 static Result task_data_op_check_running(data_op_data* data, u32 index, u32* srcHandle, u32* dstHandle) {
@@ -297,7 +297,7 @@ Result task_download_seed_sync(u64 titleId) {
 
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(pathBuf);
+    FS_Path* fsPath = fs_make_path_utf8(pathBuf);
     if(fsPath != NULL) {
         u8 seed[16];
 
@@ -309,7 +309,7 @@ Result task_download_seed_sync(u64 titleId) {
             FSFILE_Close(fileHandle);
         }
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
 
         if(R_FAILED(res)) {
             u8 region = CFG_REGION_USA;

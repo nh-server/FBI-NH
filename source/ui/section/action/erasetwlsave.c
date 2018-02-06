@@ -15,7 +15,7 @@
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/spi.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 
 typedef struct {
     title_info* title;

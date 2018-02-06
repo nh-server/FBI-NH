@@ -6,8 +6,8 @@
 
 #include "core/clipboard.h"
 #include "core/error.h"
+#include "core/fs.h"
 #include "core/screen.h"
-#include "core/util.h"
 #include "core/task/task.h"
 #include "ui/mainmenu.h"
 #include "ui/ui.h"
@@ -177,7 +177,7 @@ void cleanup() {
 
 int main(int argc, const char* argv[]) {
     if(argc > 0 && envIsHomebrew()) {
-        util_set_3dsx_path(argv[0]);
+        fs_set_3dsx_path(argv[0]);
     }
 
     init();

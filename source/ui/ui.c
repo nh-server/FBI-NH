@@ -10,7 +10,6 @@
 #include "section/task/uitask.h"
 #include "../core/error.h"
 #include "../core/screen.h"
-#include "../core/util.h"
 #include "../core/data/smdh.h"
 
 #define MAX_UI_VIEWS 16

@@ -13,9 +13,9 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 
 typedef struct {
     linked_list* items;
@@ -63,11 +63,11 @@ static Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
 
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(info->path);
+    FS_Path* fsPath = fs_make_path_utf8(info->path);
     if(fsPath != NULL) {
         res = FSUSER_OpenFile(handle, info->archive, *fsPath, FS_OPEN_READ, 0);
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }
@@ -83,7 +83,7 @@ static Result action_install_cias_close_src(void* data, u32 index, bool succeede
     Result res = 0;
 
     if(R_SUCCEEDED(res = FSFILE_Close(handle)) && installData->delete && succeeded) {
-        FS_Path* fsPath = util_make_path_utf8(info->path);
+        FS_Path* fsPath = fs_make_path_utf8(info->path);
         if(fsPath != NULL) {
             if(R_SUCCEEDED(FSUSER_DeleteFile(info->archive, *fsPath))) {
                 linked_list_iter iter;
@@ -100,7 +100,7 @@ static Result action_install_cias_close_src(void* data, u32 index, bool succeede
                 }
             }
 
-            util_free_path_utf8(fsPath);
+            fs_free_path_utf8(fsPath);
         } else {
             res = R_APP_OUT_OF_MEMORY;
         }
@@ -124,7 +124,7 @@ static Result action_install_cias_open_dst(void* data, u32 index, void* initialR
 
     file_info* info = (file_info*) ((list_item*) linked_list_get(&installData->contents, index))->data;
 
-    FS_MediaType dest = util_get_title_destination(info->ciaInfo.titleId);
+    FS_MediaType dest = fs_get_title_destination(info->ciaInfo.titleId);
 
     bool n3ds = false;
     if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((info->ciaInfo.titleId >> 28) & 0xF) == 2) {
@@ -378,7 +378,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     strncpy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
     loadingData->popData.recursive = false;
     loadingData->popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
-    loadingData->popData.filter = util_filter_cias;
+    loadingData->popData.filter = fs_filter_cias;
     loadingData->popData.filterData = NULL;
 
     Result listRes = task_populate_files(&loadingData->popData);

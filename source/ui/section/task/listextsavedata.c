@@ -11,7 +11,7 @@
 #include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 #include "../../../core/data/smdh.h"
 #include "../../../core/task/task.h"
 
@@ -72,7 +72,7 @@ static Result task_populate_ext_save_data_from(populate_ext_save_data_data* data
                             free(smdh);
                         }
 
-                        if(util_is_string_empty(item->name)) {
+                        if(string_is_empty(item->name)) {
                             snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", extSaveDataIds[i]);
                         }
 

@@ -11,9 +11,9 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 
 static void action_export_secure_value_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
@@ -34,11 +34,11 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
 
         FS_Archive sdmcArchive = 0;
         if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
-            if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/securevalue/"))) {
+            if(R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/securevalue/"))) {
                 char pathBuf[64];
                 snprintf(pathBuf, 64, "/fbi/securevalue/%016llX.dat", info->titleId);
 
-                FS_Path* fsPath = util_make_path_utf8(pathBuf);
+                FS_Path* fsPath = fs_make_path_utf8(pathBuf);
                 if(fsPath != NULL) {
                     Handle fileHandle = 0;
                     if(R_SUCCEEDED(res = FSUSER_OpenFile(&fileHandle, sdmcArchive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
@@ -47,7 +47,7 @@ static void action_export_secure_value_update(ui_view* view, void* data, float* 
                         FSFILE_Close(fileHandle);
                     }
 
-                    util_free_path_utf8(fsPath);
+                    fs_free_path_utf8(fsPath);
                 } else {
                     res = R_APP_OUT_OF_MEMORY;
                 }

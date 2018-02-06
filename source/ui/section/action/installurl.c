@@ -12,9 +12,10 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/http.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 #include "../../../core/data/cia.h"
 #include "../../../core/data/ticket.h"
 
@@ -166,7 +167,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
 
         u64 titleId = cia_get_title_id((u8*) initialReadBlock);
 
-        FS_MediaType dest = util_get_title_destination(titleId);
+        FS_MediaType dest = fs_get_title_destination(titleId);
 
         bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((titleId >> 28) & 0xF) == 2) {
@@ -220,27 +221,27 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
         if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
             char dir[FILE_PATH_MAX];
             if(strlen(installData->path3dsx) > 0) {
-                util_get_parent_path(dir, installData->path3dsx, FILE_PATH_MAX);
+                string_get_parent_path(dir, installData->path3dsx, FILE_PATH_MAX);
                 strncpy(installData->curr3dsxPath, installData->path3dsx, FILE_PATH_MAX);
             } else {
                 char filename[FILE_NAME_MAX];
                 if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
-                    util_get_path_file(filename, installData->urls[index], FILE_NAME_MAX);
+                    string_get_path_file(filename, installData->urls[index], FILE_NAME_MAX);
                 }
 
                 char name[FILE_NAME_MAX];
-                util_get_file_name(name, filename, FILE_NAME_MAX);
+                string_get_file_name(name, filename, FILE_NAME_MAX);
 
                 snprintf(dir, FILE_PATH_MAX, "/3ds/%s/", name);
                 snprintf(installData->curr3dsxPath, FILE_PATH_MAX, "/3ds/%s/%s.3dsx", name, name);
             }
 
-            if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/3ds/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, dir))) {
-                FS_Path* path = util_make_path_utf8(installData->curr3dsxPath);
+            if(R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/3ds/")) && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, dir))) {
+                FS_Path* path = fs_make_path_utf8(installData->curr3dsxPath);
                 if(path != NULL) {
                     res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 
-                    util_free_path_utf8(path);
+                    fs_free_path_utf8(path);
                 } else {
                     res = R_APP_OUT_OF_MEMORY;
                 }
@@ -293,11 +294,11 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
 
             FS_Archive sdmcArchive = 0;
             if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
-                FS_Path* path = util_make_path_utf8(installData->curr3dsxPath);
+                FS_Path* path = fs_make_path_utf8(installData->curr3dsxPath);
                 if(path != NULL) {
                     FSUSER_DeleteFile(sdmcArchive, *path);
 
-                    util_free_path_utf8(path);
+                    fs_free_path_utf8(path);
                 }
 
                 FSUSER_CloseArchive(sdmcArchive);

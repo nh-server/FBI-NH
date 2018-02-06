@@ -12,10 +12,11 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/spi.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 
 typedef struct {
     title_info* title;
@@ -66,18 +67,18 @@ static Result action_export_twl_save_open_dst(void* data, u32 index, void* initi
 
     FS_Archive sdmcArchive = 0;
     if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
-        if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/save/"))) {
+        if(R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/save/"))) {
             char gameName[0x10] = {'\0'};
-            util_escape_file_name(gameName, exportData->title->productCode, sizeof(gameName));
+            string_escape_file_name(gameName, exportData->title->productCode, sizeof(gameName));
 
             char path[FILE_PATH_MAX];
             snprintf(path, sizeof(path), "/fbi/save/%s.sav", gameName);
 
-            FS_Path* fsPath = util_make_path_utf8(path);
+            FS_Path* fsPath = fs_make_path_utf8(path);
             if(fsPath != NULL) {
                 res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 
-                util_free_path_utf8(fsPath);
+                fs_free_path_utf8(fsPath);
             } else {
                 res = R_APP_OUT_OF_MEMORY;
             }

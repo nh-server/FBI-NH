@@ -1,7 +1,7 @@
 #include <3ds.h>
 
 #include "bnr.h"
-#include "../util.h"
+#include "../stringutil.h"
 
 static CFG_Language region_default_language[] = {
         CFG_LANGUAGE_JP,
@@ -21,7 +21,7 @@ u16* bnr_select_title(BNR* bnr) {
         utf16_to_utf8((uint8_t*) title, bnr->titles[systemLanguage], sizeof(title) - 1);
     }
 
-    if(util_is_string_empty(title)) {
+    if(string_is_empty(title)) {
         CFG_Region systemRegion;
         if(R_SUCCEEDED(CFGU_SecureInfoGetRegion((u8*) &systemRegion))) {
             systemLanguage = region_default_language[systemRegion];

@@ -11,9 +11,9 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 
 static void action_import_secure_value_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
@@ -23,7 +23,7 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
 
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(pathBuf);
+    FS_Path* fsPath = fs_make_path_utf8(pathBuf);
     if(fsPath != NULL) {
         Handle fileHandle = 0;
         if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
@@ -36,7 +36,7 @@ static void action_import_secure_value_update(ui_view* view, void* data, float* 
             FSFILE_Close(fileHandle);
         }
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }

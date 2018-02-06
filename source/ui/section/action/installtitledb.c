@@ -9,7 +9,7 @@
 #include "../../list.h"
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 
 typedef struct {
     list_item* selected;
@@ -53,7 +53,7 @@ void action_install_titledb(linked_list* items, list_item* selected, bool cia) {
         snprintf(url, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/tdsx/%lu/download", info->tdsx.id);
 
         char name[FILE_NAME_MAX];
-        util_escape_file_name(name, info->meta.shortDescription, sizeof(name));
+        string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
         snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
     }
 

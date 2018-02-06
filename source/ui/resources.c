@@ -6,8 +6,8 @@
 
 #include "resources.h"
 #include "../core/error.h"
+#include "../core/fs.h"
 #include "../core/screen.h"
-#include "../core/util.h"
 #include "../core/task/task.h"
 
 static FILE* resources_open_file(const char* path) {

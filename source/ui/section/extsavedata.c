@@ -13,7 +13,7 @@
 #include "../ui.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
-#include "../../core/util.h"
+#include "../../core/stringutil.h"
 
 static list_item browse_user_save_data = {"Browse User Save Data", COLOR_TEXT, action_browse_user_ext_save_data};
 static list_item browse_spotpass_save_data = {"Browse SpotPass Save Data", COLOR_TEXT, action_browse_boss_ext_save_data};
@@ -241,15 +241,15 @@ static int extsavedata_compare(void* data, const void* p1, const void* p2) {
 
             return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
         } else if(listData->sortByName) {
-            bool title1HasName = data1->hasMeta && !util_is_string_empty(data1->meta.shortDescription);
-            bool title2HasName = data2->hasMeta && !util_is_string_empty(data2->meta.shortDescription);
+            bool title1HasName = data1->hasMeta && !string_is_empty(data1->meta.shortDescription);
+            bool title2HasName = data2->hasMeta && !string_is_empty(data2->meta.shortDescription);
 
             if(title1HasName && !title2HasName) {
                 return -1;
             } else if(!title1HasName && title2HasName) {
                 return 1;
             } else {
-                return strcasecmp(info1->name, info2->name);
+                return strncasecmp(info1->name, info2->name, sizeof(info1->name));
             }
         } else {
             return 0;

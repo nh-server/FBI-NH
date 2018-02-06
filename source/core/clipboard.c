@@ -4,7 +4,7 @@
 #include <3ds.h>
 
 #include "clipboard.h"
-#include "util.h"
+#include "fs.h"
 
 static bool clipboard_has = false;
 static bool clipboard_contents_only;
@@ -32,7 +32,7 @@ Result clipboard_set_contents(FS_Archive archive, const char* path, bool content
     clipboard_clear();
 
     Result res = 0;
-    if(R_SUCCEEDED(res = util_ref_archive(archive))) {
+    if(R_SUCCEEDED(res = fs_ref_archive(archive))) {
         clipboard_has = true;
         clipboard_contents_only = contentsOnly;
 
@@ -45,7 +45,7 @@ Result clipboard_set_contents(FS_Archive archive, const char* path, bool content
 
 void clipboard_clear() {
     if(clipboard_archive != 0) {
-        util_close_archive(clipboard_archive);
+        fs_close_archive(clipboard_archive);
     }
 
     clipboard_has = false;

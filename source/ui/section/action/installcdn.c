@@ -14,10 +14,10 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/http.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 #include "../../../core/data/tmd.h"
 
 #define CONTENTS_MAX 256
@@ -124,7 +124,7 @@ static Result action_install_cdn_close_dst(void* data, u32 index, bool succeeded
         } else {
             Result res = 0;
             if(R_SUCCEEDED(res = AM_InstallContentFinish(handle)) && index == 1 && installData->contentCount > 1 && (installData->ticket->titleId >> 32) == 0x0004008C) {
-                FS_MediaType dest = util_get_title_destination(installData->ticket->titleId);
+                FS_MediaType dest = fs_get_title_destination(installData->ticket->titleId);
                 if(R_SUCCEEDED(res = AM_InstallTitleFinish())
                    && R_SUCCEEDED(res = AM_CommitImportTitles(dest, 1, false, &installData->ticket->titleId))
                    && R_SUCCEEDED(res = AM_InstallTitleBegin(dest, installData->ticket->titleId, false))) {
@@ -172,7 +172,7 @@ static Result action_install_cdn_suspend(void* data, u32 index) {
 static Result action_install_cdn_restore(void* data, u32 index) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
-    return AM_InstallTitleResume(util_get_title_destination(installData->ticket->titleId), installData->ticket->titleId);
+    return AM_InstallTitleResume(fs_get_title_destination(installData->ticket->titleId), installData->ticket->titleId);
 }
 
 bool action_install_cdn_error(void* data, u32 index, Result res, ui_view** errorView) {
@@ -206,7 +206,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
 
         if(R_SUCCEEDED(installData->installInfo.result)) {
             if(R_SUCCEEDED(res = AM_InstallTitleFinish())
-               && R_SUCCEEDED(res = AM_CommitImportTitles(util_get_title_destination(installData->ticket->titleId), 1, false, &installData->ticket->titleId))) {
+               && R_SUCCEEDED(res = AM_CommitImportTitles(fs_get_title_destination(installData->ticket->titleId), 1, false, &installData->ticket->titleId))) {
                 task_download_seed_sync(installData->ticket->titleId);
 
                 if(installData->ticket->titleId == 0x0004013800000002 || installData->ticket->titleId == 0x0004013820000002) {
@@ -255,7 +255,7 @@ static void action_install_cdn_n3ds_onresponse(ui_view* view, void* data, u32 re
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(response == PROMPT_YES) {
-        FS_MediaType dest = util_get_title_destination(installData->ticket->titleId);
+        FS_MediaType dest = fs_get_title_destination(installData->ticket->titleId);
 
         AM_DeleteTitle(dest, installData->ticket->titleId);
         if(dest == MEDIATYPE_SD) {

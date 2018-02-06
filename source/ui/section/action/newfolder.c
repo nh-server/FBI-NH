@@ -13,9 +13,10 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 
 typedef struct {
     linked_list* items;
@@ -31,16 +32,16 @@ static void action_new_folder_onresponse(ui_view* view, void* data, SwkbdButton 
         file_info* parentDir = (file_info*) newFolderData->selected->data;
 
         char fileName[FILE_NAME_MAX] = {'\0'};
-        util_escape_file_name(fileName, response, sizeof(fileName));
+        string_escape_file_name(fileName, response, sizeof(fileName));
 
         char path[FILE_PATH_MAX] = {'\0'};
         snprintf(path, FILE_PATH_MAX, "%s%s", parentDir->path, fileName);
 
-        FS_Path* fsPath = util_make_path_utf8(path);
+        FS_Path* fsPath = fs_make_path_utf8(path);
         if(fsPath != NULL) {
             res = FSUSER_CreateDirectory(parentDir->archive, *fsPath, FS_ATTRIBUTE_DIRECTORY);
 
-            util_free_path_utf8(fsPath);
+            fs_free_path_utf8(fsPath);
         } else {
             res = R_APP_OUT_OF_MEMORY;
         }
