@@ -1,7 +1,5 @@
 #pragma once
 
-#define CAMERA_QR_DATA_MAX 8896
-
 typedef enum capture_cam_camera_e {
     CAMERA_OUTER,
     CAMERA_INNER
@@ -12,10 +10,6 @@ typedef struct capture_cam_data_s {
     s16 width;
     s16 height;
     capture_cam_camera camera;
-    bool scanQR;
-
-    bool qrReady;
-    u8 qrData[CAMERA_QR_DATA_MAX];
 
     Handle mutex;
 
