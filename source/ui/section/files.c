@@ -13,9 +13,10 @@
 #include "../resources.h"
 #include "../ui.h"
 #include "../../core/clipboard.h"
+#include "../../core/fs.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
-#include "../../core/util.h"
+#include "../../core/stringutil.h"
 
 static list_item rename_opt = {"Rename", COLOR_TEXT, action_rename};
 static list_item copy = {"Copy", COLOR_TEXT, NULL};
@@ -274,7 +275,7 @@ static void files_free_data(files_data* data) {
     }
 
     if(data->archive != 0) {
-        util_close_archive(data->archive);
+        fs_close_archive(data->archive);
         data->archive = 0;
     }
 
@@ -297,9 +298,9 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
         }
     }
 
-    while(!util_is_dir(listData->archive, listData->currDir)) {
+    while(!fs_is_dir(listData->archive, listData->currDir)) {
         char parentDir[FILE_PATH_MAX] = {'\0'};
-        util_get_parent_path(parentDir, listData->currDir, FILE_PATH_MAX);
+        string_get_parent_path(parentDir, listData->currDir, FILE_PATH_MAX);
 
         files_navigate(listData, items, parentDir);
     }
@@ -316,7 +317,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
             return;
         } else {
             char parentDir[FILE_PATH_MAX] = {'\0'};
-            util_get_parent_path(parentDir, listData->currDir, FILE_PATH_MAX);
+            string_get_parent_path(parentDir, listData->currDir, FILE_PATH_MAX);
 
             files_navigate(listData, items, parentDir);
         }
@@ -359,7 +360,7 @@ static bool files_filter(void* data, const char* name, u32 attributes) {
     if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
         return listData->showDirectories;
     } else {
-        if((util_filter_cias(NULL, name, attributes) && !listData->showCias) || (util_filter_tickets(NULL, name, attributes) && !listData->showTickets)) {
+        if((fs_filter_cias(NULL, name, attributes) && !listData->showCias) || (fs_filter_tickets(NULL, name, attributes) && !listData->showTickets)) {
             return false;
         }
 
@@ -411,7 +412,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
     snprintf(data->currDir, FILE_PATH_MAX, "/");
 
     Result res = 0;
-    if(R_FAILED(res = util_open_archive(&data->archive, archiveId, archivePath))) {
+    if(R_FAILED(res = fs_open_archive(&data->archive, archiveId, archivePath))) {
         error_display_res(NULL, NULL, res, "Failed to open file listing archive.");
 
         files_free_data(data);

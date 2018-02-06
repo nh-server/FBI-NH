@@ -13,8 +13,8 @@
 #include "../resources.h"
 #include "../ui.h"
 #include "../../core/error.h"
+#include "../../core/fs.h"
 #include "../../core/screen.h"
-#include "../../core/util.h"
 
 static Result dumpnand_is_src_directory(void* data, u32 index, bool* isDirectory) {
     *isDirectory = false;
@@ -46,18 +46,18 @@ static Result dumpnand_open_dst(void* data, u32 index, void* initialReadBlock, u
 
     FS_Archive sdmcArchive = 0;
     if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
-        if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/nand/"))) {
+        if(R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/nand/"))) {
             time_t t = time(NULL);
             struct tm* timeInfo = localtime(&t);
 
             char path[FILE_PATH_MAX];
             strftime(path, sizeof(path), "/fbi/nand/NAND_%m-%d-%y_%H-%M-%S.bin", timeInfo);
 
-            FS_Path* fsPath = util_make_path_utf8(path);
+            FS_Path* fsPath = fs_make_path_utf8(path);
             if(fsPath != NULL) {
                 res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 
-                util_free_path_utf8(fsPath);
+                fs_free_path_utf8(fsPath);
             } else {
                 res = R_APP_OUT_OF_MEMORY;
             }

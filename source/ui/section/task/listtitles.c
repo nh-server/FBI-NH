@@ -9,9 +9,10 @@
 #include "../../list.h"
 #include "../../resources.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 #include "../../../core/data/bnr.h"
 #include "../../../core/data/smdh.h"
 #include "../../../core/task/task.h"
@@ -37,7 +38,9 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                 u32 archivePath[4] = {(u32) (titleId & 0xFFFFFFFF), (u32) ((titleId >> 32) & 0xFFFFFFFF), mediaType, 0x00000000};
 
                 Handle fileHandle;
-                if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT, util_make_binary_path(archivePath, sizeof(archivePath)), util_make_binary_path(filePath, sizeof(filePath)), FS_OPEN_READ, 0))) {
+                if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT,
+                                                       fs_make_path_binary(archivePath, sizeof(archivePath)),
+                                                       fs_make_path_binary(filePath, sizeof(filePath)), FS_OPEN_READ, 0))) {
                     SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
                     if(smdh != NULL) {
                         u32 bytesRead = 0;
@@ -64,7 +67,7 @@ static Result task_populate_titles_add_ctr(populate_titles_data* data, FS_MediaT
                     FSFILE_Close(fileHandle);
                 }
 
-                if(util_is_string_empty(item->name)) {
+                if(string_is_empty(item->name)) {
                     snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", titleId);
                 }
 
@@ -200,7 +203,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                     free(bnr);
                 }
 
-                if(util_is_string_empty(item->name)) {
+                if(string_is_empty(item->name)) {
                     snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", realTitleId);
                 }
 

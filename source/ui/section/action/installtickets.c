@@ -13,9 +13,9 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 
 typedef struct {
     linked_list* items;
@@ -59,11 +59,11 @@ static Result action_install_tickets_open_src(void* data, u32 index, u32* handle
 
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(info->path);
+    FS_Path* fsPath = fs_make_path_utf8(info->path);
     if(fsPath != NULL) {
         res = FSUSER_OpenFile(handle, info->archive, *fsPath, FS_OPEN_READ, 0);
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }
@@ -79,7 +79,7 @@ static Result action_install_tickets_close_src(void* data, u32 index, bool succe
     Result res = 0;
 
     if(R_SUCCEEDED(res = FSFILE_Close(handle)) && installData->delete && succeeded) {
-        FS_Path* fsPath = util_make_path_utf8(info->path);
+        FS_Path* fsPath = fs_make_path_utf8(info->path);
         if(fsPath != NULL) {
             if(R_SUCCEEDED(FSUSER_DeleteFile(info->archive, *fsPath))) {
                 linked_list_iter iter;
@@ -96,7 +96,7 @@ static Result action_install_tickets_close_src(void* data, u32 index, bool succe
                 }
             }
 
-            util_free_path_utf8(fsPath);
+            fs_free_path_utf8(fsPath);
         } else {
             res = R_APP_OUT_OF_MEMORY;
         }
@@ -352,7 +352,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     strncpy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
     loadingData->popData.recursive = false;
     loadingData->popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
-    loadingData->popData.filter = util_filter_tickets;
+    loadingData->popData.filter = fs_filter_tickets;
     loadingData->popData.filterData = NULL;
 
     Result listRes = task_populate_files(&loadingData->popData);

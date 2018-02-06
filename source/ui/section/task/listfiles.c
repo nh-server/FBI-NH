@@ -9,9 +9,10 @@
 #include "../../list.h"
 #include "../../resources.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 #include "../../../core/data/cia.h"
 #include "../../../core/data/smdh.h"
 #include "../../../core/task/task.h"
@@ -51,14 +52,14 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
         file_info* fileInfo = (file_info*) calloc(1, sizeof(file_info));
         if(fileInfo != NULL) {
             fileInfo->archive = archive;
-            util_get_path_file(fileInfo->name, path, FILE_NAME_MAX);
+            string_get_path_file(fileInfo->name, path, FILE_NAME_MAX);
             fileInfo->attributes = attributes != UINT32_MAX ? attributes : 0;
 
             fileInfo->size = 0;
             fileInfo->isCia = false;
             fileInfo->isTicket = false;
 
-            if((attributes != UINT32_MAX && (attributes & FS_ATTRIBUTE_DIRECTORY)) || util_is_dir(archive, path)) {
+            if((attributes != UINT32_MAX && (attributes & FS_ATTRIBUTE_DIRECTORY)) || fs_is_dir(archive, path)) {
                 item->color = COLOR_DIRECTORY;
 
                 size_t len = strlen(path);
@@ -76,7 +77,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
 
                 strncpy(fileInfo->path, path, FILE_PATH_MAX);
 
-                FS_Path* fileFsPath = util_make_path_utf8(fileInfo->path);
+                FS_Path* fileFsPath = fs_make_path_utf8(fileInfo->path);
                 if(fileFsPath != NULL) {
                     Handle fileHandle;
                     if(R_SUCCEEDED(FSUSER_OpenFile(&fileHandle, archive, *fileFsPath, FS_OPEN_READ, 0))) {
@@ -86,7 +87,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
 
                         FSFILE_GetSize(fileHandle, &fileInfo->size);
 
-                        if(util_filter_cias(NULL, fileInfo->path, fileInfo->attributes)) {
+                        if(fs_filter_cias(NULL, fileInfo->path, fileInfo->attributes)) {
                             AM_TitleEntry titleEntry;
                             if(R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_SD, &titleEntry, fileHandle))) {
                                 fileInfo->isCia = true;
@@ -95,7 +96,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                                 fileInfo->ciaInfo.installedSize = titleEntry.size;
                                 fileInfo->ciaInfo.hasMeta = false;
 
-                                if(util_get_title_destination(titleEntry.titleID) != MEDIATYPE_SD && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
+                                if(fs_get_title_destination(titleEntry.titleID) != MEDIATYPE_SD && R_SUCCEEDED(AM_GetCiaFileInfo(MEDIATYPE_NAND, &titleEntry, fileHandle))) {
                                     fileInfo->ciaInfo.installedSize = titleEntry.size;
                                 }
 
@@ -118,7 +119,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                                     free(smdh);
                                 }
                             }
-                        } else if(util_filter_tickets(NULL, fileInfo->path, fileInfo->attributes)) {
+                        } else if(fs_filter_tickets(NULL, fileInfo->path, fileInfo->attributes)) {
                             u32 bytesRead = 0;
 
                             u8 sigType = 0;
@@ -138,7 +139,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                         FSFILE_Close(fileHandle);
                     }
 
-                    util_free_path_utf8(fileFsPath);
+                    fs_free_path_utf8(fileFsPath);
                 }
             }
 
@@ -173,7 +174,7 @@ static int task_populate_files_compare_directory_entries(const void* e1, const v
         char entryName2[0x213] = {'\0'};
         utf16_to_utf8((uint8_t*) entryName2, ent2->name, sizeof(entryName2) - 1);
 
-        return strcasecmp(entryName1, entryName2);
+        return strncasecmp(entryName1, entryName2, sizeof(entryName1));
     }
 }
 
@@ -208,7 +209,7 @@ static void task_populate_files_thread(void* arg) {
             }
 
             if(curr->attributes & FS_ATTRIBUTE_DIRECTORY) {
-                FS_Path* fsPath = util_make_path_utf8(curr->path);
+                FS_Path* fsPath = fs_make_path_utf8(curr->path);
                 if(fsPath != NULL) {
                     Handle dirHandle = 0;
                     if(R_SUCCEEDED(res = FSUSER_OpenDirectory(&dirHandle, curr->archive, *fsPath))) {
@@ -252,7 +253,7 @@ static void task_populate_files_thread(void* arg) {
                         FSDIR_Close(dirHandle);
                     }
 
-                    util_free_path_utf8(fsPath);
+                    fs_free_path_utf8(fsPath);
                 } else {
                     res = R_APP_OUT_OF_MEMORY;
                 }

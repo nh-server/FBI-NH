@@ -12,10 +12,11 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/spi.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 
 typedef struct {
     title_info* title;
@@ -42,16 +43,16 @@ static Result action_import_twl_save_open_src(void* data, u32 index, u32* handle
     Result res = 0;
 
     char gameName[0x10] = {'\0'};
-    util_escape_file_name(gameName, importData->title->productCode, sizeof(gameName));
+    string_escape_file_name(gameName, importData->title->productCode, sizeof(gameName));
 
     char path[FILE_PATH_MAX];
     snprintf(path, sizeof(path), "/fbi/save/%s.sav", gameName);
 
-    FS_Path* fsPath = util_make_path_utf8(path);
+    FS_Path* fsPath = fs_make_path_utf8(path);
     if(fsPath != NULL) {
         res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0);
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }

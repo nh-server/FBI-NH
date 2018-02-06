@@ -10,9 +10,10 @@
 #include "../../list.h"
 #include "../../resources.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 #include "../../../core/task/task.h"
 #include "../../../libs/stb_image/stb_image.h"
 
@@ -24,7 +25,7 @@ void task_populate_titledb_update_status(list_item* item) {
 
     if(info->cia.exists) {
         AM_TitleEntry entry;
-        info->cia.installed = R_SUCCEEDED(AM_GetTitleInfo(util_get_title_destination(info->cia.titleId), 1, &info->cia.titleId, &entry));
+        info->cia.installed = R_SUCCEEDED(AM_GetTitleInfo(fs_get_title_destination(info->cia.titleId), 1, &info->cia.titleId, &entry));
         info->cia.installedVersion = info->cia.installed ? entry.version : (u16) 0;
     }
 
@@ -32,12 +33,12 @@ void task_populate_titledb_update_status(list_item* item) {
         info->tdsx.installed = false;
 
         char name[FILE_NAME_MAX];
-        util_escape_file_name(name, info->meta.shortDescription, sizeof(name));
+        string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
 
         char path3dsx[FILE_PATH_MAX];
         snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
 
-        FS_Path* fsPath = util_make_path_utf8(path3dsx);
+        FS_Path* fsPath = fs_make_path_utf8(path3dsx);
         if(fsPath != NULL) {
             Handle handle = 0;
             if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
@@ -46,7 +47,7 @@ void task_populate_titledb_update_status(list_item* item) {
                 info->tdsx.installed = true;
             }
 
-            util_free_path_utf8(fsPath);
+            fs_free_path_utf8(fsPath);
         }
     }
 

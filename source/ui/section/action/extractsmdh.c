@@ -12,9 +12,9 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 #include "../../../core/data/smdh.h"
 
 static void action_extract_smdh_update(ui_view* view, void* data, float* progress, char* text) {
@@ -26,18 +26,20 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
     u32 archivePath[4] = {(u32) (info->titleId & 0xFFFFFFFF), (u32) ((info->titleId >> 32) & 0xFFFFFFFF), info->mediaType, 0x00000000};
 
     Handle fileHandle;
-    if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT, util_make_binary_path(archivePath, sizeof(archivePath)), util_make_binary_path(filePath, sizeof(filePath)), FS_OPEN_READ, 0))) {
+    if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SAVEDATA_AND_CONTENT,
+                                                 fs_make_path_binary(archivePath, sizeof(archivePath)),
+                                                 fs_make_path_binary(filePath, sizeof(filePath)), FS_OPEN_READ, 0))) {
         SMDH* smdh = (SMDH*) calloc(1, sizeof(SMDH));
         if(smdh != NULL) {
             u32 bytesRead = 0;
             if(R_SUCCEEDED(res = FSFILE_Read(fileHandle, &bytesRead, 0, smdh, sizeof(SMDH))) && bytesRead == sizeof(SMDH)) {
                 FS_Archive sdmcArchive = 0;
                 if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
-                    if(R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/smdh/"))) {
+                    if(R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/")) && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/smdh/"))) {
                         char pathBuf[64];
                         snprintf(pathBuf, 64, "/fbi/smdh/%016llX.smdh", info->titleId);
 
-                        FS_Path* fsPath = util_make_path_utf8(pathBuf);
+                        FS_Path* fsPath = fs_make_path_utf8(pathBuf);
                         if(fsPath != NULL) {
                             Handle smdhHandle = 0;
                             if(R_SUCCEEDED(res = FSUSER_OpenFile(&smdhHandle, sdmcArchive, *fsPath, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
@@ -46,7 +48,7 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
                                 FSFILE_Close(smdhHandle);
                             }
 
-                            util_free_path_utf8(fsPath);
+                            fs_free_path_utf8(fsPath);
                         } else {
                             res = R_APP_OUT_OF_MEMORY;
                         }

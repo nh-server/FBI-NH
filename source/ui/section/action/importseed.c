@@ -12,7 +12,6 @@
 #include "../../ui.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 
 static void action_import_seed_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;

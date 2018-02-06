@@ -13,7 +13,7 @@
 #include "../ui.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
-#include "../../core/util.h"
+#include "../../core/stringutil.h"
 
 static list_item launch_title = {"Launch Title", COLOR_TEXT, action_launch_title};
 static list_item delete_title = {"Delete Title", COLOR_TEXT, action_delete_title};
@@ -292,15 +292,15 @@ static int titles_compare(void* data, const void* p1, const void* p2) {
 
                 return id1 > id2 ? 1 : id1 < id2 ? -1 : 0;
             } else if(listData->sortByName) {
-                bool title1HasName = title1->hasMeta && !util_is_string_empty(title1->meta.shortDescription);
-                bool title2HasName = title2->hasMeta && !util_is_string_empty(title2->meta.shortDescription);
+                bool title1HasName = title1->hasMeta && !string_is_empty(title1->meta.shortDescription);
+                bool title2HasName = title2->hasMeta && !string_is_empty(title2->meta.shortDescription);
 
                 if(title1HasName && !title2HasName) {
                     return -1;
                 } else if(!title1HasName && title2HasName) {
                     return 1;
                 } else {
-                    return strcasecmp(info1->name, info2->name);
+                    return strncasecmp(info1->name, info2->name, sizeof(info1->name));
                 }
             } else if(listData->sortBySize) {
                 u64 size1 = title1->installedSize;

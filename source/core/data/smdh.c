@@ -3,7 +3,7 @@
 #include <3ds.h>
 
 #include "smdh.h"
-#include "../util.h"
+#include "../stringutil.h"
 
 #define SMDH_NUM_REGIONS 7
 #define SMDH_ALL_REGIONS 0x7F
@@ -60,7 +60,7 @@ SMDH_title* smdh_select_title(SMDH* smdh) {
         utf16_to_utf8((uint8_t*) shortDescription, smdh->titles[systemLanguage].shortDescription, sizeof(shortDescription) - 1);
     }
 
-    if(util_is_string_empty(shortDescription)) {
+    if(string_is_empty(shortDescription)) {
         CFG_Region systemRegion;
         if(R_SUCCEEDED(CFGU_SecureInfoGetRegion((u8*) &systemRegion))) {
             systemLanguage = region_default_language[systemRegion];

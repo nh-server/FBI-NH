@@ -10,7 +10,6 @@
 #include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 #include "../../../core/task/task.h"
 
 static int task_populate_pending_titles_compare_ids(const void* e1, const void* e2) {

@@ -19,9 +19,9 @@
 #include "../resources.h"
 #include "../ui.h"
 #include "../../core/error.h"
+#include "../../core/fs.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
-#include "../../core/util.h"
 #include "../../core/task/capturecam.h"
 #include "../../libs/quirc/quirc_internal.h"
 
@@ -60,7 +60,7 @@ static Result remoteinstall_set_last_urls(const char* urls) {
 
         if(urls != NULL && strlen(urls) != 0
            && R_SUCCEEDED(res)
-           && R_SUCCEEDED(res = util_ensure_dir(sdmcArchive, "/fbi/"))
+           && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/fbi/"))
            && R_SUCCEEDED(res = FSUSER_OpenFile(&file, sdmcArchive, path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0))) {
             u32 bytesWritten = 0;
             res = FSFILE_Write(file, &bytesWritten, 0, urls, strlen(urls), FS_WRITE_FLUSH | FS_WRITE_UPDATE_TIME);

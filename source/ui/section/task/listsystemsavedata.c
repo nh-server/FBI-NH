@@ -10,7 +10,6 @@
 #include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 #include "../../../core/task/task.h"
 
 #define MAX_SYSTEM_SAVE_DATA 512

@@ -14,9 +14,10 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 
 typedef struct {
     linked_list* items;
@@ -33,10 +34,10 @@ static void action_rename_onresponse(ui_view* view, void* data, SwkbdButton butt
         file_info* targetInfo = (file_info*) selected->data;
 
         char fileName[FILE_NAME_MAX] = {'\0'};
-        util_escape_file_name(fileName, response, sizeof(fileName));
+        string_escape_file_name(fileName, response, sizeof(fileName));
 
         char parentPath[FILE_PATH_MAX] = {'\0'};
-        util_get_parent_path(parentPath, targetInfo->path, FILE_PATH_MAX);
+        string_get_parent_path(parentPath, targetInfo->path, FILE_PATH_MAX);
 
         char dstPath[FILE_PATH_MAX] = {'\0'};
         if(targetInfo->attributes & FS_ATTRIBUTE_DIRECTORY) {
@@ -45,9 +46,9 @@ static void action_rename_onresponse(ui_view* view, void* data, SwkbdButton butt
             snprintf(dstPath, FILE_PATH_MAX, "%s%s", parentPath, fileName);
         }
 
-        FS_Path* srcFsPath = util_make_path_utf8(targetInfo->path);
+        FS_Path* srcFsPath = fs_make_path_utf8(targetInfo->path);
         if(srcFsPath != NULL) {
-            FS_Path* dstFsPath = util_make_path_utf8(dstPath);
+            FS_Path* dstFsPath = fs_make_path_utf8(dstPath);
             if(dstFsPath != NULL) {
                 if(targetInfo->attributes & FS_ATTRIBUTE_DIRECTORY) {
                     res = FSUSER_RenameDirectory(targetInfo->archive, *srcFsPath, targetInfo->archive, *dstFsPath);
@@ -55,12 +56,12 @@ static void action_rename_onresponse(ui_view* view, void* data, SwkbdButton butt
                     res = FSUSER_RenameFile(targetInfo->archive, *srcFsPath, targetInfo->archive, *dstFsPath);
                 }
 
-                util_free_path_utf8(dstFsPath);
+                fs_free_path_utf8(dstFsPath);
             } else {
                 res = R_APP_OUT_OF_MEMORY;
             }
 
-            util_free_path_utf8(srcFsPath);
+            fs_free_path_utf8(srcFsPath);
         } else {
             res = R_APP_OUT_OF_MEMORY;
         }

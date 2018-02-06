@@ -13,9 +13,9 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
 
 typedef struct {
     linked_list* items;
@@ -46,15 +46,15 @@ static Result action_delete_delete(void* data, u32 index) {
 
     file_info* info = (file_info*) ((list_item*) linked_list_get(&deleteData->contents, linked_list_size(&deleteData->contents) - index - 1))->data;
 
-    FS_Path* fsPath = util_make_path_utf8(info->path);
+    FS_Path* fsPath = fs_make_path_utf8(info->path);
     if(fsPath != NULL) {
-        if(util_is_dir(deleteData->target->archive, info->path)) {
+        if(fs_is_dir(deleteData->target->archive, info->path)) {
             res = FSUSER_DeleteDirectory(deleteData->target->archive, *fsPath);
         } else {
             res = FSUSER_DeleteFile(deleteData->target->archive, *fsPath);
         }
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }
@@ -239,7 +239,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     strncpy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
     loadingData->popData.recursive = recursive;
     loadingData->popData.includeBase = includeBase;
-    loadingData->popData.filter = ciasOnly ? util_filter_cias : ticketsOnly ? util_filter_tickets : NULL;
+    loadingData->popData.filter = ciasOnly ? fs_filter_cias : ticketsOnly ? fs_filter_tickets : NULL;
     loadingData->popData.filterData = NULL;
 
     Result listRes = task_populate_files(&loadingData->popData);

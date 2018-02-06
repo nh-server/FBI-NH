@@ -14,8 +14,8 @@
 #include "../resources.h"
 #include "../ui.h"
 #include "../../core/error.h"
+#include "../../core/fs.h"
 #include "../../core/screen.h"
-#include "../../core/util.h"
 
 static void update_check_update(ui_view* view, void* data, float* progress, char* text) {
     bool hasUpdate = false;
@@ -43,7 +43,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                             json_t* assetUrl = json_object_get(val, "browser_download_url");
 
                             if(json_is_string(assetName) && json_is_string(assetUrl)) {
-                                if(strncmp(json_string_value(assetName), util_get_3dsx_path() != NULL ? "FBI.3dsx" : "FBI.cia", json_string_length(assetName)) == 0) {
+                                if(strncmp(json_string_value(assetName), fs_get_3dsx_path() != NULL ? "FBI.3dsx" : "FBI.cia", json_string_length(assetName)) == 0) {
                                     url = json_string_value(assetUrl);
                                     break;
                                 }
@@ -72,7 +72,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     info_destroy(view);
 
     if(hasUpdate) {
-        action_install_url("Update FBI to the latest version?", updateURL, util_get_3dsx_path(), NULL, NULL, NULL);
+        action_install_url("Update FBI to the latest version?", updateURL, fs_get_3dsx_path(), NULL, NULL, NULL);
     } else {
         if(R_FAILED(res)) {
             error_display_res(NULL, NULL, res, "Failed to check for update.");

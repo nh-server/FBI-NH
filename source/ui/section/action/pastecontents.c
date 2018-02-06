@@ -13,10 +13,11 @@
 #include "../../resources.h"
 #include "../../ui.h"
 #include "../../../core/error.h"
+#include "../../../core/fs.h"
 #include "../../../core/clipboard.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
-#include "../../../core/util.h"
+#include "../../../core/stringutil.h"
 
 typedef struct {
     linked_list* items;
@@ -45,14 +46,14 @@ static void action_paste_contents_get_dst_path(paste_contents_data* data, u32 in
     if(clipboard_is_contents_only()) {
         strncpy(baseSrcPath, clipboard_get_path(), FILE_PATH_MAX);
     } else {
-        util_get_parent_path(baseSrcPath, clipboard_get_path(), FILE_PATH_MAX);
+        string_get_parent_path(baseSrcPath, clipboard_get_path(), FILE_PATH_MAX);
     }
 
     char baseDstPath[FILE_PATH_MAX];
     if(data->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
         strncpy(baseDstPath, data->target->path, FILE_PATH_MAX);
     } else {
-        util_get_parent_path(baseDstPath, data->target->path, FILE_PATH_MAX);
+        string_get_parent_path(baseDstPath, data->target->path, FILE_PATH_MAX);
     }
 
     snprintf(dstPath, FILE_PATH_MAX, "%s%s", baseDstPath, ((file_info*) ((list_item*) linked_list_get(&data->contents, index))->data)->path + strlen(baseSrcPath));
@@ -75,20 +76,20 @@ static Result action_paste_contents_make_dst_directory(void* data, u32 index) {
     char dstPath[FILE_PATH_MAX];
     action_paste_contents_get_dst_path(pasteData, index, dstPath);
 
-    FS_Path* fsPath = util_make_path_utf8(dstPath);
+    FS_Path* fsPath = fs_make_path_utf8(dstPath);
     if(fsPath != NULL) {
         Handle dirHandle = 0;
         if(R_SUCCEEDED(FSUSER_OpenDirectory(&dirHandle, pasteData->target->archive, *fsPath))) {
             FSDIR_Close(dirHandle);
         } else if(R_SUCCEEDED(res = FSUSER_CreateDirectory(pasteData->target->archive, *fsPath, attributes))) {
             char parentPath[FILE_PATH_MAX];
-            util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
+            string_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
 
             char baseDstPath[FILE_PATH_MAX];
             if(pasteData->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
                 strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
             } else {
-                util_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+                string_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
             }
 
             if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
@@ -99,7 +100,7 @@ static Result action_paste_contents_make_dst_directory(void* data, u32 index) {
             }
         }
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }
@@ -112,11 +113,11 @@ static Result action_paste_contents_open_src(void* data, u32 index, u32* handle)
 
     Result res = 0;
 
-    FS_Path* fsPath = util_make_path_utf8(((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->path);
+    FS_Path* fsPath = fs_make_path_utf8(((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->path);
     if(fsPath != NULL) {
         res = FSUSER_OpenFile(handle, clipboard_get_archive(), *fsPath, FS_OPEN_READ, 0);
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }
@@ -144,7 +145,7 @@ static Result action_paste_contents_open_dst(void* data, u32 index, void* initia
     char dstPath[FILE_PATH_MAX];
     action_paste_contents_get_dst_path(pasteData, index, dstPath);
 
-    FS_Path* fsPath = util_make_path_utf8(dstPath);
+    FS_Path* fsPath = fs_make_path_utf8(dstPath);
     if(fsPath != NULL) {
         Handle currHandle;
         if(R_SUCCEEDED(FSUSER_OpenFile(&currHandle, pasteData->target->archive, *fsPath, FS_OPEN_READ, 0))) {
@@ -169,7 +170,7 @@ static Result action_paste_contents_open_dst(void* data, u32 index, void* initia
             res = FSUSER_OpenFile(handle, pasteData->target->archive, *fsPath, FS_OPEN_WRITE, 0);
         }
 
-        util_free_path_utf8(fsPath);
+        fs_free_path_utf8(fsPath);
     } else {
         res = R_APP_OUT_OF_MEMORY;
     }
@@ -187,13 +188,13 @@ static Result action_paste_contents_close_dst(void* data, u32 index, bool succee
         action_paste_contents_get_dst_path(pasteData, index, dstPath);
 
         char parentPath[FILE_PATH_MAX];
-        util_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
+        string_get_parent_path(parentPath, dstPath, FILE_PATH_MAX);
 
         char baseDstPath[FILE_PATH_MAX];
         if(pasteData->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
             strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
         } else {
-            util_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+            string_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
         }
 
         if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
@@ -406,7 +407,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     loadingData->popData.archive = clipboard_get_archive();
     strncpy(loadingData->popData.path, clipboard_get_path(), FILE_PATH_MAX);
     loadingData->popData.recursive = true;
-    loadingData->popData.includeBase = !clipboard_is_contents_only() || !util_is_dir(clipboard_get_archive(), clipboard_get_path());
+    loadingData->popData.includeBase = !clipboard_is_contents_only() || !fs_is_dir(clipboard_get_archive(), clipboard_get_path());
     loadingData->popData.filter = NULL;
     loadingData->popData.filterData = NULL;
 
