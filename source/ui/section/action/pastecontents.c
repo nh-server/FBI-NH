@@ -210,11 +210,11 @@ static Result action_paste_contents_write_dst(void* data, u32 handle, u32* bytes
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_paste_contents_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_paste_contents_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result action_paste_contents_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_paste_contents_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
@@ -274,8 +274,8 @@ static void action_paste_contents_update(ui_view* view, void* data, float* progr
              ui_get_display_size_units(pasteData->pasteInfo.currProcessed),
              ui_get_display_size(pasteData->pasteInfo.currTotal),
              ui_get_display_size_units(pasteData->pasteInfo.currTotal),
-             ui_get_display_size(pasteData->pasteInfo.copyBytesPerSecond),
-             ui_get_display_size_units(pasteData->pasteInfo.copyBytesPerSecond),
+             ui_get_display_size(pasteData->pasteInfo.bytesPerSecond),
+             ui_get_display_size_units(pasteData->pasteInfo.bytesPerSecond),
              ui_get_display_eta(pasteData->pasteInfo.estimatedRemainingSeconds));
 }
 
@@ -364,7 +364,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
 
     data->pasteInfo.op = DATAOP_COPY;
 
-    data->pasteInfo.copyBufferSize = 256 * 1024;
+    data->pasteInfo.bufferSize = 256 * 1024;
     data->pasteInfo.copyEmpty = true;
 
     data->pasteInfo.isSrcDirectory = action_paste_contents_is_src_directory;
@@ -379,8 +379,8 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     data->pasteInfo.closeDst = action_paste_contents_close_dst;
     data->pasteInfo.writeDst = action_paste_contents_write_dst;
 
-    data->pasteInfo.suspendCopy = action_paste_contents_suspend_copy;
-    data->pasteInfo.restoreCopy = action_paste_contents_restore_copy;
+    data->pasteInfo.suspendTransfer = action_paste_contents_suspend_transfer;
+    data->pasteInfo.restoreTransfer = action_paste_contents_restore_transfer;
 
     data->pasteInfo.suspend = action_paste_contents_suspend;
     data->pasteInfo.restore = action_paste_contents_restore;

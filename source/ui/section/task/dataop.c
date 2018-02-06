@@ -2,6 +2,8 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <curl/curl.h>
+#include <jansson.h>
 
 #include "uitask.h"
 #include "../../prompt.h"
@@ -19,8 +21,8 @@ static Result task_data_op_check_running(data_op_data* data, u32 index, u32* src
     } else {
         bool suspended = svcWaitSynchronization(task_get_suspend_event(), 0) != 0;
         if(suspended) {
-            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->suspendCopy != NULL && R_SUCCEEDED(res)) {
-                res = data->suspendCopy(data->data, index, srcHandle, dstHandle);
+            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->suspendTransfer != NULL && R_SUCCEEDED(res)) {
+                res = data->suspendTransfer(data->data, index, srcHandle, dstHandle);
             }
 
             if(data->suspend != NULL && R_SUCCEEDED(res)) {
@@ -35,8 +37,8 @@ static Result task_data_op_check_running(data_op_data* data, u32 index, u32* src
                 res = data->restore(data->data, index);
             }
 
-            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->restoreCopy != NULL && R_SUCCEEDED(res)) {
-                res = data->restoreCopy(data->data, index, srcHandle, dstHandle);
+            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->restoreTransfer != NULL && R_SUCCEEDED(res)) {
+                res = data->restoreTransfer(data->data, index, srcHandle, dstHandle);
             }
         }
     }
@@ -48,7 +50,8 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
     data->currProcessed = 0;
     data->currTotal = 0;
 
-    data->copyBytesPerSecond = 0;
+    data->bytesPerSecond = 0;
+    data->estimatedRemainingSeconds = 0;
 
     Result res = 0;
 
@@ -69,7 +72,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                         res = R_FBI_BAD_DATA;
                     }
                 } else {
-                    u8* buffer = (u8*) calloc(1, data->copyBufferSize);
+                    u8* buffer = (u8*) calloc(1, data->bufferSize);
                     if(buffer != NULL) {
                         u32 dstHandle = 0;
 
@@ -84,7 +87,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                             }
 
                             u32 bytesRead = 0;
-                            if(R_FAILED(res = data->readSrc(data->data, srcHandle, &bytesRead, buffer, data->currProcessed, data->copyBufferSize))) {
+                            if(R_FAILED(res = data->readSrc(data->data, srcHandle, &bytesRead, buffer, data->currProcessed, data->bufferSize))) {
                                 break;
                             }
 
@@ -107,15 +110,16 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
                             u64 time = osGetTime();
                             u64 elapsed = time - lastBytesPerSecondUpdate;
                             if(elapsed >= 1000) {
-                                data->copyBytesPerSecond = (u32) (bytesSinceUpdate / (elapsed / 1000.0f));
+                                data->bytesPerSecond = (u32) (bytesSinceUpdate / (elapsed / 1000.0f));
 
-                                if (ioStartTime != 0) {
-                                        data->estimatedRemainingSeconds = (u32) ((data->currTotal - data->currProcessed) / (data->currProcessed / ((time - ioStartTime) / 1000.0f)));
+                                if(ioStartTime != 0) {
+                                    data->estimatedRemainingSeconds = (u32) ((data->currTotal - data->currProcessed) / (data->currProcessed / ((time - ioStartTime) / 1000.0f)));
                                 } else {
-                                        data->estimatedRemainingSeconds = 0;
+                                    data->estimatedRemainingSeconds = 0;
                                 }
-                                if (ioStartTime == 0 && data->currProcessed > 0) {
-                                        ioStartTime = time;
+
+                                if(ioStartTime == 0 && data->currProcessed > 0) {
+                                    ioStartTime = time;
                                 }
 
                                 bytesSinceUpdate = 0;
@@ -147,6 +151,318 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
     return res;
 }
 
+extern FILE* dbg;
+
+static Result task_download_execute(const char* url, void* data, size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata),
+                                                                 int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)) {
+    Result res = 0;
+
+    CURL* curl = curl_easy_init();
+    if(curl != NULL) {
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
+        curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, true);
+        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_CONNECT_TIMEOUT);
+
+        if(progress_callback != NULL) {
+            curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+            curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, progress_callback);
+            curl_easy_setopt(curl, CURLOPT_XFERINFODATA, data);
+        }
+
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false); // TODO: Certificates?
+
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
+        curl_easy_setopt(curl, CURLOPT_STDERR, dbg);
+
+        CURLcode ret = curl_easy_perform(curl);
+        if(ret == CURLE_OK) {
+            long responseCode;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+
+            if(responseCode >= 400) {
+                return R_FBI_HTTP_ERROR_BASE + ret;
+            }
+        } else {
+            res = R_FBI_CURL_ERROR_BASE + ret;
+        }
+
+        curl_easy_cleanup(curl);
+    } else {
+        res = R_FBI_CURL_INIT_FAILED;
+    }
+
+    return res;
+}
+
+typedef struct {
+    u8* buf;
+    u32 size;
+
+    u32 pos;
+} download_sync_data;
+
+static size_t task_download_sync_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
+    download_sync_data* data = (download_sync_data*) userdata;
+
+    size_t realSize = size * nmemb;
+    size_t remaining = data->size - data->pos;
+    size_t copy = realSize < remaining ? realSize : remaining;
+
+    memcpy(&data->buf[data->pos], ptr, copy);
+    data->pos += copy;
+
+    return copy;
+}
+
+Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_t size) {
+    if(url == NULL || buf == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    Result res = 0;
+
+    download_sync_data readData = {buf, size, 0};
+    if(R_SUCCEEDED(res = task_download_execute(url, &readData, task_download_sync_write_callback, NULL))) {
+        if(downloadedSize != NULL) {
+            *downloadedSize = readData.pos;
+        }
+    }
+
+    return res;
+}
+
+Result task_download_json_sync(const char* url, json_t** json, size_t maxSize) {
+    if(url == NULL || json == NULL) {
+        return R_FBI_INVALID_ARGUMENT;
+    }
+
+    Result res = 0;
+
+    char* text = (char*) calloc(sizeof(char), maxSize);
+    if(text != NULL) {
+        u32 textSize = 0;
+        if(R_SUCCEEDED(res = task_download_sync(url, &textSize, text, maxSize))) {
+            json_error_t error;
+            json_t* parsed = json_loads(text, 0, &error);
+            if(parsed != NULL) {
+                *json = parsed;
+            } else {
+                res = R_FBI_PARSE_FAILED;
+            }
+        }
+
+        free(text);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    return res;
+}
+
+static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
+    u32 *cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = 0x087A0180;
+    cmdbuf[1] = (u32) (titleId & 0xFFFFFFFF);
+    cmdbuf[2] = (u32) (titleId >> 32);
+    memcpy(&cmdbuf[3], seed, 16);
+
+    Result ret = 0;
+    if(R_FAILED(ret = svcSendSyncRequest(*fsGetSessionHandle()))) return ret;
+
+    ret = cmdbuf[1];
+    return ret;
+}
+
+Result task_download_seed_sync(u64 titleId) {
+    char pathBuf[64];
+    snprintf(pathBuf, 64, "/fbi/seed/%016llX.dat", titleId);
+
+    Result res = 0;
+
+    FS_Path* fsPath = util_make_path_utf8(pathBuf);
+    if(fsPath != NULL) {
+        u8 seed[16];
+
+        Handle fileHandle = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
+            u32 bytesRead = 0;
+            res = FSFILE_Read(fileHandle, &bytesRead, 0, seed, sizeof(seed));
+
+            FSFILE_Close(fileHandle);
+        }
+
+        util_free_path_utf8(fsPath);
+
+        if(R_FAILED(res)) {
+            u8 region = CFG_REGION_USA;
+            CFGU_SecureInfoGetRegion(&region);
+
+            if(region <= CFG_REGION_TWN) {
+                static const char* regionStrings[] = {"JP", "US", "GB", "GB", "HK", "KR", "TW"};
+
+                char url[128];
+                snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
+
+                u32 downloadedSize = 0;
+                if(R_SUCCEEDED(res = task_download_sync(url, &downloadedSize, seed, sizeof(seed))) && downloadedSize != sizeof(seed)) {
+                    res = R_FBI_BAD_DATA;
+                }
+            } else {
+                res = R_FBI_OUT_OF_RANGE;
+            }
+        }
+
+        if(R_SUCCEEDED(res)) {
+            res = FSUSER_AddSeed(titleId, seed);
+        }
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    return res;
+}
+
+typedef struct {
+    data_op_data* baseData;
+    u32 index;
+
+    u8* buffer;
+    u32 bufferPos;
+    u32 bufferSize;
+
+    u32 dstHandle;
+
+    u32 bytesWritten;
+    u64 ioStartTime;
+    u64 lastBytesPerSecondUpdate;
+    u32 bytesSinceUpdate;
+
+    Result res;
+} data_op_download_data;
+
+static bool task_data_op_download_flush(data_op_download_data* data) {
+    if(data->dstHandle == 0 && R_FAILED(data->res = data->baseData->openDst(data->baseData->data, data->index, data->buffer, data->baseData->currTotal, &data->dstHandle))) {
+        return false;
+    }
+
+    u32 bytesWritten = 0;
+    if(R_FAILED(data->res = data->baseData->writeDst(data->baseData->data, data->dstHandle, &bytesWritten, data->buffer, data->bytesWritten, data->bufferPos))) {
+        return false;
+    }
+
+    data->bytesWritten += data->bufferPos;
+    data->bufferPos = 0;
+
+    return true;
+}
+
+static size_t task_data_op_download_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
+    data_op_download_data* data = (data_op_download_data*) userdata;
+
+    size_t remaining = size * nmemb;
+    while(remaining > 0) {
+        // Buffering is done to provide adequate data to openDst and prevent misaligned size errors from AM.
+        if(data->bufferPos < data->bufferSize) {
+            size_t bufferRemaining = data->bufferSize - data->bufferPos;
+            size_t used = remaining < bufferRemaining ? remaining : bufferRemaining;
+
+            memcpy(&data->buffer[data->bufferPos], ptr, used);
+
+            data->bufferPos += used;
+            remaining -= used;
+        }
+
+        if(data->bufferPos >= data->bufferSize) {
+            // TODO: Pause on suspend/Unpause on restore?
+            u32 srcHandle = 0;
+            if(R_FAILED(data->res = task_data_op_check_running(data->baseData, data->baseData->processed, &srcHandle, &data->dstHandle))) {
+                return 0;
+            }
+
+            if(!task_data_op_download_flush(data)) {
+                break;
+            }
+        }
+    }
+
+    return (size * nmemb) - remaining;
+}
+
+int task_data_op_download_progress_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+    data_op_download_data* data = (data_op_download_data*) clientp;
+
+    data->bytesSinceUpdate += (u64) dlnow - data->baseData->currProcessed;
+    data->baseData->currTotal = (u64) dltotal;
+    data->baseData->currProcessed = (u64) dlnow;
+
+    u64 time = osGetTime();
+    if(data->lastBytesPerSecondUpdate != 0) {
+        u64 elapsed = time - data->lastBytesPerSecondUpdate;
+        if(elapsed >= 1000) {
+            data->baseData->bytesPerSecond = (u32) (data->bytesSinceUpdate / (elapsed / 1000.0f));
+
+            if(data->ioStartTime != 0) {
+                data->baseData->estimatedRemainingSeconds = (u32) ((data->baseData->currTotal - data->baseData->currProcessed) / (data->baseData->currProcessed / ((time - data->ioStartTime) / 1000.0f)));
+            } else {
+                data->baseData->estimatedRemainingSeconds = 0;
+            }
+
+            if(data->ioStartTime == 0 && data->baseData->currProcessed > 0) {
+                data->ioStartTime = time;
+            }
+
+            data->bytesSinceUpdate = 0;
+            data->lastBytesPerSecondUpdate = time;
+        }
+    } else {
+        data->lastBytesPerSecondUpdate = time;
+    }
+
+    return 0;
+}
+
+static Result task_data_op_download(data_op_data* data, u32 index) {
+    data->currProcessed = 0;
+    data->currTotal = 0;
+
+    data->bytesPerSecond = 0;
+    data->estimatedRemainingSeconds = 0;
+
+    Result res = 0;
+
+    void* buffer = calloc(1, data->bufferSize);
+    if(buffer != NULL) {
+        data_op_download_data downloadData = {data, index, buffer, 0, data->bufferSize, 0, 0, 0, 0, 0, 0};
+        res = task_download_execute(data->downloadUrls[index], &downloadData, task_data_op_download_write_callback, task_data_op_download_progress_callback);
+
+        if(downloadData.res != 0) {
+            res = downloadData.res;
+        }
+
+        if(R_SUCCEEDED(res) && downloadData.bufferPos > 0) {
+            task_data_op_download_flush(&downloadData);
+        }
+
+        if(downloadData.dstHandle != 0) {
+            Result closeDstRes = data->closeDst(data->data, index, res == 0, downloadData.dstHandle);
+            if(R_SUCCEEDED(res)) {
+                res = closeDstRes;
+            }
+        }
+
+        free(buffer);
+    } else {
+        res = R_FBI_OUT_OF_MEMORY;
+    }
+
+    return res;
+}
+
 static Result task_data_op_delete(data_op_data* data, u32 index) {
     return data->delete(data->data, index);
 }
@@ -165,6 +481,9 @@ static void task_data_op_thread(void* arg) {
             switch(data->op) {
                 case DATAOP_COPY:
                     res = task_data_op_copy(data, data->processed);
+                    break;
+                case DATAOP_DOWNLOAD:
+                    res = task_data_op_download(data, data->processed);
                     break;
                 case DATAOP_DELETE:
                     res = task_data_op_delete(data, data->processed);
@@ -229,7 +548,7 @@ Result task_data_op(data_op_data* data) {
 
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
-        if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true) == NULL) {
+        if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 0, true) == NULL) {
             res = R_FBI_THREAD_CREATE_FAILED;
         }
     }

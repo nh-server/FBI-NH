@@ -70,10 +70,10 @@ static void task_populate_titledb_thread(void* arg) {
     Result res = 0;
 
     json_t* root = NULL;
-    if(R_SUCCEEDED(res = util_download_json("https://api.titledb.com/v1/entry?nested=true"
-                                                    "&only=id&only=name&only=author&only=headline&only=category"
-                                                    "&only=cia.id&only=cia.updated_at&only=cia.version&only=cia.size&only=cia.titleid"
-                                                    "&only=tdsx.id&only=tdsx.updated_at&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
+    if(R_SUCCEEDED(res = task_download_json_sync("https://api.titledb.com/v1/entry?nested=true"
+                                                         "&only=id&only=name&only=author&only=headline&only=category"
+                                                         "&only=cia.id&only=cia.updated_at&only=cia.version&only=cia.size&only=cia.titleid"
+                                                         "&only=tdsx.id&only=tdsx.updated_at&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
                                             &root, 1024 * 1024))) {
         if(json_is_array(root)) {
             linked_list titles;
@@ -187,6 +187,11 @@ static void task_populate_titledb_thread(void* arg) {
 
         while(linked_list_iter_has_next(&iter)) {
             svcWaitSynchronization(task_get_pause_event(), U64_MAX);
+
+            Handle events[2] = {data->resumeEvent, data->cancelEvent};
+            s32 index = 0;
+            svcWaitSynchronizationN(&index, events, 2, false, U64_MAX);
+
             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                 break;
             }
@@ -205,13 +210,14 @@ static void task_populate_titledb_thread(void* arg) {
 
             u8 icon[0x1200];
             u32 iconSize = 0;
-            if(R_SUCCEEDED(util_download(url, &iconSize, &icon, sizeof(icon))) && iconSize == sizeof(icon)) {
+            if(R_SUCCEEDED(task_download_sync(url, &iconSize, &icon, sizeof(icon))) && iconSize == sizeof(icon)) {
                 titledbInfo->meta.texture = screen_allocate_free_texture();
                 screen_load_texture_tiled(titledbInfo->meta.texture, icon, sizeof(icon), 48, 48, GPU_RGB565, false);
             }
         }
     }
 
+    svcCloseHandle(data->resumeEvent);
     svcCloseHandle(data->cancelEvent);
 
     data->result = res;
@@ -266,14 +272,23 @@ Result task_populate_titledb(populate_titledb_data* data) {
 
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
-        if(threadCreate(task_populate_titledb_thread, data, 0x10000, 0x19, 1, true) == NULL) {
-            res = R_FBI_THREAD_CREATE_FAILED;
+        if(R_SUCCEEDED(res = svcCreateEvent(&data->resumeEvent, RESET_STICKY))) {
+            svcSignalEvent(data->resumeEvent);
+
+            if(threadCreate(task_populate_titledb_thread, data, 0x10000, 0x19, 0, true) == NULL) {
+                res = R_FBI_THREAD_CREATE_FAILED;
+            }
         }
     }
 
     if(R_FAILED(res)) {
         data->itemsListed = true;
         data->finished = true;
+
+        if(data->resumeEvent != 0) {
+            svcCloseHandle(data->resumeEvent);
+            data->resumeEvent = 0;
+        }
 
         if(data->cancelEvent != 0) {
             svcCloseHandle(data->cancelEvent);

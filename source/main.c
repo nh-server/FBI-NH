@@ -114,11 +114,7 @@ Result init_services() {
     return res;
 }
 
-static u32 old_time_limit = UINT32_MAX;
-
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+//static u32 old_time_limit = UINT32_MAX;
 
 FILE* dbg;
 
@@ -144,16 +140,16 @@ void init() {
         }
     }
 
-    osSetSpeedupEnable(true);
-
-    APT_GetAppCpuTimeLimit(&old_time_limit);
+    /*APT_GetAppCpuTimeLimit(&old_time_limit);
     Result cpuRes = APT_SetAppCpuTimeLimit(30);
     if(R_FAILED(cpuRes)) {
         util_panic("Failed to set syscore CPU time limit: %08lX", cpuRes);
         return;
-    }
+    }*/
 
     AM_InitializeExternalTitleDatabase(false);
+
+    dbg = fopen("sdmc:/debug.txt", "wb");
 
     curl_global_init(CURL_GLOBAL_ALL);
 
@@ -164,17 +160,17 @@ void init() {
 }
 
 void cleanup() {
+    fclose(dbg);
+
     clipboard_clear();
 
     task_exit();
     ui_exit();
     screen_exit();
 
-    if(old_time_limit != UINT32_MAX) {
+    /*if(old_time_limit != UINT32_MAX) {
         APT_SetAppCpuTimeLimit(old_time_limit);
-    }
-
-    osSetSpeedupEnable(false);
+    }*/
 
     cleanup_services();
 
@@ -183,17 +179,44 @@ void cleanup() {
     gfxExit();
 }
 
-int main(int argc, const char* argv[]) {
-    if(argc > 0 && envIsHomebrew()) {
-        util_set_3dsx_path(argv[0]);
-    }
-
+static void main_thread(void* arg) {
     init();
 
     mainmenu_open();
     while(aptMainLoop() && ui_update());
 
     cleanup();
+}
+
+int main(int argc, const char* argv[]) {
+    if(argc > 0 && envIsHomebrew()) {
+        util_set_3dsx_path(argv[0]);
+    }
+
+    osSetSpeedupEnable(true);
+
+    u32 oldTimeLimit = UINT32_MAX;
+    APT_GetAppCpuTimeLimit(&oldTimeLimit);
+
+    Result cpuRes = APT_SetAppCpuTimeLimit(30);
+    if(R_FAILED(cpuRes)) {
+        util_panic("Failed to set syscore CPU time limit: %08lX", cpuRes);
+        return 0;
+    }
+
+    Thread mainThread = threadCreate(main_thread, NULL, 0x10000, 0x18, 1, true);
+    if(mainThread == NULL) {
+        util_panic("Failed to start main thread.");
+        return 0;
+    }
+
+    threadJoin(mainThread, U64_MAX);
+
+    if(oldTimeLimit != UINT32_MAX) {
+        APT_SetAppCpuTimeLimit(oldTimeLimit);
+    }
+
+    osSetSpeedupEnable(false);
 
     return 0;
 }

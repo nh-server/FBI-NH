@@ -48,9 +48,9 @@ void action_install_titledb(linked_list* items, list_item* selected, bool cia) {
     char url[64];
     char path3dsx[FILE_PATH_MAX];
     if(data->cia) {
-        snprintf(url, INSTALL_URL_MAX, "https://3ds.titledb.com/v1/cia/%lu/download", info->cia.id);
+        snprintf(url, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/cia/%lu/download", info->cia.id);
     } else {
-        snprintf(url, INSTALL_URL_MAX, "https://3ds.titledb.com/v1/tdsx/%lu/download", info->tdsx.id);
+        snprintf(url, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/tdsx/%lu/download", info->tdsx.id);
 
         char name[FILE_NAME_MAX];
         util_escape_file_name(name, info->meta.shortDescription, sizeof(name));

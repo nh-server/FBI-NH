@@ -5,8 +5,6 @@
 #include <string.h>
 
 #include <3ds.h>
-#include <curl/curl.h>
-#include <jansson.h>
 
 #include "linkedlist.h"
 #include "util.h"
@@ -268,156 +266,6 @@ bool util_is_string_empty(const char* str) {
     return true;
 }
 
-typedef struct {
-    u8* buf;
-    u32 size;
-
-    u32 pos;
-} download_data;
-
-static size_t util_download_write_callback(void* contents, size_t size, size_t nmemb, void* userp) {
-    download_data* data = (download_data*) userp;
-
-    size_t realSize = size * nmemb;
-    size_t remaining = data->size - data->pos;
-    size_t copy = realSize < remaining ? realSize : remaining;
-
-    memcpy(&data->buf[data->pos], contents, copy);
-    data->pos += copy;
-
-    return copy;
-}
-
-Result util_download(const char* url, u32* downloadedSize, void* buf, size_t size) {
-    if(url == NULL || buf == NULL) {
-        return R_FBI_INVALID_ARGUMENT;
-    }
-
-    Result res = 0;
-
-    CURL* curl = curl_easy_init();
-    if(curl != NULL) {
-        download_data readData = {buf, size, 0};
-
-        curl_easy_setopt(curl, CURLOPT_URL, url);
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, util_download_write_callback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &readData);
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, true);
-        curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING,  "");
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_CONNECT_TIMEOUT);
-
-        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false); // TODO: Certificates?
-
-        CURLcode ret = curl_easy_perform(curl);
-        if(ret == CURLE_OK) {
-            if(downloadedSize != NULL) {
-                *downloadedSize = readData.pos;
-            }
-        } else {
-            res = R_FBI_CURL_ERORR_BASE + ret;
-        }
-
-        curl_easy_cleanup(curl);
-    } else {
-        res = R_FBI_CURL_INIT_FAILED;
-    }
-
-    return res;
-}
-
-Result util_download_json(const char* url, json_t** json, size_t maxSize) {
-    if(url == NULL || json == NULL) {
-        return R_FBI_INVALID_ARGUMENT;
-    }
-
-    Result res = 0;
-
-    char* text = (char*) calloc(sizeof(char), maxSize);
-    if(text != NULL) {
-        u32 textSize = 0;
-        if(R_SUCCEEDED(res = util_download(url, &textSize, text, maxSize))) {
-            json_error_t error;
-            json_t* parsed = json_loads(text, 0, &error);
-            if(parsed != NULL) {
-                *json = parsed;
-            } else {
-                res = R_FBI_PARSE_FAILED;
-            }
-        }
-
-        free(text);
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
-    }
-
-    return res;
-}
-
-static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
-    u32 *cmdbuf = getThreadCommandBuffer();
-
-    cmdbuf[0] = 0x087A0180;
-    cmdbuf[1] = (u32) (titleId & 0xFFFFFFFF);
-    cmdbuf[2] = (u32) (titleId >> 32);
-    memcpy(&cmdbuf[3], seed, 16);
-
-    Result ret = 0;
-    if(R_FAILED(ret = svcSendSyncRequest(*fsGetSessionHandle()))) return ret;
-
-    ret = cmdbuf[1];
-    return ret;
-}
-
-Result util_import_seed(u32* responseCode, u64 titleId) {
-    char pathBuf[64];
-    snprintf(pathBuf, 64, "/fbi/seed/%016llX.dat", titleId);
-
-    Result res = 0;
-
-    FS_Path* fsPath = util_make_path_utf8(pathBuf);
-    if(fsPath != NULL) {
-        u8 seed[16];
-
-        Handle fileHandle = 0;
-        if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
-            u32 bytesRead = 0;
-            res = FSFILE_Read(fileHandle, &bytesRead, 0, seed, sizeof(seed));
-
-            FSFILE_Close(fileHandle);
-        }
-
-        util_free_path_utf8(fsPath);
-
-        if(R_FAILED(res)) {
-            u8 region = CFG_REGION_USA;
-            CFGU_SecureInfoGetRegion(&region);
-
-            if(region <= CFG_REGION_TWN) {
-                static const char* regionStrings[] = {"JP", "US", "GB", "GB", "HK", "KR", "TW"};
-
-                char url[128];
-                snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
-
-                u32 downloadedSize = 0;
-                if(R_SUCCEEDED(res = util_download(url, &downloadedSize, seed, sizeof(seed))) && downloadedSize != sizeof(seed)) {
-                    res = R_FBI_BAD_DATA;
-                }
-            } else {
-                res = R_FBI_OUT_OF_RANGE;
-            }
-        }
-
-        if(R_SUCCEEDED(res)) {
-            res = FSUSER_AddSeed(titleId, seed);
-        }
-    } else {
-        res = R_FBI_OUT_OF_MEMORY;
-    }
-
-    return res;
-}
-
 FS_MediaType util_get_title_destination(u64 titleId) {
     u16 platform = (u16) ((titleId >> 48) & 0xFFFF);
     u16 category = (u16) ((titleId >> 32) & 0xFFFF);
@@ -563,11 +411,11 @@ void util_escape_file_name(char* out, const char* file, size_t size) {
 
 #define HTTPC_TIMEOUT 15000000000
 
-Result util_http_open(httpcContext* context, u32* responseCode, const char* url, bool userAgent) {
-    return util_http_open_ranged(context, responseCode, url, userAgent, 0, 0);
+Result util_http_open(httpcContext* context, const char* url, bool userAgent) {
+    return util_http_open_ranged(context, url, userAgent, 0, 0);
 }
 
-Result util_http_open_ranged(httpcContext* context, u32* responseCode, const char* url, bool userAgent, u32 rangeStart, u32 rangeEnd) {
+Result util_http_open_ranged(httpcContext* context, const char* url, bool userAgent, u32 rangeStart, u32 rangeEnd) {
     if(context == NULL || url == NULL) {
         return R_FBI_INVALID_ARGUMENT;
     }
@@ -605,12 +453,8 @@ Result util_http_open_ranged(httpcContext* context, u32* responseCode, const cha
                 } else {
                     resolved = true;
 
-                    if(responseCode != NULL) {
-                        *responseCode = response;
-                    }
-
                     if(response != 200) {
-                        res = R_FBI_HTTP_RESPONSE_CODE;
+                        res = R_FBI_HTTP_ERROR_BASE + response;
                     }
                 }
             }

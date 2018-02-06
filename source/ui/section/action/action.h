@@ -5,7 +5,6 @@ typedef struct linked_list_s linked_list;
 typedef struct list_item_s list_item;
 typedef struct ui_view_s ui_view;
 
-#define INSTALL_URL_MAX 1024
 #define INSTALL_URLS_MAX 128
 
 void action_browse_boss_ext_save_data(linked_list* items, list_item* selected);

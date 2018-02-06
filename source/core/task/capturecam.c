@@ -6,6 +6,7 @@
 #include "capturecam.h"
 #include "task.h"
 #include "../util.h"
+#include "../../libs/quirc/quirc.h"
 
 #define EVENT_CANCEL 0
 #define EVENT_RECV 1
@@ -13,8 +14,17 @@
 
 #define EVENT_COUNT 3
 
+typedef struct {
+    capture_cam_data* data;
+
+    struct quirc* qrContext;
+} capture_cam_internal_data;
+
 static void task_capture_cam_thread(void* arg) {
-    capture_cam_data* data = (capture_cam_data*) arg;
+    capture_cam_internal_data* internalData = (capture_cam_internal_data*) arg;
+    capture_cam_data* data = internalData->data;
+
+    data->qrReady = false;
 
     Handle events[EVENT_COUNT] = {0};
     events[EVENT_CANCEL] = data->cancelEvent;
@@ -63,6 +73,37 @@ static void task_capture_cam_thread(void* arg) {
                                     GSPGPU_FlushDataCache(data->buffer, bufferSize);
                                     svcReleaseMutex(data->mutex);
 
+                                    if(data->scanQR) {
+                                        int w = 0;
+                                        int h = 0;
+                                        uint8_t* qrBuf = quirc_begin(internalData->qrContext, &w, &h);
+
+                                        for(int x = 0; x < w; x++) {
+                                            for(int y = 0; y < h; y++) {
+                                                u16 px = buffer[y * data->width + x];
+                                                qrBuf[y * w + x] = (u8) (((((px >> 11) & 0x1F) << 3) + (((px >> 5) & 0x3F) << 2) + ((px & 0x1F) << 3)) / 3);
+                                            }
+                                        }
+
+                                        quirc_end(internalData->qrContext);
+
+                                        int qrCount = quirc_count(internalData->qrContext);
+                                        for(int i = 0; i < qrCount; i++) {
+                                            struct quirc_code qrCode;
+                                            quirc_extract(internalData->qrContext, i, &qrCode);
+
+                                            struct quirc_data qrData;
+                                            if(quirc_decode(&qrCode, &qrData) == 0) {
+                                                svcWaitSynchronization(data->mutex, U64_MAX);
+
+                                                data->qrReady = true;
+                                                memcpy(data->qrData, qrData.payload, sizeof(data->qrData));
+
+                                                svcReleaseMutex(data->mutex);
+                                            }
+                                        }
+                                    }
+
                                     res = CAMU_SetReceiving(&events[EVENT_RECV], buffer, PORT_CAM1, bufferSize, (s16) transferUnit);
                                     break;
                                 case EVENT_BUFFER_ERROR:
@@ -109,6 +150,9 @@ static void task_capture_cam_thread(void* arg) {
         }
     }
 
+    quirc_destroy(internalData->qrContext);
+    free(internalData);
+
     svcCloseHandle(data->mutex);
 
     data->result = res;
@@ -120,21 +164,42 @@ Result task_capture_cam(capture_cam_data* data) {
         return R_FBI_INVALID_ARGUMENT;
     }
 
+    capture_cam_internal_data* internalData = (capture_cam_internal_data*) calloc(1, sizeof(capture_cam_internal_data));
+    if(internalData == NULL) {
+        return R_FBI_OUT_OF_MEMORY;
+    }
+
     data->mutex = 0;
 
     data->finished = false;
     data->result = 0;
     data->cancelEvent = 0;
 
+    internalData->data = data;
+
     Result res = 0;
-    if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY)) && R_SUCCEEDED(res = svcCreateMutex(&data->mutex, false))) {
-        if(threadCreate(task_capture_cam_thread, data, 0x10000, 0x1A, 1, true) == NULL) {
-            res = R_FBI_THREAD_CREATE_FAILED;
+
+    internalData->qrContext = quirc_new();
+    if(internalData->qrContext != NULL && quirc_resize(internalData->qrContext, data->width, data->height) == 0) {
+        if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY)) && R_SUCCEEDED(res = svcCreateMutex(&data->mutex, false))) {
+            if(threadCreate(task_capture_cam_thread, internalData, 0x10000, 0x1A, 0, true) == NULL) {
+                res = R_FBI_THREAD_CREATE_FAILED;
+            }
         }
+    } else {
+        res = R_FBI_QR_INIT_FAILED;
     }
+
 
     if(R_FAILED(res)) {
         data->finished = true;
+
+        if(internalData->qrContext != NULL) {
+            quirc_destroy(internalData->qrContext);
+            internalData->qrContext = NULL;
+        }
+
+        free(internalData);
 
         if(data->cancelEvent != 0) {
             svcCloseHandle(data->cancelEvent);

@@ -23,7 +23,7 @@ typedef enum content_type_e {
 } content_type;
 
 typedef struct {
-    char urls[INSTALL_URLS_MAX][INSTALL_URL_MAX];
+    char urls[INSTALL_URLS_MAX][DOWNLOAD_URL_MAX];
 
     char path3dsx[FILE_PATH_MAX];
 
@@ -35,7 +35,6 @@ typedef struct {
     bool selectCdnVersion;
     bool cdnDecided;
 
-    u32 responseCode;
     content_type contentType;
     u64 currTitleId;
     volatile bool n3dsContinue;
@@ -116,7 +115,7 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
 
     httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
     if(context != NULL) {
-        if(R_SUCCEEDED(res = util_http_open(context, &installData->responseCode, installData->urls[index], true))) {
+        if(R_SUCCEEDED(res = util_http_open(context, installData->urls[index], true))) {
             *handle = (u32) context;
 
             installData->currContext = context;
@@ -148,12 +147,12 @@ static Result action_install_url_read_src(void* data, u32 handle, u32* bytesRead
     return util_http_read((httpcContext*) handle, bytesRead, buffer, size);
 }
 
+
 static Result action_install_url_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     install_url_data* installData = (install_url_data*) data;
 
     Result res = 0;
 
-    installData->responseCode = 0;
     installData->contentType = CONTENT_CIA;
     installData->currTitleId = 0;
     installData->n3dsContinue = false;
@@ -262,7 +261,7 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
     if(succeeded) {
         if(installData->contentType == CONTENT_CIA) {
             if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-                util_import_seed(NULL, installData->currTitleId);
+                task_download_seed_sync(installData->currTitleId);
 
                 if(installData->currTitleId == 0x0004013800000002 || installData->currTitleId == 0x0004013820000002) {
                     res = AM_InstallFirm(installData->currTitleId);
@@ -311,11 +310,11 @@ static Result action_install_url_write_dst(void* data, u32 handle, u32* bytesWri
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_install_url_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_url_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result action_install_url_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_url_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
@@ -332,18 +331,10 @@ static bool action_install_url_error(void* data, u32 index, Result res, ui_view*
 
     if(res != R_FBI_WRONG_SYSTEM) {
         char* url = installData->urls[index];
-        if(res == R_FBI_HTTP_RESPONSE_CODE) {
-            if(strlen(url) > 38) {
-                *errorView = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.35s...\nHTTP server returned response code %d", url, installData->responseCode);
-            } else {
-                *errorView = error_display(data, action_install_url_draw_top, "Failed to install from URL.\n%.38s\nHTTP server returned response code %d", url, installData->responseCode);
-            }
+        if(strlen(url) > 38) {
+            *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
         } else {
-            if(strlen(url) > 38) {
-                *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
-            } else {
-                *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
-            }
+            *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
         }
     }
 
@@ -376,8 +367,8 @@ static void action_install_url_install_update(ui_view* view, void* data, float* 
              ui_get_display_size_units(installData->installInfo.currProcessed),
              ui_get_display_size(installData->installInfo.currTotal),
              ui_get_display_size_units(installData->installInfo.currTotal),
-             ui_get_display_size(installData->installInfo.copyBytesPerSecond),
-             ui_get_display_size_units(installData->installInfo.copyBytesPerSecond),
+             ui_get_display_size(installData->installInfo.bytesPerSecond),
+             ui_get_display_size_units(installData->installInfo.bytesPerSecond),
              ui_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
 }
 
@@ -421,15 +412,15 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
             u32 len = currEnd - currStart;
 
             if((len < 7 || strncmp(currStart, "http://", 7) != 0) && (len < 8 || strncmp(currStart, "https://", 8) != 0)) {
-                if(len > INSTALL_URL_MAX - 7) {
-                    len = INSTALL_URL_MAX - 7;
+                if(len > DOWNLOAD_URL_MAX - 7) {
+                    len = DOWNLOAD_URL_MAX - 7;
                 }
 
                 strncpy(data->urls[data->installInfo.total], "http://", 7);
                 strncpy(&data->urls[data->installInfo.total][7], currStart, len);
             } else {
-                if(len > INSTALL_URL_MAX) {
-                    len = INSTALL_URL_MAX;
+                if(len > DOWNLOAD_URL_MAX) {
+                    len = DOWNLOAD_URL_MAX;
                 }
 
                 strncpy(data->urls[data->installInfo.total], currStart, len);
@@ -452,7 +443,6 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
     data->selectCdnVersion = false;
     data->cdnDecided = false;
 
-    data->responseCode = 0;
     data->contentType = CONTENT_CIA;
     data->currTitleId = 0;
     data->n3dsContinue = false;
@@ -461,9 +451,11 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
 
     data->installInfo.data = data;
 
-    data->installInfo.op = DATAOP_COPY;
+    data->installInfo.op = DATAOP_DOWNLOAD;
 
-    data->installInfo.copyBufferSize = 128 * 1024;
+    data->installInfo.downloadUrls = data->urls;
+
+    data->installInfo.bufferSize = 128 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.processed = data->installInfo.total;
@@ -480,8 +472,8 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
     data->installInfo.closeDst = action_install_url_close_dst;
     data->installInfo.writeDst = action_install_url_write_dst;
 
-    data->installInfo.suspendCopy = action_install_url_suspend_copy;
-    data->installInfo.restoreCopy = action_install_url_restore_copy;
+    data->installInfo.suspendTransfer = action_install_url_suspend_transfer;
+    data->installInfo.restoreTransfer = action_install_url_restore_transfer;
 
     data->installInfo.suspend = action_install_url_suspend;
     data->installInfo.restore = action_install_url_restore;

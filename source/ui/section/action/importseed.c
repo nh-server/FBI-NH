@@ -17,16 +17,13 @@
 static void action_import_seed_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
 
-    u32 responseCode = 0;
-    Result res = util_import_seed(&responseCode, info->titleId);
+    Result res = task_download_seed_sync(info->titleId);
 
     ui_pop();
     info_destroy(view);
 
     if(R_SUCCEEDED(res)) {
         prompt_display_notify("Success", "Seed imported.", COLOR_TEXT, info, ui_draw_title_info, NULL);
-    } else if(res == R_FBI_HTTP_RESPONSE_CODE) {
-        error_display(NULL, NULL, "Failed to import seed.\nHTTP server returned response code %d", responseCode);
     } else {
         error_display_res(info, ui_draw_title_info, res, "Failed to import seed.");
     }

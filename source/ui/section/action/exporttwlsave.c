@@ -96,11 +96,11 @@ static Result action_export_twl_save_write_dst(void* data, u32 handle, u32* byte
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_export_twl_save_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_export_twl_save_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result action_export_twl_save_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_export_twl_save_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
@@ -143,8 +143,8 @@ static void action_export_twl_save_update(ui_view* view, void* data, float* prog
              ui_get_display_size_units(exportData->exportInfo.currProcessed),
              ui_get_display_size(exportData->exportInfo.currTotal),
              ui_get_display_size_units(exportData->exportInfo.currTotal),
-             ui_get_display_size(exportData->exportInfo.copyBytesPerSecond),
-             ui_get_display_size_units(exportData->exportInfo.copyBytesPerSecond),
+             ui_get_display_size(exportData->exportInfo.bytesPerSecond),
+             ui_get_display_size_units(exportData->exportInfo.bytesPerSecond),
              ui_get_display_eta(exportData->exportInfo.estimatedRemainingSeconds));
 }
 
@@ -178,7 +178,7 @@ void action_export_twl_save(linked_list* items, list_item* selected) {
 
     data->exportInfo.op = DATAOP_COPY;
 
-    data->exportInfo.copyBufferSize = 128 * 1024;
+    data->exportInfo.bufferSize = 128 * 1024;
     data->exportInfo.copyEmpty = true;
 
     data->exportInfo.total = 1;
@@ -195,8 +195,8 @@ void action_export_twl_save(linked_list* items, list_item* selected) {
     data->exportInfo.closeDst = action_export_twl_save_close_dst;
     data->exportInfo.writeDst = action_export_twl_save_write_dst;
 
-    data->exportInfo.suspendCopy = action_export_twl_save_suspend_copy;
-    data->exportInfo.restoreCopy = action_export_twl_save_restore_copy;
+    data->exportInfo.suspendTransfer = action_export_twl_save_suspend_transfer;
+    data->exportInfo.restoreTransfer = action_export_twl_save_restore_transfer;
 
     data->exportInfo.suspend = action_export_twl_save_suspend;
     data->exportInfo.restore = action_export_twl_save_restore;

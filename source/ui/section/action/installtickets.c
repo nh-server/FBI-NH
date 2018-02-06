@@ -141,11 +141,11 @@ static Result action_install_tickets_write_dst(void* data, u32 handle, u32* byte
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_install_tickets_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_tickets_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result action_install_tickets_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_tickets_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
@@ -205,8 +205,8 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
              ui_get_display_size_units(installData->installInfo.currProcessed),
              ui_get_display_size(installData->installInfo.currTotal),
              ui_get_display_size_units(installData->installInfo.currTotal),
-             ui_get_display_size(installData->installInfo.copyBytesPerSecond),
-             ui_get_display_size_units(installData->installInfo.copyBytesPerSecond),
+             ui_get_display_size(installData->installInfo.bytesPerSecond),
+             ui_get_display_size_units(installData->installInfo.bytesPerSecond),
              ui_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
 }
 
@@ -308,7 +308,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
 
     data->installInfo.op = DATAOP_COPY;
 
-    data->installInfo.copyBufferSize = 256 * 1024;
+    data->installInfo.bufferSize = 256 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.isSrcDirectory = action_install_tickets_is_src_directory;
@@ -323,8 +323,8 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     data->installInfo.closeDst = action_install_tickets_close_dst;
     data->installInfo.writeDst = action_install_tickets_write_dst;
 
-    data->installInfo.suspendCopy = action_install_tickets_suspend_copy;
-    data->installInfo.restoreCopy = action_install_tickets_restore_copy;
+    data->installInfo.suspendTransfer = action_install_tickets_suspend_transfer;
+    data->installInfo.restoreTransfer = action_install_tickets_restore_transfer;
 
     data->installInfo.suspend = action_install_tickets_suspend;
     data->installInfo.restore = action_install_tickets_restore;
