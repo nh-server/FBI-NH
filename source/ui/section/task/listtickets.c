@@ -7,6 +7,7 @@
 #include "uitask.h"
 #include "../../list.h"
 #include "../../resources.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -72,17 +73,17 @@ static void task_populate_tickets_thread(void* arg) {
                         } else {
                             free(item);
 
-                            res = R_FBI_OUT_OF_MEMORY;
+                            res = R_APP_OUT_OF_MEMORY;
                         }
                     } else {
-                        res = R_FBI_OUT_OF_MEMORY;
+                        res = R_APP_OUT_OF_MEMORY;
                     }
                 }
             }
 
             free(ticketIds);
         } else {
-            res = R_FBI_OUT_OF_MEMORY;
+            res = R_APP_OUT_OF_MEMORY;
         }
     }
 
@@ -122,7 +123,7 @@ void task_clear_tickets(linked_list* items) {
 
 Result task_populate_tickets(populate_tickets_data* data) {
     if(data == NULL || data->items == NULL) {
-        return R_FBI_INVALID_ARGUMENT;
+        return R_APP_INVALID_ARGUMENT;
     }
 
     task_clear_tickets(data->items);
@@ -134,7 +135,7 @@ Result task_populate_tickets(populate_tickets_data* data) {
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
         if(threadCreate(task_populate_tickets_thread, data, 0x10000, 0x19, 1, true) == NULL) {
-            res = R_FBI_THREAD_CREATE_FAILED;
+            res = R_APP_THREAD_CREATE_FAILED;
         }
     }
 

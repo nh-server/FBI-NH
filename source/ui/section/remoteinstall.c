@@ -18,6 +18,7 @@
 #include "../prompt.h"
 #include "../resources.h"
 #include "../ui.h"
+#include "../../core/error.h"
 #include "../../core/linkedlist.h"
 #include "../../core/screen.h"
 #include "../../core/util.h"
@@ -462,7 +463,7 @@ static void remoteinstall_repeat_last_request() {
 
         free(textBuf);
     } else {
-        error_display_res(NULL, NULL, R_FBI_OUT_OF_MEMORY, "Failed to allocate URL text buffer.");
+        error_display_res(NULL, NULL, R_APP_OUT_OF_MEMORY, "Failed to allocate URL text buffer.");
     }
 }
 

@@ -11,6 +11,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -47,7 +48,7 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
 
                             util_free_path_utf8(fsPath);
                         } else {
-                            res = R_FBI_OUT_OF_MEMORY;
+                            res = R_APP_OUT_OF_MEMORY;
                         }
                     }
 
@@ -57,7 +58,7 @@ static void action_extract_smdh_update(ui_view* view, void* data, float* progres
 
             free(smdh);
         } else {
-            res = R_FBI_OUT_OF_MEMORY;
+            res = R_APP_OUT_OF_MEMORY;
         }
 
         FSFILE_Close(fileHandle);

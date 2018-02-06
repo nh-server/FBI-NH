@@ -11,6 +11,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/spi.h"
@@ -52,7 +53,7 @@ static Result action_import_twl_save_open_src(void* data, u32 index, u32* handle
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;

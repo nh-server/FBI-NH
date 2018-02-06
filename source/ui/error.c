@@ -9,8 +9,8 @@
 #include "error.h"
 #include "prompt.h"
 #include "resources.h"
+#include "../core/error.h"
 #include "../core/screen.h"
-#include "../core/util.h"
 
 static const char* level_to_string(Result res) {
     switch(R_LEVEL(res)) {
@@ -489,25 +489,25 @@ static const char* description_to_string(Result res) {
             break;
         case RM_APPLICATION:
             switch(res) {
-                case R_FBI_INVALID_ARGUMENT:
+                case R_APP_INVALID_ARGUMENT:
                     return "Invalid argument";
-                case R_FBI_CANCELLED:
+                case R_APP_CANCELLED:
                     return "Operation cancelled";
-                case R_FBI_WRONG_SYSTEM:
-                    return "Attempted to install an N3DS title on an O3DS";
-                case R_FBI_THREAD_CREATE_FAILED:
+                case R_APP_SKIPPED:
+                    return "Operation skipped";
+                case R_APP_THREAD_CREATE_FAILED:
                     return "Thread creation failed";
-                case R_FBI_PARSE_FAILED:
+                case R_APP_PARSE_FAILED:
                     return "Parse failed";
-                case R_FBI_BAD_DATA:
+                case R_APP_BAD_DATA:
                     return "Bad data";
-                case R_FBI_TOO_MANY_REDIRECTS:
+                case R_APP_HTTP_TOO_MANY_REDIRECTS:
                     return "Too many redirects";
-                case R_FBI_CURL_INIT_FAILED:
+                case R_APP_CURL_INIT_FAILED:
                     return "Failed to initialize CURL.";
                 default:
-                    if(res >= R_FBI_HTTP_ERROR_BASE && res < R_FBI_HTTP_ERROR_END) {
-                        switch(res - R_FBI_HTTP_ERROR_BASE) {
+                    if(res >= R_APP_HTTP_ERROR_BASE && res < R_APP_HTTP_ERROR_END) {
+                        switch(res - R_APP_HTTP_ERROR_BASE) {
                             case 100:
                                 return "HTTP 100: Continue";
                             case 101:
@@ -637,8 +637,8 @@ static const char* description_to_string(Result res) {
                         }
                     }
 
-                    if(res >= R_FBI_CURL_ERROR_BASE && res < R_FBI_CURL_ERROR_BASE + CURL_LAST) {
-                        return curl_easy_strerror((CURLcode) (res - R_FBI_CURL_ERROR_BASE));
+                    if(res >= R_APP_CURL_ERROR_BASE && res < R_APP_CURL_ERROR_BASE + CURL_LAST) {
+                        return curl_easy_strerror((CURLcode) (res - R_APP_CURL_ERROR_BASE));
                     }
 
                     break;

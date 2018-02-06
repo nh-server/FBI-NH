@@ -13,6 +13,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -56,12 +57,12 @@ static void action_rename_onresponse(ui_view* view, void* data, SwkbdButton butt
 
                 util_free_path_utf8(dstFsPath);
             } else {
-                res = R_FBI_OUT_OF_MEMORY;
+                res = R_APP_OUT_OF_MEMORY;
             }
 
             util_free_path_utf8(srcFsPath);
         } else {
-            res = R_FBI_OUT_OF_MEMORY;
+            res = R_APP_OUT_OF_MEMORY;
         }
 
         if(R_SUCCEEDED(res)) {

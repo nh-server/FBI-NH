@@ -13,6 +13,8 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
+#include "../../../core/http.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -61,32 +63,32 @@ static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
             snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->titleId, installData->contentIds[index - 1]);
         }
 
-        if(R_SUCCEEDED(res = util_http_open(context, url, false))) {
+        if(R_SUCCEEDED(res = http_open(context, url, false))) {
             *handle = (u32) context;
         } else {
             free(context);
         }
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
 }
 
 static Result action_install_cdn_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    return util_http_close((httpcContext*) handle);
+    return http_close((httpcContext*) handle);
 }
 
 static Result action_install_cdn_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
-    Result res = util_http_get_size((httpcContext*) handle, &downloadSize);
+    Result res = http_get_size((httpcContext*) handle, &downloadSize);
 
     *size = downloadSize;
     return res;
 }
 
 static Result action_install_cdn_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    return util_http_read((httpcContext*) handle, bytesRead, buffer, size);
+    return http_read((httpcContext*) handle, bytesRead, buffer, size);
 }
 
 static Result action_install_cdn_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
@@ -95,7 +97,7 @@ static Result action_install_cdn_open_dst(void* data, u32 index, void* initialRe
     if(index == 0) {
         installData->contentCount = tmd_get_content_count((u8*) initialReadBlock);
         if(installData->contentCount > CONTENTS_MAX) {
-            return R_FBI_OUT_OF_RANGE;
+            return R_APP_OUT_OF_RANGE;
         }
 
         for(u32 i = 0; i < installData->contentCount; i++) {

@@ -12,6 +12,7 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
 #include "../../../core/linkedlist.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
@@ -68,7 +69,7 @@ static Result action_install_cias_open_src(void* data, u32 index, u32* handle) {
 
         util_free_path_utf8(fsPath);
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -101,7 +102,7 @@ static Result action_install_cias_close_src(void* data, u32 index, bool succeede
 
             util_free_path_utf8(fsPath);
         } else {
-            res = R_FBI_OUT_OF_MEMORY;
+            res = R_APP_OUT_OF_MEMORY;
         }
     }
 
@@ -133,7 +134,7 @@ static Result action_install_cias_open_dst(void* data, u32 index, void* initialR
         }
 
         if(!installData->n3dsContinue) {
-            return R_FBI_WRONG_SYSTEM;
+            return R_APP_SKIPPED;
         }
     }
 

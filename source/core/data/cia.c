@@ -3,7 +3,7 @@
 #include "cia.h"
 #include "smdh.h"
 #include "tmd.h"
-#include "../util.h"
+#include "../error.h"
 
 u64 cia_get_title_id(u8* cia) {
     u32 headerSize = ((*(u32*) &cia[0x00]) + 0x3F) & ~0x3F;
@@ -33,11 +33,11 @@ Result cia_file_get_smdh(SMDH* smdh, Handle handle) {
             if(metaSize >= 0x3AC0) {
                 res = FSFILE_Read(handle, &bytesRead, headerSize + certSize + ticketSize + tmdSize + contentSize + 0x400, smdh, sizeof(SMDH));
             } else {
-                res = R_FBI_BAD_DATA;
+                res = R_APP_BAD_DATA;
             }
         }
     } else {
-        res = R_FBI_INVALID_ARGUMENT;
+        res = R_APP_INVALID_ARGUMENT;
     }
 
     return res;

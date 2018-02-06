@@ -11,6 +11,8 @@
 #include "../../prompt.h"
 #include "../../resources.h"
 #include "../../ui.h"
+#include "../../../core/error.h"
+#include "../../../core/http.h"
 #include "../../../core/screen.h"
 #include "../../../core/util.h"
 #include "../../../core/data/cia.h"
@@ -115,7 +117,7 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
 
     httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
     if(context != NULL) {
-        if(R_SUCCEEDED(res = util_http_open(context, installData->urls[index], true))) {
+        if(R_SUCCEEDED(res = http_open(context, installData->urls[index], true))) {
             *handle = (u32) context;
 
             installData->currContext = context;
@@ -123,7 +125,7 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
             free(context);
         }
     } else {
-        res = R_FBI_OUT_OF_MEMORY;
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;
@@ -132,19 +134,19 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
 static Result action_install_url_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     ((install_url_data*) data)->currContext = NULL;
 
-    return util_http_close((httpcContext*) handle);
+    return http_close((httpcContext*) handle);
 }
 
 static Result action_install_url_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
-    Result res = util_http_get_size((httpcContext*) handle, &downloadSize);
+    Result res = http_get_size((httpcContext*) handle, &downloadSize);
 
     *size = downloadSize;
     return res;
 }
 
 static Result action_install_url_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    return util_http_read((httpcContext*) handle, bytesRead, buffer, size);
+    return http_read((httpcContext*) handle, bytesRead, buffer, size);
 }
 
 
@@ -174,7 +176,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
             }
 
             if(!installData->n3dsContinue) {
-                return R_FBI_WRONG_SYSTEM;
+                return R_APP_SKIPPED;
             }
         }
 
@@ -222,7 +224,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
                 strncpy(installData->curr3dsxPath, installData->path3dsx, FILE_PATH_MAX);
             } else {
                 char filename[FILE_NAME_MAX];
-                if(R_FAILED(util_http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
+                if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
                     util_get_path_file(filename, installData->urls[index], FILE_NAME_MAX);
                 }
 
@@ -240,14 +242,14 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
 
                     util_free_path_utf8(path);
                 } else {
-                    res = R_FBI_OUT_OF_MEMORY;
+                    res = R_APP_OUT_OF_MEMORY;
                 }
             }
 
             FSUSER_CloseArchive(sdmcArchive);
         }
     } else {
-        res = R_FBI_BAD_DATA;
+        res = R_APP_BAD_DATA;
     }
 
     return res;
@@ -329,13 +331,11 @@ static Result action_install_url_restore(void* data, u32 index) {
 static bool action_install_url_error(void* data, u32 index, Result res, ui_view** errorView) {
     install_url_data* installData = (install_url_data*) data;
 
-    if(res != R_FBI_WRONG_SYSTEM) {
-        char* url = installData->urls[index];
-        if(strlen(url) > 38) {
-            *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
-        } else {
-            *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
-        }
+    char* url = installData->urls[index];
+    if(strlen(url) > 38) {
+        *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.35s...", url);
+    } else {
+        *errorView = error_display_res(data, action_install_url_draw_top, res, "Failed to install from URL.\n%.38s", url);
     }
 
     return true;

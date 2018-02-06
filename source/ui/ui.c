@@ -8,6 +8,7 @@
 #include "resources.h"
 #include "ui.h"
 #include "section/task/uitask.h"
+#include "../core/error.h"
 #include "../core/screen.h"
 #include "../core/util.h"
 #include "../core/data/smdh.h"
@@ -30,6 +31,8 @@ void ui_init() {
         svcCreateMutex(&ui_stack_mutex, false);
     }
 
+    resources_load();
+
     ui_fade_begin_time = osGetTime();
 }
 
@@ -43,13 +46,13 @@ void ui_exit() {
 ui_view* ui_create() {
     ui_view* view = (ui_view*) calloc(1, sizeof(ui_view));
     if(view == NULL) {
-        util_panic("Failed to allocate UI view.");
+        error_panic("Failed to allocate UI view.");
         return NULL;
     }
 
     Result res = 0;
     if(R_FAILED(res = svcCreateEvent(&view->active, RESET_STICKY))) {
-        util_panic("Failed to create view active event: 0x%08lX", res);
+        error_panic("Failed to create view active event: 0x%08lX", res);
 
         free(view);
         return NULL;
