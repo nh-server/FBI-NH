@@ -451,9 +451,13 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
 
     data->installInfo.data = data;
 
+#ifdef USE_CURL
     data->installInfo.op = DATAOP_DOWNLOAD;
 
     data->installInfo.downloadUrls = data->urls;
+#else
+    data->installInfo.op = DATAOP_COPY;
+#endif
 
     data->installInfo.bufferSize = 128 * 1024;
     data->installInfo.copyEmpty = false;

@@ -182,7 +182,7 @@ Result task_capture_cam(capture_cam_data* data) {
     internalData->qrContext = quirc_new();
     if(internalData->qrContext != NULL && quirc_resize(internalData->qrContext, data->width, data->height) == 0) {
         if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY)) && R_SUCCEEDED(res = svcCreateMutex(&data->mutex, false))) {
-            if(threadCreate(task_capture_cam_thread, internalData, 0x10000, 0x1A, 0, true) == NULL) {
+            if(threadCreate(task_capture_cam_thread, internalData, 0x10000, 0x1A, 1, true) == NULL) {
                 res = R_FBI_THREAD_CREATE_FAILED;
             }
         }

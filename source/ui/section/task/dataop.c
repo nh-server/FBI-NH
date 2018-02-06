@@ -151,8 +151,6 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
     return res;
 }
 
-extern FILE* dbg;
-
 static Result task_download_execute(const char* url, void* data, size_t write_callback(char* ptr, size_t size, size_t nmemb, void* userdata),
                                                                  int progress_callback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow)) {
     Result res = 0;
@@ -174,9 +172,6 @@ static Result task_download_execute(const char* url, void* data, size_t write_ca
         }
 
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, false); // TODO: Certificates?
-
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, true);
-        curl_easy_setopt(curl, CURLOPT_STDERR, dbg);
 
         CURLcode ret = curl_easy_perform(curl);
         if(ret == CURLE_OK) {
@@ -219,6 +214,7 @@ static size_t task_download_sync_write_callback(char* ptr, size_t size, size_t n
 }
 
 Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_t size) {
+#ifdef USE_CURL
     if(url == NULL || buf == NULL) {
         return R_FBI_INVALID_ARGUMENT;
     }
@@ -233,6 +229,21 @@ Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_
     }
 
     return res;
+#else
+    Result res = 0;
+
+    httpcContext context;
+    if(R_SUCCEEDED(res = util_http_open(&context, url, true))) {
+        res = util_http_read(&context, downloadedSize, buf, size);
+
+        Result closeRes = util_http_close(&context);
+        if(R_SUCCEEDED(res)) {
+            res = closeRes;
+        }
+    }
+
+    return res;
+#endif
 }
 
 Result task_download_json_sync(const char* url, json_t** json, size_t maxSize) {
@@ -548,7 +559,7 @@ Result task_data_op(data_op_data* data) {
 
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
-        if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 0, true) == NULL) {
+        if(threadCreate(task_data_op_thread, data, 0x10000, 0x18, 1, true) == NULL) {
             res = R_FBI_THREAD_CREATE_FAILED;
         }
     }
