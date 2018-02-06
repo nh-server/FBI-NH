@@ -160,7 +160,7 @@ Result task_populate_ext_save_data(populate_ext_save_data_data* data) {
 
     Result res = 0;
     if(R_SUCCEEDED(res = svcCreateEvent(&data->cancelEvent, RESET_STICKY))) {
-        if(threadCreate(task_populate_ext_save_data_thread, data, 0x10000, 0x19, 0, true) == NULL) {
+        if(threadCreate(task_populate_ext_save_data_thread, data, 0x10000, 0x19, 1, true) == NULL) {
             res = R_FBI_THREAD_CREATE_FAILED;
         }
     }

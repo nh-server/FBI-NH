@@ -275,7 +275,7 @@ Result task_populate_titledb(populate_titledb_data* data) {
         if(R_SUCCEEDED(res = svcCreateEvent(&data->resumeEvent, RESET_STICKY))) {
             svcSignalEvent(data->resumeEvent);
 
-            if(threadCreate(task_populate_titledb_thread, data, 0x10000, 0x19, 0, true) == NULL) {
+            if(threadCreate(task_populate_titledb_thread, data, 0x10000, 0x19, 1, true) == NULL) {
                 res = R_FBI_THREAD_CREATE_FAILED;
             }
         }
