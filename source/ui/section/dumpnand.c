@@ -76,11 +76,11 @@ static Result dumpnand_write_dst(void* data, u32 handle, u32* bytesWritten, void
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result dumpnand_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result dumpnand_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result dumpnand_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result dumpnand_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
@@ -121,7 +121,7 @@ static void dumpnand_update(ui_view* view, void* data, float* progress, char* te
     snprintf(text, PROGRESS_TEXT_MAX, "%.2f %s / %.2f %s\n%.2f %s/s, ETA %s",
              ui_get_display_size(dumpData->currProcessed), ui_get_display_size_units(dumpData->currProcessed),
              ui_get_display_size(dumpData->currTotal), ui_get_display_size_units(dumpData->currTotal),
-             ui_get_display_size(dumpData->copyBytesPerSecond), ui_get_display_size_units(dumpData->copyBytesPerSecond),
+             ui_get_display_size(dumpData->bytesPerSecond), ui_get_display_size_units(dumpData->bytesPerSecond),
              ui_get_display_eta(dumpData->estimatedRemainingSeconds));
 }
 
@@ -153,7 +153,7 @@ void dumpnand_open() {
 
     data->op = DATAOP_COPY;
 
-    data->copyBufferSize = 256 * 1024;
+    data->bufferSize = 256 * 1024;
     data->copyEmpty = true;
 
     data->total = 1;
@@ -170,8 +170,8 @@ void dumpnand_open() {
     data->closeDst = dumpnand_close_dst;
     data->writeDst = dumpnand_write_dst;
 
-    data->suspendCopy = dumpnand_suspend_copy;
-    data->restoreCopy = dumpnand_restore_copy;
+    data->suspendTransfer = dumpnand_suspend_transfer;
+    data->restoreTransfer = dumpnand_restore_transfer;
 
     data->suspend = dumpnand_suspend;
     data->restore = dumpnand_restore;

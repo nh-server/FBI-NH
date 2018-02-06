@@ -31,8 +31,6 @@ typedef struct {
     u16 contentIndices[CONTENTS_MAX];
     u32 contentIds[CONTENTS_MAX];
 
-    u32 responseCode;
-
     data_op_data installInfo;
 } install_cdn_data;
 
@@ -63,7 +61,7 @@ static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
             snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->titleId, installData->contentIds[index - 1]);
         }
 
-        if(R_SUCCEEDED(res = util_http_open(context, &installData->responseCode, url, false))) {
+        if(R_SUCCEEDED(res = util_http_open(context, url, false))) {
             *handle = (u32) context;
         } else {
             free(context);
@@ -147,7 +145,7 @@ static Result action_install_cdn_write_dst(void* data, u32 handle, u32* bytesWri
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_install_cdn_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_cdn_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     if(index > 0 && *dstHandle != 0) {
         return AM_InstallContentStop(*dstHandle);
     } else {
@@ -155,7 +153,7 @@ static Result action_install_cdn_suspend_copy(void* data, u32 index, u32* srcHan
     }
 }
 
-static Result action_install_cdn_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_install_cdn_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(index > 0 && *dstHandle != 0) {
@@ -178,12 +176,7 @@ static Result action_install_cdn_restore(void* data, u32 index) {
 bool action_install_cdn_error(void* data, u32 index, Result res, ui_view** errorView) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
-    const char* itemType = index == 0 ? "TMD" : "content";
-    if(res == R_FBI_HTTP_RESPONSE_CODE) {
-        *errorView = error_display(installData->ticket, ui_draw_ticket_info, "Failed to install %s from CDN.\nHTTP server returned response code %d", itemType, installData->responseCode);
-    } else {
-        *errorView = error_display_res(installData->ticket, ui_draw_ticket_info, res, "Failed to install %s from CDN.", itemType);
-    }
+    *errorView = error_display_res(installData->ticket, ui_draw_ticket_info, res, "Failed to install %s from CDN.", index == 0 ? "TMD" : "content");
 
     return false;
 }
@@ -212,7 +205,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
         if(R_SUCCEEDED(installData->installInfo.result)) {
             if(R_SUCCEEDED(res = AM_InstallTitleFinish())
                && R_SUCCEEDED(res = AM_CommitImportTitles(util_get_title_destination(installData->ticket->titleId), 1, false, &installData->ticket->titleId))) {
-                util_import_seed(NULL, installData->ticket->titleId);
+                task_download_seed_sync(installData->ticket->titleId);
 
                 if(installData->ticket->titleId == 0x0004013800000002 || installData->ticket->titleId == 0x0004013820000002) {
                     res = AM_InstallFirm(installData->ticket->titleId);
@@ -251,8 +244,8 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
              ui_get_display_size_units(installData->installInfo.currProcessed),
              ui_get_display_size(installData->installInfo.currTotal),
              ui_get_display_size_units(installData->installInfo.currTotal),
-             ui_get_display_size(installData->installInfo.copyBytesPerSecond),
-             ui_get_display_size_units(installData->installInfo.copyBytesPerSecond),
+             ui_get_display_size(installData->installInfo.bytesPerSecond),
+             ui_get_display_size_units(installData->installInfo.bytesPerSecond),
              ui_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
 }
 
@@ -323,13 +316,11 @@ void action_install_cdn_noprompt_internal(volatile bool* done, ticket_info* info
     memset(data->contentIndices, 0, sizeof(data->contentIndices));
     memset(data->contentIds, 0, sizeof(data->contentIds));
 
-    data->responseCode = 0;
-
     data->installInfo.data = data;
 
     data->installInfo.op = DATAOP_COPY;
 
-    data->installInfo.copyBufferSize = 128 * 1024;
+    data->installInfo.bufferSize = 128 * 1024;
     data->installInfo.copyEmpty = false;
 
     data->installInfo.total = 1;
@@ -346,8 +337,8 @@ void action_install_cdn_noprompt_internal(volatile bool* done, ticket_info* info
     data->installInfo.closeDst = action_install_cdn_close_dst;
     data->installInfo.writeDst = action_install_cdn_write_dst;
 
-    data->installInfo.suspendCopy = action_install_cdn_suspend_copy;
-    data->installInfo.restoreCopy = action_install_cdn_restore_copy;
+    data->installInfo.suspendTransfer = action_install_cdn_suspend_transfer;
+    data->installInfo.restoreTransfer = action_install_cdn_restore_transfer;
 
     data->installInfo.suspend = action_install_cdn_suspend;
     data->installInfo.restore = action_install_cdn_restore;

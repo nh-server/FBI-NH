@@ -74,11 +74,11 @@ static Result action_erase_twl_save_write_dst(void* data, u32 handle, u32* bytes
     return spi_write_save(bytesWritten, buffer, (u32) offset, size);
 }
 
-static Result action_erase_twl_save_suspend_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_erase_twl_save_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
-static Result action_erase_twl_save_restore_copy(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result action_erase_twl_save_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
     return 0;
 }
 
@@ -121,8 +121,8 @@ static void action_erase_twl_save_update(ui_view* view, void* data, float* progr
              ui_get_display_size_units(eraseData->eraseInfo.currProcessed),
              ui_get_display_size(eraseData->eraseInfo.currTotal),
              ui_get_display_size_units(eraseData->eraseInfo.currTotal),
-             ui_get_display_size(eraseData->eraseInfo.copyBytesPerSecond),
-             ui_get_display_size_units(eraseData->eraseInfo.copyBytesPerSecond),
+             ui_get_display_size(eraseData->eraseInfo.bytesPerSecond),
+             ui_get_display_size_units(eraseData->eraseInfo.bytesPerSecond),
              ui_get_display_eta(eraseData->eraseInfo.estimatedRemainingSeconds));
 }
 
@@ -156,7 +156,7 @@ void action_erase_twl_save(linked_list* items, list_item* selected) {
 
     data->eraseInfo.op = DATAOP_COPY;
 
-    data->eraseInfo.copyBufferSize = 16 * 1024;
+    data->eraseInfo.bufferSize = 16 * 1024;
     data->eraseInfo.copyEmpty = true;
 
     data->eraseInfo.total = 1;
@@ -173,8 +173,8 @@ void action_erase_twl_save(linked_list* items, list_item* selected) {
     data->eraseInfo.closeDst = action_erase_twl_save_close_dst;
     data->eraseInfo.writeDst = action_erase_twl_save_write_dst;
 
-    data->eraseInfo.suspendCopy = action_erase_twl_save_suspend_copy;
-    data->eraseInfo.restoreCopy = action_erase_twl_save_restore_copy;
+    data->eraseInfo.suspendTransfer = action_erase_twl_save_suspend_transfer;
+    data->eraseInfo.restoreTransfer = action_erase_twl_save_restore_transfer;
 
     data->eraseInfo.suspend = action_erase_twl_save_suspend;
     data->eraseInfo.restore = action_erase_twl_save_restore;

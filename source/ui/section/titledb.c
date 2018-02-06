@@ -184,6 +184,8 @@ static void titledb_draw_top(ui_view* view, void* data, float x1, float y1, floa
 static void titledb_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
     titledb_data* listData = (titledb_data*) data;
 
+    svcSignalEvent(listData->populateData.resumeEvent);
+
     if(hidKeysDown() & KEY_B) {
         if(!listData->populateData.finished) {
             svcSignalEvent(listData->populateData.cancelEvent);
@@ -225,6 +227,8 @@ static void titledb_update(ui_view* view, void* data, linked_list* items, list_i
     }
 
     if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        svcClearEvent(listData->populateData.resumeEvent);
+
         titledb_entry_open(items, selected);
         return;
     }

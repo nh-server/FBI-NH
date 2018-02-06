@@ -489,14 +489,12 @@ static const char* description_to_string(Result res) {
             break;
         case RM_APPLICATION:
             switch(res) {
-                case R_FBI_CANCELLED:
-                    return "Operation cancelled";
-                case R_FBI_HTTP_RESPONSE_CODE:
-                    return "HTTP request returned error";
-                case R_FBI_WRONG_SYSTEM:
-                    return "Attempted to install an N3DS title on an O3DS";
                 case R_FBI_INVALID_ARGUMENT:
                     return "Invalid argument";
+                case R_FBI_CANCELLED:
+                    return "Operation cancelled";
+                case R_FBI_WRONG_SYSTEM:
+                    return "Attempted to install an N3DS title on an O3DS";
                 case R_FBI_THREAD_CREATE_FAILED:
                     return "Thread creation failed";
                 case R_FBI_PARSE_FAILED:
@@ -505,11 +503,144 @@ static const char* description_to_string(Result res) {
                     return "Bad data";
                 case R_FBI_TOO_MANY_REDIRECTS:
                     return "Too many redirects";
+                case R_FBI_QR_INIT_FAILED:
+                    return "Failed to initialize QR code parser.";
                 case R_FBI_CURL_INIT_FAILED:
                     return "Failed to initialize CURL.";
                 default:
-                    if(res >= R_FBI_CURL_ERORR_BASE && res < R_FBI_CURL_ERORR_BASE + CURL_LAST) {
-                        return curl_easy_strerror((CURLcode) (res - R_FBI_CURL_ERORR_BASE));
+                    if(res >= R_FBI_HTTP_ERROR_BASE && res < R_FBI_HTTP_ERROR_END) {
+                        switch(res - R_FBI_HTTP_ERROR_BASE) {
+                            case 100:
+                                return "HTTP 100: Continue";
+                            case 101:
+                                return "HTTP 101: Switching Protocols";
+                            case 102:
+                                return "HTTP 102: Processing";
+                            case 103:
+                                return "HTTP 103: Early Hints";
+                            case 200:
+                                return "HTTP 200: OK";
+                            case 201:
+                                return "HTTP 201: Created";
+                            case 202:
+                                return "HTTP 202: Accepted";
+                            case 203:
+                                return "HTTP 203: Non-Authoritative Information";
+                            case 204:
+                                return "HTTP 204: No Content";
+                            case 205:
+                                return "HTTP 205: Reset Content";
+                            case 206:
+                                return "HTTP 206: Partial Content";
+                            case 207:
+                                return "HTTP 207: Multi-Status";
+                            case 208:
+                                return "HTTP 208: Already Reported";
+                            case 226:
+                                return "HTTP 226: IM Used";
+                            case 300:
+                                return "HTTP 300: Multiple Choices";
+                            case 301:
+                                return "HTTP 301: Moved Permanently";
+                            case 302:
+                                return "HTTP 302: Found";
+                            case 303:
+                                return "HTTP 303: See Other";
+                            case 304:
+                                return "HTTP 304: Not Modified";
+                            case 305:
+                                return "HTTP 305: Use Proxy";
+                            case 306:
+                                return "HTTP 306: Switch Proxy";
+                            case 307:
+                                return "HTTP 307: Temporary Redirect";
+                            case 308:
+                                return "HTTP 308: Permanent Redirect";
+                            case 400:
+                                return "HTTP 400: Bad Request";
+                            case 401:
+                                return "HTTP 401: Unauthorized";
+                            case 402:
+                                return "HTTP 402: Payment Required";
+                            case 403:
+                                return "HTTP 403: Forbidden";
+                            case 404:
+                                return "HTTP 404: Not Found";
+                            case 405:
+                                return "HTTP 405: Method Not Allowed";
+                            case 406:
+                                return "HTTP 406: Not Acceptable";
+                            case 407:
+                                return "HTTP 407: Proxy Authentication Required";
+                            case 408:
+                                return "HTTP 408: Request Timeout";
+                            case 409:
+                                return "HTTP 409: Conflict";
+                            case 410:
+                                return "HTTP 410: Gone";
+                            case 411:
+                                return "HTTP 411: Length Required";
+                            case 412:
+                                return "HTTP 412: Precondition Failed";
+                            case 413:
+                                return "HTTP 413: Payload Too Large";
+                            case 414:
+                                return "HTTP 414: URI Too Long";
+                            case 415:
+                                return "HTTP 415: Unsupported Media Type";
+                            case 416:
+                                return "HTTP 416: Range Not Satisfiable";
+                            case 417:
+                                return "HTTP 417: Expectation Failed";
+                            case 418:
+                                return "HTTP 418: I'm a teapot";
+                            case 421:
+                                return "HTTP 421: Misdirected Request";
+                            case 422:
+                                return "HTTP 422: Unprocessable Entity";
+                            case 423:
+                                return "HTTP 423: Locked";
+                            case 424:
+                                return "HTTP 424: Failed Dependency";
+                            case 426:
+                                return "HTTP 426: Upgrade Required";
+                            case 428:
+                                return "HTTP 428: Precondition Required";
+                            case 429:
+                                return "HTTP 429: Too Many Requests";
+                            case 431:
+                                return "HTTP 431: Request Header Fields Too Large";
+                            case 451:
+                                return "HTTP 451: Unavailable For Legal Reasons";
+                            case 500:
+                                return "HTTP 500: Internal Server Error";
+                            case 501:
+                                return "HTTP 501: Not Implemented";
+                            case 502:
+                                return "HTTP 502: Bad Gateway";
+                            case 503:
+                                return "HTTP 503: Service Unavailable";
+                            case 504:
+                                return "HTTP 504: Gateway Timeout";
+                            case 505:
+                                return "HTTP 505: HTTP Version Not Specified";
+                            case 506:
+                                return "HTTP 506: Variant Also Negotiates";
+                            case 507:
+                                return "HTTP 507: Insufficient Storage";
+                            case 508:
+                                return "HTTP 508: Loop Detected";
+                            case 510:
+                                return "HTTP 510: Not Extended";
+                            case 511:
+                                return "HTTP 511: Network Authentication Required";
+                            default:
+                                return "HTTP: Unknown Response Code";
+                        }
+                    }
+
+                    if(res >= R_FBI_CURL_ERROR_BASE && res < R_FBI_CURL_ERROR_BASE + CURL_LAST) {
+                        return curl_easy_strerror((CURLcode) (res - R_FBI_CURL_ERROR_BASE));
                     }
 
                     break;

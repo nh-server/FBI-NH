@@ -7,6 +7,7 @@
 
 #include "section.h"
 #include "action/action.h"
+#include "task/uitask.h"
 #include "../error.h"
 #include "../info.h"
 #include "../prompt.h"
@@ -17,13 +18,12 @@
 
 static void update_check_update(ui_view* view, void* data, float* progress, char* text) {
     bool hasUpdate = false;
-    char updateURL[INSTALL_URL_MAX];
+    char updateURL[DOWNLOAD_URL_MAX];
 
     Result res = 0;
-    u32 responseCode = 0;
 
     json_t* json = NULL;
-    if(R_SUCCEEDED(res = util_download_json("https://api.github.com/repos/Steveice10/FBI/releases/latest", &json, 16 * 1024))) {
+    if(R_SUCCEEDED(res = task_download_json_sync("https://api.github.com/repos/Steveice10/FBI/releases/latest", &json, 16 * 1024))) {
         if(json_is_object(json)) {
             json_t* name = json_object_get(json, "name");
             json_t* assets = json_object_get(json, "assets");
@@ -51,7 +51,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                     }
 
                     if(url != NULL) {
-                        strncpy(updateURL, url, INSTALL_URL_MAX);
+                        strncpy(updateURL, url, DOWNLOAD_URL_MAX);
                         hasUpdate = true;
                     } else {
                         res = R_FBI_BAD_DATA;
@@ -74,11 +74,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
         action_install_url("Update FBI to the latest version?", updateURL, util_get_3dsx_path(), NULL, NULL, NULL);
     } else {
         if(R_FAILED(res)) {
-            if(res == R_FBI_HTTP_RESPONSE_CODE) {
-                error_display(NULL, NULL, "Failed to check for update.\nHTTP server returned response code %d", responseCode);
-            } else {
-                error_display_res(NULL, NULL, res, "Failed to check for update.");
-            }
+            error_display_res(NULL, NULL, res, "Failed to check for update.");
         } else {
             prompt_display_notify("Success", "No updates available.", COLOR_TEXT, NULL, NULL, NULL);
         }

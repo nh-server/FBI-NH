@@ -10,6 +10,7 @@
 
 #include "section.h"
 #include "action/action.h"
+#include "task/uitask.h"
 #include "../error.h"
 #include "../info.h"
 #include "../kbd.h"
@@ -158,7 +159,7 @@ static void remoteinstall_network_update(ui_view* view, void* data, float* progr
         }
 
         size = ntohl(size);
-        if(size >= INSTALL_URL_MAX * INSTALL_URLS_MAX) {
+        if(size >= DOWNLOAD_URL_MAX * INSTALL_URLS_MAX) {
             error_display(NULL, NULL, "Payload too large.");
 
             remoteinstall_network_close_client(data);
@@ -250,7 +251,6 @@ static void remoteinstall_receive_urls_network() {
 #define QR_IMAGE_HEIGHT 240
 
 typedef struct {
-    struct quirc* qrContext;
     u32 tex;
 
     bool capturing;
@@ -283,11 +283,6 @@ static void remoteinstall_qr_free_data(remoteinstall_qr_data* data) {
     if(data->tex != 0) {
         screen_unload_texture(data->tex);
         data->tex = 0;
-    }
-
-    if(data->qrContext != NULL) {
-        quirc_destroy(data->qrContext);
-        data->qrContext = NULL;
     }
 
     free(data);
@@ -353,39 +348,17 @@ static void remoteinstall_qr_update(ui_view* view, void* data, float* progress, 
         return;
     }
 
-    int w = 0;
-    int h = 0;
-    uint8_t* qrBuf = quirc_begin(installData->qrContext, &w, &h);
-
     svcWaitSynchronization(installData->captureInfo.mutex, U64_MAX);
 
-    for(int x = 0; x < w; x++) {
-        for(int y = 0; y < h; y++) {
-            u16 px = installData->captureInfo.buffer[y * QR_IMAGE_WIDTH + x];
-            qrBuf[y * w + x] = (u8) (((((px >> 11) & 0x1F) << 3) + (((px >> 5) & 0x3F) << 2) + ((px & 0x1F) << 3)) / 3);
-        }
-    }
+    if(installData->captureInfo.qrReady) {
+        remoteinstall_set_last_urls((const char*) installData->captureInfo.qrData);
+        action_install_url("Install from the scanned QR code?", (const char*) installData->captureInfo.qrData, NULL, NULL, NULL, NULL);
+        installData->captureInfo.qrReady = false;
+        svcReleaseMutex(installData->captureInfo.mutex);
 
-    svcReleaseMutex(installData->captureInfo.mutex);
-
-    quirc_end(installData->qrContext);
-
-    int qrCount = quirc_count(installData->qrContext);
-    for(int i = 0; i < qrCount; i++) {
-        struct quirc_code qrCode;
-        quirc_extract(installData->qrContext, i, &qrCode);
-
-        struct quirc_data qrData;
-        quirc_decode_error_t err = quirc_decode(&qrCode, &qrData);
-
-        if(err == 0) {
-            remoteinstall_qr_stop_capture(installData);
-
-            remoteinstall_set_last_urls((const char*) qrData.payload);
-
-            action_install_url("Install from the scanned QR code?", (const char*) qrData.payload, NULL, NULL, NULL, NULL);
-            return;
-        }
+        remoteinstall_qr_stop_capture(installData);
+    } else {
+        svcReleaseMutex(installData->captureInfo.mutex);
     }
 
     snprintf(text, PROGRESS_TEXT_MAX, "Waiting for QR code...");
@@ -408,22 +381,9 @@ static void remoteinstall_scan_qr_code() {
 
     data->captureInfo.camera = CAMERA_OUTER;
 
+    data->captureInfo.scanQR = true;
+
     data->captureInfo.finished = true;
-
-    data->qrContext = quirc_new();
-    if(data->qrContext == NULL) {
-        error_display(NULL, NULL, "Failed to create QR context.");
-
-        remoteinstall_qr_free_data(data);
-        return;
-    }
-
-    if(quirc_resize(data->qrContext, QR_IMAGE_WIDTH, QR_IMAGE_HEIGHT) != 0) {
-        error_display(NULL, NULL, "Failed to resize QR context.");
-
-        remoteinstall_qr_free_data(data);
-        return;
-    }
 
     data->captureInfo.buffer = (u16*) calloc(1, QR_IMAGE_WIDTH * QR_IMAGE_HEIGHT * sizeof(u16));
     if(data->captureInfo.buffer == NULL) {
@@ -447,13 +407,13 @@ static void remoteinstall_manually_enter_urls_onresponse(ui_view* view, void* da
 }
 
 static void remoteinstall_manually_enter_urls() {
-    kbd_display("Enter URL(s)", "", SWKBD_TYPE_NORMAL, SWKBD_MULTILINE, SWKBD_NOTEMPTY_NOTBLANK, INSTALL_URL_MAX * INSTALL_URLS_MAX, NULL, remoteinstall_manually_enter_urls_onresponse);
+    kbd_display("Enter URL(s)", "", SWKBD_TYPE_NORMAL, SWKBD_MULTILINE, SWKBD_NOTEMPTY_NOTBLANK, DOWNLOAD_URL_MAX * INSTALL_URLS_MAX, NULL, remoteinstall_manually_enter_urls_onresponse);
 }
 
 static void remoteinstall_repeat_last_request() {
-    char* textBuf = (char*) calloc(1, INSTALL_URL_MAX * INSTALL_URLS_MAX);
+    char* textBuf = (char*) calloc(1, DOWNLOAD_URL_MAX * INSTALL_URLS_MAX);
     if(textBuf != NULL) {
-        if(remoteinstall_get_last_urls(textBuf, INSTALL_URL_MAX * INSTALL_URLS_MAX)) {
+        if(remoteinstall_get_last_urls(textBuf, DOWNLOAD_URL_MAX * INSTALL_URLS_MAX)) {
             action_install_url("Install from the last requested URL(s)?", textBuf, NULL, NULL, NULL, NULL);
         } else {
             prompt_display_notify("Failure", "No previously requested URL(s) could be found.", COLOR_TEXT, NULL, NULL, NULL);
