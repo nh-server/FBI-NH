@@ -11,6 +11,8 @@ typedef struct __sFILE FILE;
 #define MAX_TEXTURES 1024
 #define MAX_COLORS 32
 
+#define COLOR_TEXT 0
+
 void screen_init();
 void screen_exit();
 void screen_set_base_alpha(u8 alpha);
