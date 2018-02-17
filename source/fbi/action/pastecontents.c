@@ -84,7 +84,7 @@ static Result action_paste_contents_make_dst_directory(void* data, u32 index) {
 
             if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
                 list_item* dstItem = NULL;
-                if(R_SUCCEEDED(res) && R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath, attributes))) {
+                if(R_SUCCEEDED(res) && R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath, attributes, true))) {
                     linked_list_add(pasteData->items, dstItem);
                 }
             }
@@ -189,7 +189,7 @@ static Result action_paste_contents_close_dst(void* data, u32 index, bool succee
 
         if(strncmp(parentPath, baseDstPath, FILE_PATH_MAX) == 0) {
             list_item* dstItem = NULL;
-            if(R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath, ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes & ~FS_ATTRIBUTE_READ_ONLY))) {
+            if(R_SUCCEEDED(task_create_file_item(&dstItem, pasteData->target->archive, dstPath, ((file_info*) ((list_item*) linked_list_get(&pasteData->contents, index))->data)->attributes & ~FS_ATTRIBUTE_READ_ONLY, true))) {
                 linked_list_add(pasteData->items, dstItem);
             }
         }
@@ -342,7 +342,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     data->items = items;
 
     file_info* targetInfo = (file_info*) selected->data;
-    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes);
+    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, true);
     if(R_FAILED(targetCreateRes)) {
         error_display_res(NULL, NULL, targetCreateRes, "Failed to create target file item.");
 

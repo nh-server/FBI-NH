@@ -190,7 +190,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     data->items = items;
 
     file_info* targetInfo = (file_info*) selected->data;
-    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes);
+    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, true);
     if(R_FAILED(targetCreateRes)) {
         error_display_res(NULL, NULL, targetCreateRes, "Failed to create target file item.");
 

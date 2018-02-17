@@ -138,7 +138,7 @@ void task_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2
         infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Size: %.2f %s\n",
                                 ui_get_display_size(info->size), ui_get_display_size_units(info->size));
 
-        if(info->isCia) {
+        if(info->isCia && info->ciaInfo.loaded) {
             char regionString[64];
 
             if(info->ciaInfo.hasMeta) {
@@ -159,7 +159,7 @@ void task_draw_file_info(ui_view* view, void* data, float x1, float y1, float x2
                                     regionString,
                                     ui_get_display_size(info->ciaInfo.installedSize),
                                     ui_get_display_size_units(info->ciaInfo.installedSize));
-        } else if(info->isTicket) {
+        } else if(info->isTicket && info->ticketInfo.loaded) {
             infoTextPos += snprintf(infoText + infoTextPos, sizeof(infoText) - infoTextPos, "Ticket ID: %016llX", info->ticketInfo.titleId);
         }
     }
@@ -211,16 +211,18 @@ void task_draw_system_save_data_info(ui_view* view, void* data, float x1, float 
 void task_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {
     ticket_info* info = (ticket_info*) data;
 
-    char infoText[512];
+    if(info->loaded) {
+        char infoText[512];
 
-    snprintf(infoText, sizeof(infoText), "Title ID: %016llX", info->titleId);
+        snprintf(infoText, sizeof(infoText), "Title ID: %016llX", info->titleId);
 
-    float infoWidth;
-    screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
+        float infoWidth;
+        screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
 
-    float infoX = x1 + (x2 - x1 - infoWidth) / 2;
-    float infoY = y1 + (y2 - y1) / 2 - 8;
-    screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
+        float infoX = x1 + (x2 - x1 - infoWidth) / 2;
+        float infoY = y1 + (y2 - y1) / 2 - 8;
+        screen_draw_string(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true);
+    }
 }
 
 void task_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2, float y2) {

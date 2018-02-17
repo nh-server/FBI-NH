@@ -9,6 +9,8 @@ typedef struct linked_list_s linked_list;
 typedef struct list_item_s list_item;
 
 typedef struct cia_info_s {
+    bool loaded;
+
     u64 titleId;
     u16 version;
     u64 installedSize;
@@ -50,5 +52,5 @@ typedef struct populate_files_data_s {
 int task_compare_files(void* userData, const void* p1, const void* p2);
 void task_free_file(list_item* item);
 void task_clear_files(linked_list* items);
-Result task_create_file_item(list_item** out, FS_Archive archive, const char* path, u32 attributes);
+Result task_create_file_item(list_item** out, FS_Archive archive, const char* path, u32 attributes, bool meta);
 Result task_populate_files(populate_files_data* data);
