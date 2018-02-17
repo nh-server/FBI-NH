@@ -227,11 +227,11 @@ Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_
 #else
     Result res = 0;
 
-    httpcContext context;
+    http_context context = NULL;
     if(R_SUCCEEDED(res = http_open(&context, url, true))) {
-        res = http_read(&context, downloadedSize, buf, size);
+        res = http_read(context, downloadedSize, buf, size);
 
-        Result closeRes = http_close(&context);
+        Result closeRes = http_close(context);
         if(R_SUCCEEDED(res)) {
             res = closeRes;
         }
