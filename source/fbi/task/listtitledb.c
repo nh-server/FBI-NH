@@ -138,12 +138,17 @@ static void task_populate_titledb_thread(void* arg) {
                                 }
                             }
 
-                            strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
-                            item->data = titledbInfo;
+                            if(titledbInfo->cia.exists || titledbInfo->tdsx.exists) {
+                                strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
+                                item->data = titledbInfo;
 
-                            task_populate_titledb_update_status(item);
+                                task_populate_titledb_update_status(item);
 
-                            linked_list_add_sorted(&titles, item, NULL, task_populate_titledb_compare);
+                                linked_list_add_sorted(&titles, item, NULL, task_populate_titledb_compare);
+                            } else {
+                                free(titledbInfo);
+                                free(item);
+                            }
                         } else {
                             free(item);
 
