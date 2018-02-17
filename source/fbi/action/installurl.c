@@ -192,6 +192,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
 
         installData->ticketInfo.titleId = ticket_get_title_id((u8*) initialReadBlock);
         installData->ticketInfo.inUse = false;
+        installData->ticketInfo.loaded = true;
 
         AM_DeleteTicket(installData->ticketInfo.titleId);
         res = AM_InstallTicketBegin(handle);

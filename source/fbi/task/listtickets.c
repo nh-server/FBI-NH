@@ -58,6 +58,7 @@ static void task_populate_tickets_thread(void* arg) {
                         ticket_info* ticketInfo = (ticket_info*) calloc(1, sizeof(ticket_info));
                         if(ticketInfo != NULL) {
                             ticketInfo->titleId = ticketIds[i];
+                            ticketInfo->loaded = true;
 
                             snprintf(item->name, LIST_ITEM_NAME_MAX, "%016llX", ticketIds[i]);
                             item->data = ticketInfo;

@@ -4,6 +4,8 @@ typedef struct linked_list_s linked_list;
 typedef struct list_item_s list_item;
 
 typedef struct ticket_info_s {
+    bool loaded;
+
     u64 titleId;
     bool inUse;
 } ticket_info;

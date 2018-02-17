@@ -38,7 +38,7 @@ static void action_new_folder_onresponse(ui_view* view, void* data, SwkbdButton 
 
         if(R_SUCCEEDED(res)) {
             list_item* folderItem = NULL;
-            if(R_SUCCEEDED(task_create_file_item(&folderItem, parentDir->archive, path, FS_ATTRIBUTE_DIRECTORY))) {
+            if(R_SUCCEEDED(task_create_file_item(&folderItem, parentDir->archive, path, FS_ATTRIBUTE_DIRECTORY, true))) {
                 linked_list_add(newFolderData->items, folderItem);
                 linked_list_sort(newFolderData->items, NULL, task_compare_files);
             }
