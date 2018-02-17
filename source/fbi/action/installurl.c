@@ -32,7 +32,7 @@ typedef struct {
     u64 currTitleId;
     volatile bool n3dsContinue;
     ticket_info ticketInfo;
-    httpcContext* currContext;
+    http_context currContext;
     char curr3dsxPath[FILE_PATH_MAX];
 
     data_op_data installInfo;
@@ -106,17 +106,8 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
 
     Result res = 0;
 
-    httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
-    if(context != NULL) {
-        if(R_SUCCEEDED(res = http_open(context, installData->urls[index], true))) {
-            *handle = (u32) context;
-
-            installData->currContext = context;
-        } else {
-            free(context);
-        }
-    } else {
-        res = R_APP_OUT_OF_MEMORY;
+    if(R_SUCCEEDED(res = http_open(&installData->currContext, installData->urls[index], true))) {
+        *handle = (u32) installData->currContext;
     }
 
     return res;
@@ -125,19 +116,19 @@ static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
 static Result action_install_url_close_src(void* data, u32 index, bool succeeded, u32 handle) {
     ((install_url_data*) data)->currContext = NULL;
 
-    return http_close((httpcContext*) handle);
+    return http_close((http_context) handle);
 }
 
 static Result action_install_url_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
-    Result res = http_get_size((httpcContext*) handle, &downloadSize);
+    Result res = http_get_size((http_context) handle, &downloadSize);
 
     *size = downloadSize;
     return res;
 }
 
 static Result action_install_url_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    return http_read((httpcContext*) handle, bytesRead, buffer, size);
+    return http_read((http_context) handle, bytesRead, buffer, size);
 }
 
 

@@ -37,47 +37,34 @@ static Result action_install_cdn_make_dst_directory(void* data, u32 index) {
 static Result action_install_cdn_open_src(void* data, u32 index, u32* handle) {
     install_cdn_data* installData = (install_cdn_data*) data;
 
-    Result res = 0;
-
-    httpcContext* context = (httpcContext*) calloc(1, sizeof(httpcContext));
-    if(context != NULL) {
-        char url[256];
-        if(index == 0) {
-            if(strlen(installData->tmdVersion) > 0) {
-                snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd.%s", installData->ticket->titleId, installData->tmdVersion);
-            } else {
-                snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd", installData->ticket->titleId);
-            }
+    char url[256];
+    if(index == 0) {
+        if(strlen(installData->tmdVersion) > 0) {
+            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd.%s", installData->ticket->titleId, installData->tmdVersion);
         } else {
-            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->titleId, installData->contentIds[index - 1]);
-        }
-
-        if(R_SUCCEEDED(res = http_open(context, url, false))) {
-            *handle = (u32) context;
-        } else {
-            free(context);
+            snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/tmd", installData->ticket->titleId);
         }
     } else {
-        res = R_APP_OUT_OF_MEMORY;
+        snprintf(url, 256, "http://ccs.cdn.c.shop.nintendowifi.net/ccs/download/%016llX/%08lX", installData->ticket->titleId, installData->contentIds[index - 1]);
     }
 
-    return res;
+    return http_open((http_context*) handle, url, true);
 }
 
 static Result action_install_cdn_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    return http_close((httpcContext*) handle);
+    return http_close((http_context) handle);
 }
 
 static Result action_install_cdn_get_src_size(void* data, u32 handle, u64* size) {
     u32 downloadSize = 0;
-    Result res = http_get_size((httpcContext*) handle, &downloadSize);
+    Result res = http_get_size((http_context) handle, &downloadSize);
 
     *size = downloadSize;
     return res;
 }
 
 static Result action_install_cdn_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    return http_read((httpcContext*) handle, bytesRead, buffer, size);
+    return http_read((http_context) handle, bytesRead, buffer, size);
 }
 
 static Result action_install_cdn_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
