@@ -15,8 +15,18 @@ static list_item install = {"Install", COLOR_TEXT, action_install_titledb};
 typedef struct {
     populate_titledb_data populateData;
 
+    bool showCIAs;
+    bool show3DSXs;
+    bool sortByName;
+    bool sortByUpdate;
+
     bool populated;
 } titledb_data;
+
+typedef struct {
+    titledb_data* parent;
+    linked_list* items;
+} titledb_options_data;
 
 typedef struct {
     linked_list* items;
@@ -174,6 +184,107 @@ static void titledb_entry_open(linked_list* items, list_item* selected) {
     list_display("TitleDB Entry", "A: Select, B: Return", data, titledb_entry_update, titledb_entry_draw_top);
 }
 
+static int titledb_compare(void* data, const void* p1, const void* p2) {
+    titledb_data* listData = (titledb_data*) data;
+
+    list_item* info1 = (list_item*) p1;
+    list_item* info2 = (list_item*) p2;
+
+    titledb_info* data1 = (titledb_info*) info1->data;
+    titledb_info* data2 = (titledb_info*) info2->data;
+
+    if(listData->sortByName) {
+        return strncasecmp(info1->name, info2->name, sizeof(info1->name));
+    } else if(listData->sortByUpdate) {
+        return strncasecmp(data2->updatedAt, data1->updatedAt, sizeof(data2->updatedAt));
+    } else {
+        return 0;
+    }
+}
+
+static void titledb_options_add_entry(linked_list* items, const char* name, bool* val) {
+    list_item* item = (list_item*) calloc(1, sizeof(list_item));
+    if(item != NULL) {
+        snprintf(item->name, LIST_ITEM_NAME_MAX, "%s", name);
+        item->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+        item->data = val;
+
+        linked_list_add(items, item);
+    }
+}
+
+static void titledb_options_update(ui_view* view, void* data, linked_list* items, list_item* selected, bool selectedTouched) {
+    titledb_options_data* optionsData = (titledb_options_data*) data;
+    titledb_data* listData = optionsData->parent;
+
+    if(hidKeysDown() & KEY_B) {
+        linked_list_iter iter;
+        linked_list_iterate(items, &iter);
+
+        while(linked_list_iter_has_next(&iter)) {
+            free(linked_list_iter_next(&iter));
+            linked_list_iter_remove(&iter);
+        }
+
+        ui_pop();
+        list_destroy(view);
+
+        return;
+    }
+
+    if(selected != NULL && selected->data != NULL && (selectedTouched || (hidKeysDown() & KEY_A))) {
+        bool* val = (bool*) selected->data;
+        *val = !(*val);
+
+        if(val == &listData->sortByName || val == &listData->sortByUpdate) {
+            if(*val) {
+                if(val == &listData->sortByName) {
+                    listData->sortByUpdate = false;
+                } else if(val == &listData->sortByUpdate) {
+                    listData->sortByName = false;
+                }
+
+                linked_list_iter iter;
+                linked_list_iterate(items, &iter);
+                while(linked_list_iter_has_next(&iter)) {
+                    list_item* item = (list_item*) linked_list_iter_next(&iter);
+
+                    item->color = *(bool*) item->data ? COLOR_ENABLED : COLOR_DISABLED;
+                }
+            } else {
+                selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+            }
+
+            linked_list_sort(optionsData->items, listData, titledb_compare);
+        } else {
+            selected->color = *val ? COLOR_ENABLED : COLOR_DISABLED;
+
+            listData->populated = false;
+        }
+    }
+
+    if(linked_list_size(items) == 0) {
+        titledb_options_add_entry(items, "Show CIAs", &listData->showCIAs);
+        titledb_options_add_entry(items, "Show 3DSXs", &listData->show3DSXs);
+        titledb_options_add_entry(items, "Sort by name", &listData->sortByName);
+        titledb_options_add_entry(items, "Sort by update date", &listData->sortByUpdate);
+    }
+}
+
+static void titledb_options_open(titledb_data* parent, linked_list* items) {
+    titledb_options_data* data = (titledb_options_data*) calloc(1, sizeof(titledb_options_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, "Failed to allocate TitleDB options data.");
+
+        return;
+    }
+
+    data->parent = parent;
+    data->items = items;
+
+    list_display("Options", "A: Toggle, B: Return", data, titledb_options_update, NULL);
+}
+
 static void titledb_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
     titledb_data* listData = (titledb_data*) data;
 
@@ -228,9 +339,16 @@ static void titledb_update(ui_view* view, void* data, linked_list* items, list_i
         listData->populated = true;
     }
 
-    if(hidKeysDown() & KEY_Y) {
-        action_update_titledb(items, selected);
-        return;
+    if(listData->populateData.itemsListed) {
+        if(hidKeysDown() & KEY_Y) {
+            action_update_titledb(items, selected);
+            return;
+        }
+
+        if(hidKeysDown() & KEY_SELECT) {
+            titledb_options_open(listData, items);
+            return;
+        }
     }
 
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
@@ -247,6 +365,12 @@ static void titledb_update(ui_view* view, void* data, linked_list* items, list_i
     }
 }
 
+static bool titledb_filter(void* data, titledb_info* info) {
+    titledb_data* listData = (titledb_data*) data;
+
+    return (info->cia.exists && listData->showCIAs) || (info->tdsx.exists && listData->show3DSXs);
+}
+
 void titledb_open() {
     titledb_data* data = (titledb_data*) calloc(1, sizeof(titledb_data));
     if(data == NULL) {
@@ -255,7 +379,16 @@ void titledb_open() {
         return;
     }
 
+    data->showCIAs = true;
+    data->show3DSXs = true;
+    data->sortByName = true;
+    data->sortByUpdate = false;
+
     data->populateData.finished = true;
 
-    list_display("TitleDB.com", "A: Select, B: Return, X: Refresh, Y: Update All", data, titledb_update, titledb_draw_top);
+    data->populateData.userData = data;
+    data->populateData.filter = titledb_filter;
+    data->populateData.compare = titledb_compare;
+
+    list_display("TitleDB.com", "A: Select, B: Return, X: Refresh, Y: Update All, Select: Options", data, titledb_update, titledb_draw_top);
 }

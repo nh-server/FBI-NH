@@ -142,28 +142,21 @@ void task_populate_titledb_update_status(list_item* item) {
     }
 }
 
-static int task_populate_titledb_compare(void* userData, const void* p1, const void* p2) {
-    list_item* info1 = (list_item*) p1;
-    list_item* info2 = (list_item*) p2;
-
-    return strncasecmp(info1->name, info2->name, LIST_ITEM_NAME_MAX);
-}
-
 static void task_populate_titledb_thread(void* arg) {
     populate_titledb_data* data = (populate_titledb_data*) arg;
 
     Result res = 0;
 
+    linked_list titles;
+    linked_list_init(&titles);
+
     json_t* root = NULL;
     if(R_SUCCEEDED(res = task_download_json_sync("https://api.titledb.com/v1/entry?nested=true"
-                                                         "&only=id&only=name&only=author&only=headline&only=category"
+                                                         "&only=id&only=name&only=author&only=headline&only=category&only=updated_at"
                                                          "&only=cia.id&only=cia.updated_at&only=cia.version&only=cia.size&only=cia.titleid"
                                                          "&only=tdsx.id&only=tdsx.updated_at&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
                                             &root, 1024 * 1024))) {
         if(json_is_array(root)) {
-            linked_list titles;
-            linked_list_init(&titles);
-
             for(u32 i = 0; i < json_array_size(root) && R_SUCCEEDED(res); i++) {
                 svcWaitSynchronization(task_get_pause_event(), U64_MAX);
                 if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
@@ -179,6 +172,7 @@ static void task_populate_titledb_thread(void* arg) {
                             titledbInfo->id = (u32) json_object_get_integer(entry, "id", 0);
                             strncpy(titledbInfo->category, json_object_get_string(entry, "category", "Unknown"), sizeof(titledbInfo->category));
                             strncpy(titledbInfo->headline, json_object_get_string(entry, "headline", ""), sizeof(titledbInfo->headline));
+                            strncpy(titledbInfo->updatedAt, json_object_get_string(entry, "updated_at", ""), sizeof(titledbInfo->updatedAt));
                             strncpy(titledbInfo->meta.shortDescription, json_object_get_string(entry, "name", ""), sizeof(titledbInfo->meta.shortDescription));
                             strncpy(titledbInfo->meta.publisher, json_object_get_string(entry, "author", ""), sizeof(titledbInfo->meta.publisher));
 
@@ -226,13 +220,13 @@ static void task_populate_titledb_thread(void* arg) {
                                 }
                             }
 
-                            if(titledbInfo->cia.exists || titledbInfo->tdsx.exists) {
+                            if((titledbInfo->cia.exists || titledbInfo->tdsx.exists) && (data->filter == NULL || data->filter(data->userData, titledbInfo))) {
                                 strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
                                 item->data = titledbInfo;
 
                                 task_populate_titledb_update_status(item);
 
-                                linked_list_add_sorted(&titles, item, NULL, task_populate_titledb_compare);
+                                linked_list_add_sorted(&titles, item, data->userData, data->compare);
                             } else {
                                 free(titledbInfo);
                                 free(item);
@@ -258,10 +252,9 @@ static void task_populate_titledb_thread(void* arg) {
                     linked_list_add(data->items, item);
                 } else {
                     task_free_titledb(item);
+                    linked_list_iter_remove(&iter);
                 }
             }
-
-            linked_list_destroy(&titles);
         } else {
             res = R_APP_BAD_DATA;
         }
@@ -273,7 +266,7 @@ static void task_populate_titledb_thread(void* arg) {
 
     if(R_SUCCEEDED(res)) {
         linked_list_iter iter;
-        linked_list_iterate(data->items, &iter);
+        linked_list_iterate(&titles, &iter);
 
         while(linked_list_iter_has_next(&iter)) {
             svcWaitSynchronization(task_get_pause_event(), U64_MAX);
@@ -306,6 +299,8 @@ static void task_populate_titledb_thread(void* arg) {
             }
         }
     }
+
+    linked_list_destroy(&titles);
 
     svcCloseHandle(data->resumeEvent);
     svcCloseHandle(data->cancelEvent);
