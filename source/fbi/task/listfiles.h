@@ -40,6 +40,7 @@ typedef struct populate_files_data_s {
 
     bool recursive;
     bool includeBase;
+    bool meta;
 
     bool (*filter)(void* data, const char* name, u32 attributes);
     void* filterData;

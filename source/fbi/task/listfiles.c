@@ -279,7 +279,7 @@ static void task_populate_files_thread(void* arg) {
         }
     }
 
-    if(R_SUCCEEDED(res)) {
+    if(R_SUCCEEDED(res) && data->meta) {
         linked_list_iter iter;
         linked_list_iterate(data->items, &iter);
 
