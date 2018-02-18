@@ -488,74 +488,117 @@ float screen_get_font_height(float scaleY) {
     return scaleY * fontGetInfo()->lineFeed;
 }
 
-static void screen_get_string_size_internal(float* width, float* height, const char* text, float scaleX, float scaleY, bool oneLine, bool wrap, float wrapWidth) {
+#define MAX_LINES 64
+
+inline static void screen_wrap_string_finish_line(float* w, float* h, float* lw, float* lh, u32* line, u32* linePos, u32* lastAlignPos,
+                                                  u32* lines, float* lineWidths, float* lineHeights,
+                                                  u32 maxLines) {
+    if(*lw > *w) {
+        *w = *lw;
+    }
+
+    *h += *lh;
+
+    if(*line < maxLines)  {
+        if(lines != NULL) {
+            lines[*line] = *linePos;
+        }
+
+        if(lineWidths != NULL) {
+            lineWidths[*line] = *lw;
+        }
+
+        if(lineHeights != NULL) {
+            lineHeights[*line] = *lh;
+        }
+
+        (*line)++;
+    }
+
+    *lw = 0;
+    *lh = 0;
+    *linePos = 0;
+    *lastAlignPos = 0;
+}
+
+static void screen_wrap_string(u32* lines, float* lineWidths, float* lineHeights, u32* numLines, float* totalWidth, float* totalHeight,
+                               const char* text, u32 maxLines, float maxWidth, float scaleX, float scaleY, bool wordWrap) {
     scaleX *= font_scale;
     scaleY *= font_scale;
 
     float w = 0;
     float h = 0;
-    float lineWidth = 0;
 
-    if(text != NULL) {
-        h = scaleY * fontGetInfo()->lineFeed;
+    u32 line = 0;
+    float lw = 0;
+    float lh = 0;
+    u32 linePos = 0;
+    u32 lastAlignPos = 0;
 
-        const uint8_t* p = (const uint8_t*) text;
-        const uint8_t* lastAlign = p;
-        u32 code = 0;
-        ssize_t units = -1;
-        while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
-            p += units;
+    const uint8_t* p = (const uint8_t*) text;
+    u32 code = 0;
+    ssize_t units = -1;
 
-            if(code == '\n' || (wrap && lineWidth + scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapWidth)) {
-                lastAlign = p;
+    while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
+        p += units;
 
-                if(lineWidth > w) {
-                    w = lineWidth;
-                }
+        float charWidth = scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth;
 
-                lineWidth = 0;
-
-                if(oneLine) {
-                    break;
-                }
-
-                h += scaleY * fontGetInfo()->lineFeed;
+        if(code == '\n' || (wordWrap && lw + charWidth >= maxWidth)) {
+            if(code == '\n') {
+                linePos++;
+                lh = scaleY * fontGetInfo()->lineFeed;
             }
 
-            if(code != '\n') {
-                u32 num = 1;
-                if(code == '\t') {
-                    code = ' ';
-                    num = 4 - (p - units - lastAlign) % 4;
+            screen_wrap_string_finish_line(&w, &h, &lw, &lh, &line, &linePos, &lastAlignPos,
+                                           lines, lineWidths, lineHeights,
+                                           maxLines);
+        }
 
-                    lastAlign = p;
-                }
+        if(code != '\n') {
+            u32 num = 1;
+            if(code == '\t') {
+                code = ' ';
+                num = 4 - (linePos - lastAlignPos) % 4;
 
-                lineWidth += (scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth) * num;
+                lastAlignPos = linePos;
             }
+
+            lw += charWidth * num;
+            lh = scaleY * fontGetInfo()->lineFeed;
+
+            linePos++;
         }
     }
 
-    if(width) {
-        *width = lineWidth > w ? lineWidth : w;
+    if(linePos > 0)  {
+        screen_wrap_string_finish_line(&w, &h, &lw, &lh, &line, &linePos, &lastAlignPos,
+                                       lines, lineWidths, lineHeights,
+                                       maxLines);
     }
 
-    if(height) {
-        *height = h;
+    if(numLines != NULL) {
+        *numLines = line;
+    }
+
+    if(totalWidth != NULL) {
+        *totalWidth = w;
+    }
+
+    if(totalHeight != NULL) {
+        *totalHeight = h;
     }
 }
 
 void screen_get_string_size(float* width, float* height, const char* text, float scaleX, float scaleY) {
-    screen_get_string_size_internal(width, height, text, scaleX, scaleY, false, false, 0);
+    screen_wrap_string(NULL, NULL, NULL, NULL, width, height, text, 0, 0, scaleX, scaleY, false);
 }
 
 void screen_get_string_size_wrap(float* width, float* height, const char* text, float scaleX, float scaleY, float wrapWidth) {
-    screen_get_string_size_internal(width, height, text, scaleX, scaleY, false, true, wrapWidth);
+    screen_wrap_string(NULL, NULL, NULL, NULL, width, height, text, 0, wrapWidth, scaleX, scaleY, true);
 }
 
 static void screen_draw_string_internal(const char* text, float x, float y, float scaleX, float scaleY, u32 colorId, bool centerLines, bool wrap, float wrapX) {
-    // Note: Do not just multiply scaleX and scaleY by font_scale, as they would then be double-scaled when passed into screen_get_string_size_internal.
-
     if(text == NULL) {
         return;
     }
@@ -576,62 +619,65 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
 
     screen_set_blend(blendColor, true, true);
 
-    float stringWidth;
-    screen_get_string_size_internal(&stringWidth, NULL, text, scaleX, scaleY, false, wrap, wrapX - x);
-
-    float lineWidth;
-    screen_get_string_size_internal(&lineWidth, NULL, text, scaleX, scaleY, true, wrap, wrapX - x);
+    u32 lines[MAX_LINES];
+    float lineWidths[MAX_LINES];
+    float lineHeights[MAX_LINES];
+    u32 numLines = 0;
+    float totalWidth = 0;
+    float totalHeight = 0;
+    screen_wrap_string(lines, lineWidths, lineHeights, &numLines, &totalWidth, &totalHeight, text, MAX_LINES, wrapX - x, scaleX, scaleY, wrap);
 
     float currX = x;
-    if(centerLines) {
-        currX += (stringWidth - lineWidth) / 2;
-    }
+    float currY = y;
 
+    u32 linePos = 0;
+    u32 lastAlignPos = 0;
     int lastSheet = -1;
 
     const uint8_t* p = (const uint8_t*) text;
-    const uint8_t* lastAlign = p;
     u32 code = 0;
     ssize_t units = -1;
-    while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
-        p += units;
 
-        if(code == '\n' || (wrap && currX + scaleX * font_scale * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth >= wrapX)) {
-            lastAlign = p;
-
-            screen_get_string_size_internal(&lineWidth, NULL, (const char*) p, scaleX, scaleY, true, wrap, wrapX - x);
-
-            currX = x;
-            if(centerLines) {
-                currX += (stringWidth - lineWidth) / 2;
-            }
-
-            y += scaleY * font_scale * fontGetInfo()->lineFeed;
+    for(u32 i = 0; i < numLines; i++) {
+        currX = x;
+        if(centerLines) {
+            currX += (totalWidth - lineWidths[i]) / 2;
         }
 
-        if(code != '\n') {
-            u32 num = 1;
-            if(code == '\t') {
-                code = ' ';
-                num = 4 - (p - units - lastAlign) % 4;
+        while(linePos < lines[i] && *p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
+            p += units;
 
-                lastAlign = p;
+            if(code != '\n') {
+                u32 num = 1;
+                if(code == '\t') {
+                    code = ' ';
+                    num = 4 - (linePos - lastAlignPos) % 4;
+
+                    lastAlignPos = linePos;
+                }
+
+                fontGlyphPos_s data;
+                fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
+
+                if(data.sheetIndex != lastSheet) {
+                    lastSheet = data.sheetIndex;
+                    C3D_TexBind(0, &glyph_sheets[lastSheet]);
+                }
+
+                for(u32 j = 0; j < num; j++) {
+                    screen_draw_quad(currX + data.vtxcoord.left, currY + data.vtxcoord.top, currX + data.vtxcoord.right, currY + data.vtxcoord.bottom, data.texcoord.left, data.texcoord.bottom, data.texcoord.right, data.texcoord.top);
+
+                    currX += data.xAdvance;
+                }
             }
 
-            fontGlyphPos_s data;
-            fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
-
-            if(data.sheetIndex != lastSheet) {
-                lastSheet = data.sheetIndex;
-                C3D_TexBind(0, &glyph_sheets[lastSheet]);
-            }
-
-            for(u32 i = 0; i < num; i++) {
-                screen_draw_quad(currX + data.vtxcoord.left, y + data.vtxcoord.top, currX + data.vtxcoord.right, y + data.vtxcoord.bottom, data.texcoord.left, data.texcoord.bottom, data.texcoord.right, data.texcoord.top);
-
-                currX += data.xAdvance;
-            }
+            linePos++;
         }
+
+        currY += lineHeights[i];
+
+        linePos = 0;
+        lastAlignPos = 0;
     }
 
     screen_set_blend(0, false, false);
