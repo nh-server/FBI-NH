@@ -317,10 +317,19 @@ static void ui_draw_bottom(ui_view* ui) {
     }
 
     if(ui->info != NULL) {
+        float baseInfoWidth;
+        screen_get_string_size(&baseInfoWidth, NULL, ui->info, 0.5f, 0.5f);
+
+        float scale = BOTTOM_SCREEN_WIDTH / (baseInfoWidth + 10);
+        if(scale > 1) {
+            scale = 1;
+        }
+
         float infoWidth;
         float infoHeight;
-        screen_get_string_size(&infoWidth, &infoHeight, ui->info, 0.5f, 0.5f);
-        screen_draw_string(ui->info, (BOTTOM_SCREEN_WIDTH - infoWidth) / 2, BOTTOM_SCREEN_HEIGHT - (bottomScreenBottomBarHeight + infoHeight) / 2, 0.5f, 0.5f, COLOR_TEXT, true);
+        screen_get_string_size(&infoWidth, &infoHeight, ui->info, 0.5f * scale, 0.5f * scale);
+
+        screen_draw_string(ui->info, (BOTTOM_SCREEN_WIDTH - infoWidth) / 2, BOTTOM_SCREEN_HEIGHT - (bottomScreenBottomBarHeight + infoHeight) / 2, 0.5f * scale, 0.5f * scale, COLOR_TEXT, true);
     }
 
     screen_set_base_alpha(0xFF);

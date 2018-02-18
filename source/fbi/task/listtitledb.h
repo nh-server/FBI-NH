@@ -40,6 +40,7 @@ typedef struct titledb_info_s {
     u32 id;
     char category[64];
     char headline[512];
+    char updatedAt[32];
     titledb_cia_info cia;
     titledb_tdsx_info tdsx;
 
@@ -48,6 +49,10 @@ typedef struct titledb_info_s {
 
 typedef struct populate_titledb_data_s {
     linked_list* items;
+
+    void* userData;
+    bool (*filter)(void* data, titledb_info* info);
+    int (*compare)(void* data, const void* p1, const void* p2);
 
     volatile bool itemsListed;
     volatile bool finished;

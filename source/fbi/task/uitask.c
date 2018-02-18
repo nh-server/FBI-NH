@@ -267,15 +267,22 @@ void task_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float
 
     task_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
 
+    char updatedDate[32] = "";
+    char updatedTime[32] = "";
+
+    sscanf(info->updatedAt, "%31[^T]T%31[^Z]Z", updatedDate, updatedTime);
+
     char infoText[1024];
 
     snprintf(infoText, sizeof(infoText),
              "%s\n"
                      "\n"
                      "Category: %s\n"
+                     "Updated At: %s %s\n"
                      "Update Available: %s",
              info->headline,
              info->category,
+             updatedDate, updatedTime,
              info->cia.outdated || info->tdsx.outdated ? "Yes" : "No");
 
     float infoWidth;
