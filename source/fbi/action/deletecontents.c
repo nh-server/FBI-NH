@@ -190,7 +190,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     data->items = items;
 
     file_info* targetInfo = (file_info*) selected->data;
-    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, true);
+    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, false);
     if(R_FAILED(targetCreateRes)) {
         error_display_res(NULL, NULL, targetCreateRes, "Failed to create target file item.");
 
@@ -231,6 +231,7 @@ static void action_delete_internal(linked_list* items, list_item* selected, cons
     strncpy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
     loadingData->popData.recursive = recursive;
     loadingData->popData.includeBase = includeBase;
+    loadingData->popData.meta = false;
     loadingData->popData.filter = ciasOnly ? fs_filter_cias : ticketsOnly ? fs_filter_tickets : NULL;
     loadingData->popData.filterData = NULL;
 

@@ -342,7 +342,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     data->items = items;
 
     file_info* targetInfo = (file_info*) selected->data;
-    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, true);
+    Result targetCreateRes = task_create_file_item(&data->targetItem, targetInfo->archive, targetInfo->path, targetInfo->attributes, false);
     if(R_FAILED(targetCreateRes)) {
         error_display_res(NULL, NULL, targetCreateRes, "Failed to create target file item.");
 
@@ -398,6 +398,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
     strncpy(loadingData->popData.path, clipboard_get_path(), FILE_PATH_MAX);
     loadingData->popData.recursive = true;
     loadingData->popData.includeBase = !clipboard_is_contents_only() || !fs_is_dir(clipboard_get_archive(), clipboard_get_path());
+    loadingData->popData.meta = false;
     loadingData->popData.filter = NULL;
     loadingData->popData.filterData = NULL;
 

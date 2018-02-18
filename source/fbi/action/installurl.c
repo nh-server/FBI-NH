@@ -12,13 +12,13 @@
 typedef enum content_type_e {
     CONTENT_CIA,
     CONTENT_TICKET,
-    CONTENT_3DSX
+    CONTENT_3DSX_SMDH
 } content_type;
 
 typedef struct {
     char urls[INSTALL_URLS_MAX][DOWNLOAD_URL_MAX];
 
-    char paths3dsx[INSTALL_URLS_MAX][FILE_PATH_MAX];
+    char paths[INSTALL_URLS_MAX][FILE_PATH_MAX];
 
     void* userData;
     void (*finishedURL)(void* data, u32 index);
@@ -34,7 +34,7 @@ typedef struct {
     volatile bool n3dsContinue;
     ticket_info ticketInfo;
     http_context currContext;
-    char curr3dsxPath[FILE_PATH_MAX];
+    char currPath[FILE_PATH_MAX];
 
     data_op_data installInfo;
 } install_url_data;
@@ -142,7 +142,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
     installData->currTitleId = 0;
     installData->n3dsContinue = false;
     memset(&installData->ticketInfo, 0, sizeof(installData->ticketInfo));
-    memset(&installData->curr3dsxPath, 0, sizeof(installData->curr3dsxPath));
+    memset(&installData->currPath, 0, sizeof(installData->currPath));
 
     if(*(u16*) initialReadBlock == 0x2020) {
         installData->contentType = CONTENT_CIA;
@@ -197,15 +197,15 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
 
         AM_DeleteTicket(installData->ticketInfo.titleId);
         res = AM_InstallTicketBegin(handle);
-    } else if(*(u32*) initialReadBlock == 0x58534433) {
-        installData->contentType = CONTENT_3DSX;
+    } else if(*(u32*) initialReadBlock == 0x58534433 /* 3DSX */ || *(u32*) initialReadBlock == 0x48444D53 /* SMDH */) {
+        installData->contentType = CONTENT_3DSX_SMDH;
 
         FS_Archive sdmcArchive = 0;
         if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
             char dir[FILE_PATH_MAX];
-            if(strlen(installData->paths3dsx[index]) > 0) {
-                string_get_parent_path(dir, installData->paths3dsx[index], FILE_PATH_MAX);
-                strncpy(installData->curr3dsxPath, installData->paths3dsx[index], FILE_PATH_MAX);
+            if(strlen(installData->paths[index]) > 0) {
+                string_get_parent_path(dir, installData->paths[index], FILE_PATH_MAX);
+                strncpy(installData->currPath, installData->paths[index], FILE_PATH_MAX);
             } else {
                 char filename[FILE_NAME_MAX];
                 if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
@@ -216,11 +216,11 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
                 string_get_file_name(name, filename, FILE_NAME_MAX);
 
                 snprintf(dir, FILE_PATH_MAX, "/3ds/%s/", name);
-                snprintf(installData->curr3dsxPath, FILE_PATH_MAX, "/3ds/%s/%s.3dsx", name, name);
+                snprintf(installData->currPath, FILE_PATH_MAX, "/3ds/%s/%s", name, filename);
             }
 
             if(R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/3ds/")) && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, dir))) {
-                FS_Path* path = fs_make_path_utf8(installData->curr3dsxPath);
+                FS_Path* path = fs_make_path_utf8(installData->currPath);
                 if(path != NULL) {
                     res = FSUSER_OpenFileDirectly(handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *path, FS_OPEN_WRITE | FS_OPEN_CREATE, 0);
 
@@ -264,7 +264,7 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
                     svcSleepThread(100000000);
                 }
             }
-        } else if(installData->contentType == CONTENT_3DSX) {
+        } else if(installData->contentType == CONTENT_3DSX_SMDH) {
             res = FSFILE_Close(handle);
         }
     } else {
@@ -272,12 +272,12 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
             res = AM_CancelCIAInstall(handle);
         } else if(installData->contentType == CONTENT_TICKET) {
             res = AM_InstallTicketAbort(handle);
-        } else if(installData->contentType == CONTENT_3DSX) {
+        } else if(installData->contentType == CONTENT_3DSX_SMDH) {
             res = FSFILE_Close(handle);
 
             FS_Archive sdmcArchive = 0;
             if(R_SUCCEEDED(FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
-                FS_Path* path = fs_make_path_utf8(installData->curr3dsxPath);
+                FS_Path* path = fs_make_path_utf8(installData->currPath);
                 if(path != NULL) {
                     FSUSER_DeleteFile(sdmcArchive, *path);
 
@@ -377,7 +377,7 @@ static void action_install_url_confirm_onresponse(ui_view* view, void* data, u32
     }
 }
 
-void action_install_url(const char* confirmMessage, const char* urls, const char* paths3dsx, void* userData,
+void action_install_url(const char* confirmMessage, const char* urls, const char* paths, void* userData,
                         void (*finishedURL)(void* data, u32 index),
                         void (*finishedAll)(void* data),
                         void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
@@ -421,14 +421,14 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
         }
     }
 
-    if(paths3dsx != NULL) {
-        size_t pathsLen = strlen(paths3dsx);
+    if(paths != NULL) {
+        size_t pathsLen = strlen(paths);
         if(pathsLen > 0) {
-            const char* currStart = paths3dsx;
-            for(u32 i = 0; i < data->installInfo.total && currStart - paths3dsx < pathsLen; i++) {
+            const char* currStart = paths;
+            for(u32 i = 0; i < data->installInfo.total && currStart - paths < pathsLen; i++) {
                 const char* currEnd = strchr(currStart, '\n');
                 if(currEnd == NULL) {
-                    currEnd = paths3dsx + pathsLen;
+                    currEnd = paths + pathsLen;
                 }
 
                 u32 len = currEnd - currStart;
@@ -436,7 +436,7 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
                     len = FILE_PATH_MAX;
                 }
 
-                strncpy(data->paths3dsx[i], currStart, len);
+                strncpy(data->paths[i], currStart, len);
 
                 currStart = currEnd + 1;
             }
@@ -456,7 +456,7 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
     data->currTitleId = 0;
     data->n3dsContinue = false;
     memset(&data->ticketInfo, 0, sizeof(data->ticketInfo));
-    memset(&data->curr3dsxPath, 0, sizeof(data->curr3dsxPath));
+    memset(&data->currPath, 0, sizeof(data->currPath));
 
     data->installInfo.data = data;
 

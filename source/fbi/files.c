@@ -370,6 +370,7 @@ void files_open(FS_ArchiveID archiveId, FS_Path archivePath) {
 
     data->populateData.recursive = false;
     data->populateData.includeBase = true;
+    data->populateData.meta = true;
 
     data->populateData.filter = files_filter;
     data->populateData.filterData = data;

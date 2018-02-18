@@ -9,9 +9,10 @@
 #include "../../core/core.h"
 
 typedef struct {
-    bool cia[INSTALL_URLS_MAX];
     char urls[INSTALL_URLS_MAX * DOWNLOAD_URL_MAX];
-    char paths3dsx[INSTALL_URLS_MAX * FILE_PATH_MAX];
+    char paths[INSTALL_URLS_MAX * FILE_PATH_MAX];
+
+    bool cia[INSTALL_URLS_MAX];
     list_item* items[INSTALL_URLS_MAX];
 } update_titledb_data;
 
@@ -58,29 +59,42 @@ void action_update_titledb(linked_list* items, list_item* selected) {
         titledb_info* info = (titledb_info*) item->data;
 
         if(info->cia.outdated) {
+            urlsPos += snprintf(data->urls + urlsPos, INSTALL_URLS_MAX * DOWNLOAD_URL_MAX - urlsPos,
+                                "https://3ds.titledb.com/v1/cia/%lu/download\n",
+                                info->cia.id);
+            pathsPos += snprintf(data->paths + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos,
+                                 "\n");
+
             data->cia[index] = true;
-            urlsPos += snprintf(data->urls + urlsPos, INSTALL_URLS_MAX * DOWNLOAD_URL_MAX - urlsPos, "https://3ds.titledb.com/v1/cia/%lu/download\n", info->cia.id);
-            pathsPos += snprintf(data->paths3dsx + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "\n");
             data->items[index] = item;
 
             index++;
         }
 
-        if(info->tdsx.outdated) {
+        if(info->tdsx.outdated && (!info->tdsx.smdh.exists || index < INSTALL_URLS_MAX - 1)) {
             char name[FILE_NAME_MAX];
             string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
 
-            data->cia[index] = false;
             urlsPos += snprintf(data->urls + urlsPos, INSTALL_URLS_MAX * DOWNLOAD_URL_MAX - urlsPos, "https://3ds.titledb.com/v1/tdsx/%lu/download\n", info->tdsx.id);
-            pathsPos += snprintf(data->paths3dsx + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "/3ds/%s/%s.3dsx\n", name, name);
+            pathsPos += snprintf(data->paths + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "/3ds/%s/%s.3dsx\n", name, name);
+            data->cia[index] = false;
             data->items[index] = item;
 
             index++;
+
+            if(info->tdsx.smdh.exists) {
+                urlsPos += snprintf(data->urls + urlsPos, INSTALL_URLS_MAX * DOWNLOAD_URL_MAX - urlsPos, "https://3ds.titledb.com/v1/smdh/%lu/download\n", info->tdsx.smdh.id);
+                pathsPos += snprintf(data->paths + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "/3ds/%s/%s.smdh\n", name, name);
+                data->cia[index] = false;
+                data->items[index] = item;
+
+                index++;
+            }
         }
     }
 
     if(index > 0) {
-        action_install_url("Install all updates from TitleDB?", data->urls, data->paths3dsx, data, action_update_titledb_finished_url, action_update_titledb_finished_all, action_update_titledb_draw_top);
+        action_install_url("Install all updates from TitleDB?", data->urls, data->paths, data, action_update_titledb_finished_url, action_update_titledb_finished_all, action_update_titledb_draw_top);
     } else {
         prompt_display_notify("Success", "All titles are up to date.", COLOR_TEXT, NULL, NULL, NULL);
     }

@@ -47,17 +47,25 @@ void action_install_titledb(linked_list* items, list_item* selected, bool cia) {
 
     titledb_info* info = (titledb_info*) selected->data;
 
-    char url[64];
-    char path3dsx[FILE_PATH_MAX];
+    char urls[2 * DOWNLOAD_URL_MAX];
+    char paths[2 * FILE_PATH_MAX];
     if(data->cia) {
-        snprintf(url, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/cia/%lu/download", info->cia.id);
+        snprintf(urls, sizeof(urls), "https://3ds.titledb.com/v1/cia/%lu/download", info->cia.id);
     } else {
-        snprintf(url, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/tdsx/%lu/download", info->tdsx.id);
-
         char name[FILE_NAME_MAX];
         string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
-        snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
+
+        u32 urlsPos = 0;
+        u32 pathsPos = 0;
+
+        urlsPos += snprintf(urls + urlsPos, sizeof(urls) - urlsPos, "https://3ds.titledb.com/v1/tdsx/%lu/download\n", info->tdsx.id);
+        pathsPos += snprintf(paths + pathsPos, sizeof(paths) - pathsPos, "/3ds/%s/%s.3dsx\n", name, name);
+
+        if(info->tdsx.smdh.exists) {
+            snprintf(urls + urlsPos, sizeof(urls) - urlsPos, "https://3ds.titledb.com/v1/smdh/%lu/download\n", info->tdsx.smdh.id);
+            snprintf(paths + pathsPos, sizeof(paths) - pathsPos, "/3ds/%s/%s.smdh\n", name, name);
+        }
     }
 
-    action_install_url("Install the selected title from TitleDB?", url, path3dsx, data, action_install_titledb_finished_url, action_install_titledb_finished_all, action_install_titledb_draw_top);
+    action_install_url("Install the selected title from TitleDB?", urls, paths, data, action_install_titledb_finished_url, action_install_titledb_finished_all, action_install_titledb_draw_top);
 }
