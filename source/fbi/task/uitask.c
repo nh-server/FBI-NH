@@ -272,9 +272,11 @@ void task_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float
     snprintf(infoText, sizeof(infoText),
              "%s\n"
                      "\n"
-                     "Category: %s\n",
+                     "Category: %s\n"
+                     "Update Available: %s",
              info->headline,
-             info->category);
+             info->category,
+             info->cia.outdated || info->tdsx.outdated ? "Yes" : "No");
 
     float infoWidth;
     screen_get_string_size_wrap(&infoWidth, NULL, infoText, 0.5f, 0.5f, x2 - x1 - 10);
@@ -302,12 +304,14 @@ void task_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, f
                      "TitleDB Version: %s\n"
                      "Installed Version: %hu (%d.%d.%d)\n"
                      "Size: %.2f %s\n"
-                     "Updated At: %s %s",
+                     "Updated At: %s %s\n"
+                     "Update Available: %s",
              info->cia.titleId,
              info->cia.version,
              info->cia.installedVersion, (info->cia.installedVersion >> 10) & 0x3F, (info->cia.installedVersion >> 4) & 0x3F, info->cia.installedVersion & 0xF,
              ui_get_display_size(info->cia.size), ui_get_display_size_units(info->cia.size),
-             updatedDate, updatedTime);
+             updatedDate, updatedTime,
+             info->cia.outdated ? "Yes" : "No");
 
     float infoWidth;
     screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);
@@ -332,10 +336,12 @@ void task_draw_titledb_info_tdsx(ui_view* view, void* data, float x1, float y1, 
     snprintf(infoText, sizeof(infoText),
              "TitleDB Version: %s\n"
                      "Size: %.2f %s\n"
-                     "Updated At: %s %s",
+                     "Updated At: %s %s\n"
+                     "Update Available: %s",
              info->tdsx.version,
              ui_get_display_size(info->tdsx.size), ui_get_display_size_units(info->tdsx.size),
-             updatedDate, updatedTime);
+             updatedDate, updatedTime,
+             info->tdsx.outdated ? "Yes" : "No");
 
     float infoWidth;
     screen_get_string_size(&infoWidth, NULL, infoText, 0.5f, 0.5f);

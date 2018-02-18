@@ -18,10 +18,11 @@ typedef enum content_type_e {
 typedef struct {
     char urls[INSTALL_URLS_MAX][DOWNLOAD_URL_MAX];
 
-    char path3dsx[FILE_PATH_MAX];
+    char paths3dsx[INSTALL_URLS_MAX][FILE_PATH_MAX];
 
     void* userData;
-    void (*finished)(void* data);
+    void (*finishedURL)(void* data, u32 index);
+    void (*finishedAll)(void* data);
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index);
 
     bool cdn;
@@ -39,8 +40,8 @@ typedef struct {
 } install_url_data;
 
 static void action_install_url_free_data(install_url_data* data) {
-    if(data->finished != NULL) {
-        data->finished(data->userData);
+    if(data->finishedAll != NULL) {
+        data->finishedAll(data->userData);
     }
 
     free(data);
@@ -202,9 +203,9 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
         FS_Archive sdmcArchive = 0;
         if(R_SUCCEEDED(res = FSUSER_OpenArchive(&sdmcArchive, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, "")))) {
             char dir[FILE_PATH_MAX];
-            if(strlen(installData->path3dsx) > 0) {
-                string_get_parent_path(dir, installData->path3dsx, FILE_PATH_MAX);
-                strncpy(installData->curr3dsxPath, installData->path3dsx, FILE_PATH_MAX);
+            if(strlen(installData->paths3dsx[index]) > 0) {
+                string_get_parent_path(dir, installData->paths3dsx[index], FILE_PATH_MAX);
+                strncpy(installData->curr3dsxPath, installData->paths3dsx[index], FILE_PATH_MAX);
             } else {
                 char filename[FILE_NAME_MAX];
                 if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
@@ -286,6 +287,10 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
                 FSUSER_CloseArchive(sdmcArchive);
             }
         }
+    }
+
+    if(R_SUCCEEDED(res) && installData->finishedURL != NULL) {
+        installData->finishedURL(installData->userData, index);
     }
 
     return res;
@@ -372,8 +377,10 @@ static void action_install_url_confirm_onresponse(ui_view* view, void* data, u32
     }
 }
 
-void action_install_url(const char* confirmMessage, const char* urls, const char* path3dsx, void* userData, void (*finished)(void* data),
-                                                                                                            void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
+void action_install_url(const char* confirmMessage, const char* urls, const char* paths3dsx, void* userData,
+                        void (*finishedURL)(void* data, u32 index),
+                        void (*finishedAll)(void* data),
+                        void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index)) {
     install_url_data* data = (install_url_data*) calloc(1, sizeof(install_url_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate URL install data.");
@@ -414,12 +421,31 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
         }
     }
 
-    if(path3dsx != NULL) {
-        strncpy(data->path3dsx, path3dsx, FILE_PATH_MAX);
+    if(paths3dsx != NULL) {
+        size_t pathsLen = strlen(paths3dsx);
+        if(pathsLen > 0) {
+            const char* currStart = paths3dsx;
+            for(u32 i = 0; i < data->installInfo.total && currStart - paths3dsx < pathsLen; i++) {
+                const char* currEnd = strchr(currStart, '\n');
+                if(currEnd == NULL) {
+                    currEnd = paths3dsx + pathsLen;
+                }
+
+                u32 len = currEnd - currStart;
+                if(len > FILE_PATH_MAX) {
+                    len = FILE_PATH_MAX;
+                }
+
+                strncpy(data->paths3dsx[i], currStart, len);
+
+                currStart = currEnd + 1;
+            }
+        }
     }
 
     data->userData = userData;
-    data->finished = finished;
+    data->finishedURL = finishedURL;
+    data->finishedAll = finishedAll;
     data->drawTop = drawTop;
 
     data->cdn = false;

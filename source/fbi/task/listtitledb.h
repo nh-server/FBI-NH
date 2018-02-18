@@ -13,6 +13,7 @@ typedef struct titledb_cia_info_s {
     u64 titleId;
 
     bool installed;
+    bool outdated;
     u16 installedVersion;
 } titledb_cia_info;
 
@@ -32,6 +33,7 @@ typedef struct titledb_tdsx_info_s {
     titledb_smdh_info smdh;
 
     bool installed;
+    bool outdated;
 } titledb_tdsx_info;
 
 typedef struct titledb_info_s {
@@ -53,6 +55,9 @@ typedef struct populate_titledb_data_s {
     Handle cancelEvent;
     Handle resumeEvent;
 } populate_titledb_data;
+
+void task_populate_titledb_unload_cache();
+void task_populate_titledb_cache_installed(titledb_info* info, bool cia);
 
 void task_populate_titledb_update_status(list_item* item);
 void task_free_titledb(list_item* item);
