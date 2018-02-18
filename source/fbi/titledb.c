@@ -121,15 +121,14 @@ static void titledb_entry_update(ui_view* view, void* data, linked_list* items, 
         return;
     }
 
+    titledb_info* info = (titledb_info*) entryData->selected->data;
     if(linked_list_size(items) == 0) {
-        titledb_info* info = (titledb_info*) entryData->selected->data;
-
         if(info->cia.exists) {
             list_item* item = (list_item*) calloc(1, sizeof(list_item));
             if(item != NULL) {
                 strncpy(item->name, "CIA", sizeof(item->name));
                 item->data = (void*) true;
-                item->color = info->cia.installed ? COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+                item->color = info->cia.installed ? info->cia.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
 
                 linked_list_add(items, item);
             }
@@ -140,9 +139,22 @@ static void titledb_entry_update(ui_view* view, void* data, linked_list* items, 
             if(item != NULL) {
                 strncpy(item->name, "3DSX", sizeof(item->name));
                 item->data = (void*) false;
-                item->color = info->tdsx.installed ? COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+                item->color = info->tdsx.installed ? info->tdsx.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
 
                 linked_list_add(items, item);
+            }
+        }
+    } else {
+        linked_list_iter iter;
+        linked_list_iterate(items, &iter);
+
+        while(linked_list_iter_has_next(&iter)) {
+            list_item* item = (list_item*) linked_list_iter_next(&iter);
+
+            if((bool) item->data) {
+                item->color = info->cia.installed ? info->cia.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+            } else {
+                item->color = info->tdsx.installed ? info->tdsx.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
             }
         }
     }
@@ -216,6 +228,11 @@ static void titledb_update(ui_view* view, void* data, linked_list* items, list_i
         listData->populated = true;
     }
 
+    if(hidKeysDown() & KEY_Y) {
+        action_update_titledb(items, selected);
+        return;
+    }
+
     if(listData->populateData.finished && R_FAILED(listData->populateData.result)) {
         error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate TitleDB list.");
 
@@ -240,5 +257,5 @@ void titledb_open() {
 
     data->populateData.finished = true;
 
-    list_display("TitleDB.com", "A: Select, B: Return, X: Refresh", data, titledb_update, titledb_draw_top);
+    list_display("TitleDB.com", "A: Select, B: Return, X: Refresh, Y: Update All", data, titledb_update, titledb_draw_top);
 }

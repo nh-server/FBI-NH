@@ -11,6 +11,7 @@
 #include "../core/task/task.h"
 #include "../core/ui/ui.h"
 #include "section.h"
+#include "task/uitask.h"
 
 #define CURRENT_KPROCESS (*(void**) 0xFFFF9004)
 
@@ -157,6 +158,7 @@ void init() {
 
 void cleanup() {
     clipboard_clear();
+    task_populate_titledb_unload_cache();
 
     task_exit();
     ui_exit();

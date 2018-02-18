@@ -22,9 +22,15 @@ static void action_install_titledb_draw_top(ui_view* view, void* data, float x1,
     }
 }
 
-static void action_update_titledb_finished(void* data) {
-    task_populate_titledb_update_status(((install_titledb_data*) data)->selected);
+static void action_install_titledb_finished_url(void* data, u32 index) {
+    install_titledb_data* installData = (install_titledb_data*) data;
+    list_item* item = installData->selected;
 
+    task_populate_titledb_cache_installed((titledb_info*) item->data, installData->cia);
+    task_populate_titledb_update_status(item);
+}
+
+static void action_install_titledb_finished_all(void* data) {
     free(data);
 }
 
@@ -53,5 +59,5 @@ void action_install_titledb(linked_list* items, list_item* selected, bool cia) {
         snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
     }
 
-    action_install_url("Install the selected title from TitleDB?", url, path3dsx, data, action_update_titledb_finished, action_install_titledb_draw_top);
+    action_install_url("Install the selected title from TitleDB?", url, path3dsx, data, action_install_titledb_finished_url, action_install_titledb_finished_all, action_install_titledb_draw_top);
 }

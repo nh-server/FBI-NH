@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +16,79 @@
 
 #define json_object_get_string(obj, name, def) (json_is_string(json_object_get(obj, name)) ? json_string_value(json_object_get(obj, name)) : def)
 #define json_object_get_integer(obj, name, def) (json_is_integer(json_object_get(obj, name)) ? json_integer_value(json_object_get(obj, name)) : def)
+
+#define TITLEDB_CACHE_DIR "sdmc:/fbi/"
+#define TITLEDB_CACHE_FILE TITLEDB_CACHE_DIR "titledb_cache.json"
+
+static json_t* installedApps = NULL;
+
+static void task_populate_titledb_load_cache() {
+    if(installedApps != NULL) {
+        json_decref(installedApps);
+    }
+
+    json_error_t error;
+    installedApps = json_load_file(TITLEDB_CACHE_FILE, 0, &error);
+
+    if(!json_is_object(installedApps)) {
+        if(installedApps != NULL) {
+            json_decref(installedApps);
+        }
+
+        installedApps = json_object();
+    }
+}
+
+static void task_populate_titledb_save_cache() {
+    if(json_is_object(installedApps)) {
+        mkdir(TITLEDB_CACHE_DIR, 755);
+
+        json_dump_file(installedApps, TITLEDB_CACHE_FILE, 0);
+    }
+}
+
+void task_populate_titledb_unload_cache() {
+    if(json_is_object(installedApps)) {
+        task_populate_titledb_save_cache();
+
+        json_decref(installedApps);
+        installedApps = NULL;
+    }
+}
+
+static json_t* task_populate_titledb_get_cache_entry(u32 id) {
+    if(!json_is_object(installedApps)) {
+        task_populate_titledb_load_cache();
+    }
+
+    if(json_is_object(installedApps)) {
+        char idString[16];
+        itoa(id, idString, 10);
+
+        json_t* cache = json_object_get(installedApps, idString);
+        if(!json_is_object(cache)) {
+            cache = json_object();
+            json_object_set(installedApps, idString, cache);
+        }
+
+        return cache;
+    } else {
+        return NULL;
+    }
+}
+
+void task_populate_titledb_cache_installed(titledb_info* info, bool cia) {
+    json_t* cache = task_populate_titledb_get_cache_entry(info->id);
+    if(json_is_object(cache)) {
+        if(cia) {
+            json_object_set(cache, "cia_id", json_integer(info->cia.id));
+        } else {
+            json_object_set(cache, "tdsx_id", json_integer(info->tdsx.id));
+        }
+
+        task_populate_titledb_save_cache();
+    }
+}
 
 void task_populate_titledb_update_status(list_item* item) {
     titledb_info* info = (titledb_info*) item->data;
@@ -48,7 +122,21 @@ void task_populate_titledb_update_status(list_item* item) {
     }
 
     if((info->cia.exists && info->cia.installed) || (info->tdsx.exists && info->tdsx.installed)) {
-        item->color = COLOR_TITLEDB_INSTALLED;
+        json_t* cache = task_populate_titledb_get_cache_entry(info->id);
+        if(json_is_object(cache)) {
+            info->cia.outdated = info->cia.installed && json_object_get_integer(cache, "cia_id", 0) < info->cia.id;
+            info->tdsx.outdated = info->tdsx.installed && json_object_get_integer(cache, "tdsx_id", 0) < info->tdsx.id;
+        } else {
+            // If unknown, assume outdated.
+            info->cia.outdated = true;
+            info->tdsx.outdated = true;
+        }
+
+        if(info->cia.outdated || info->tdsx.outdated) {
+            item->color = COLOR_TITLEDB_OUTDATED;
+        } else {
+            item->color = COLOR_TITLEDB_INSTALLED;
+        }
     } else {
         item->color = COLOR_TITLEDB_NOT_INSTALLED;
     }
