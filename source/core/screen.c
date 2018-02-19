@@ -534,6 +534,8 @@ static void screen_wrap_string(u32* lines, float* lineWidths, float* lineHeights
     float lh = 0;
     u32 linePos = 0;
     u32 lastAlignPos = 0;
+    int wordPos = -1;
+    float ww = 0;
 
     const uint8_t* p = (const uint8_t*) text;
     u32 code = 0;
@@ -542,7 +544,15 @@ static void screen_wrap_string(u32* lines, float* lineWidths, float* lineHeights
     while(*p && (units = decode_utf8(&code, p)) != -1 && code > 0) {
         p += units;
 
-        float charWidth = scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth;
+        float charWidth = 1;
+        if(code == '\t') {
+            code = ' ';
+            charWidth = 4 - (linePos - lastAlignPos) % 4;
+
+            lastAlignPos = linePos;
+        }
+
+        charWidth *= scaleX * fontGetCharWidthInfo(fontGlyphIndexFromCodePoint(code))->charWidth;
 
         if(code == '\n' || (wordWrap && lw + charWidth >= maxWidth)) {
             if(code == '\n') {
@@ -550,21 +560,40 @@ static void screen_wrap_string(u32* lines, float* lineWidths, float* lineHeights
                 lh = scaleY * fontGetInfo()->lineFeed;
             }
 
+            u32 oldLinePos = linePos;
+
+            if(code != '\n' && wordPos != -1) {
+                linePos = (u32) wordPos;
+                lw -= ww;
+            }
+
             screen_wrap_string_finish_line(&w, &h, &lw, &lh, &line, &linePos, &lastAlignPos,
                                            lines, lineWidths, lineHeights,
                                            maxLines);
+
+            if(code != '\n' && wordPos != -1) {
+                linePos = oldLinePos - wordPos;
+                lw = ww;
+            }
+
+            wordPos = -1;
+            ww = 0;
+        }
+
+        if(code == ' ') {
+            wordPos = -1;
+            ww = 0;
+        } else if(wordPos == -1) {
+            wordPos = (int) linePos;
+            ww = 0;
         }
 
         if(code != '\n') {
-            u32 num = 1;
-            if(code == '\t') {
-                code = ' ';
-                num = 4 - (linePos - lastAlignPos) % 4;
-
-                lastAlignPos = linePos;
+            if(wordPos != -1) {
+                ww += charWidth;
             }
 
-            lw += charWidth * num;
+            lw += charWidth;
             lh = scaleY * fontGetInfo()->lineFeed;
 
             linePos++;

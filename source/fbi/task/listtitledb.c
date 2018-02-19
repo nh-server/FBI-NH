@@ -171,10 +171,24 @@ static void task_populate_titledb_thread(void* arg) {
                         if(titledbInfo != NULL) {
                             titledbInfo->id = (u32) json_object_get_integer(entry, "id", 0);
                             strncpy(titledbInfo->category, json_object_get_string(entry, "category", "Unknown"), sizeof(titledbInfo->category));
-                            strncpy(titledbInfo->headline, json_object_get_string(entry, "headline", ""), sizeof(titledbInfo->headline));
                             strncpy(titledbInfo->updatedAt, json_object_get_string(entry, "updated_at", ""), sizeof(titledbInfo->updatedAt));
                             strncpy(titledbInfo->meta.shortDescription, json_object_get_string(entry, "name", ""), sizeof(titledbInfo->meta.shortDescription));
                             strncpy(titledbInfo->meta.publisher, json_object_get_string(entry, "author", ""), sizeof(titledbInfo->meta.publisher));
+
+                            json_t* headline = json_object_get(entry, "headline");
+                            if(json_is_string(headline)) {
+                                const char* val = json_string_value(headline);
+
+                                if(json_string_length(headline) > sizeof(titledbInfo->headline) - 1) {
+                                    snprintf(titledbInfo->headline, sizeof(titledbInfo->headline), "%.508s...", val);
+                                } else {
+                                    strncpy(titledbInfo->headline, val, sizeof(titledbInfo->headline));
+                                }
+                            } else {
+                                titledbInfo->headline[0] = '\0';
+                            }
+
+
 
                             json_t* cias = json_object_get(entry, "cia");
                             if(json_is_array(cias)) {

@@ -288,7 +288,6 @@ void task_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float
     float infoWidth;
     screen_get_string_size_wrap(&infoWidth, NULL, infoText, 0.5f, 0.5f, x2 - x1 - 10);
 
-    // TODO: Wrap by word, not character?
     float infoX = x1 + (x2 - x1 - infoWidth) / 2;
     float infoY = y1 + (y2 - y1) / 2 - 8;
     screen_draw_string_wrap(infoText, infoX, infoY, 0.5f, 0.5f, COLOR_TEXT, true, infoX + infoWidth + 1);
