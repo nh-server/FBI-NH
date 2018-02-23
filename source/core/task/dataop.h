@@ -8,7 +8,6 @@ typedef struct ui_view_s ui_view;
 
 typedef enum data_op_e {
     DATAOP_COPY,
-    DATAOP_DOWNLOAD,
     DATAOP_DELETE
 } data_op;
 
@@ -23,6 +22,14 @@ typedef struct data_op_data_s {
     // Copy
     bool copyEmpty;
 
+    u64 currProcessed;
+    u64 currTotal;
+
+    u32 bytesPerSecond;
+    u32 estimatedRemainingSeconds;
+
+    u32 bufferSize;
+
     Result (*isSrcDirectory)(void* data, u32 index, bool* isDirectory);
     Result (*makeDstDirectory)(void* data, u32 index);
 
@@ -31,18 +38,6 @@ typedef struct data_op_data_s {
 
     Result (*getSrcSize)(void* data, u32 handle, u64* size);
     Result (*readSrc)(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size);
-
-    // Download
-    char (*downloadUrls)[DOWNLOAD_URL_MAX];
-
-    // Copy/Download
-    u64 currProcessed;
-    u64 currTotal;
-
-    u32 bytesPerSecond;
-    u32 estimatedRemainingSeconds;
-
-    u32 bufferSize;
 
     Result (*openDst)(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle);
     Result (*closeDst)(void* data, u32 index, bool succeeded, u32 handle);
@@ -71,7 +66,4 @@ typedef struct data_op_data_s {
     volatile bool retryResponse;
 } data_op_data;
 
-Result task_download_sync(const char* url, u32* downloadedSize, void* buf, size_t size);
-Result task_download_json_sync(const char* url, json_t** json, size_t maxSize);
-Result task_download_seed_sync(u64 titleId);
 Result task_data_op(data_op_data* data);

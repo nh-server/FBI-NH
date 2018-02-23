@@ -247,7 +247,7 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
     if(succeeded) {
         if(installData->contentType == CONTENT_CIA) {
             if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-                task_download_seed_sync(installData->currTitleId);
+                http_download_seed(installData->currTitleId);
 
                 if(installData->currTitleId == 0x0004013800000002 || installData->currTitleId == 0x0004013820000002) {
                     res = AM_InstallFirm(installData->currTitleId);
@@ -460,13 +460,7 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
 
     data->installInfo.data = data;
 
-#ifdef USE_CURL
-    data->installInfo.op = DATAOP_DOWNLOAD;
-
-    data->installInfo.downloadUrls = data->urls;
-#else
     data->installInfo.op = DATAOP_COPY;
-#endif
 
     data->installInfo.bufferSize = 128 * 1024;
     data->installInfo.copyEmpty = false;

@@ -183,7 +183,7 @@ static void action_install_cdn_update(ui_view* view, void* data, float* progress
         if(R_SUCCEEDED(installData->installInfo.result)) {
             if(R_SUCCEEDED(res = AM_InstallTitleFinish())
                && R_SUCCEEDED(res = AM_CommitImportTitles(fs_get_title_destination(installData->ticket->titleId), 1, false, &installData->ticket->titleId))) {
-                task_download_seed_sync(installData->ticket->titleId);
+                http_download_seed(installData->ticket->titleId);
 
                 if(installData->ticket->titleId == 0x0004013800000002 || installData->ticket->titleId == 0x0004013820000002) {
                     res = AM_InstallFirm(installData->ticket->titleId);

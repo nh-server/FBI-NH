@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include <3ds.h>
-#include <curl/curl.h>
 
 #include "error.h"
 #include "prompt.h"
@@ -503,8 +502,6 @@ static const char* description_to_string(Result res) {
                     return "Bad data";
                 case R_APP_HTTP_TOO_MANY_REDIRECTS:
                     return "Too many redirects";
-                case R_APP_CURL_INIT_FAILED:
-                    return "Failed to initialize CURL.";
                 default:
                     if(res >= R_APP_HTTP_ERROR_BASE && res < R_APP_HTTP_ERROR_END) {
                         switch(res - R_APP_HTTP_ERROR_BASE) {
@@ -635,10 +632,6 @@ static const char* description_to_string(Result res) {
                             default:
                                 return "HTTP: Unknown Response Code";
                         }
-                    }
-
-                    if(res >= R_APP_CURL_ERROR_BASE && res < R_APP_CURL_ERROR_BASE + CURL_LAST) {
-                        return curl_easy_strerror((CURLcode) (res - R_APP_CURL_ERROR_BASE));
                     }
 
                     break;

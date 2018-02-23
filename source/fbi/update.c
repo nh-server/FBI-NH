@@ -18,7 +18,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     Result res = 0;
 
     json_t* json = NULL;
-    if(R_SUCCEEDED(res = task_download_json_sync("https://api.titledb.com/v1/entry?nested=true&only=cia.id&only=cia.version&only=tdsx.id&only=tdsx.version&_filters=%7B%22name%22%3A%20%22FBI%22%7D", &json, 16 * 1024))) {
+    if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true&only=cia.id&only=cia.version&only=tdsx.id&only=tdsx.version&_filters=%7B%22name%22%3A%20%22FBI%22%7D", &json, 16 * 1024))) {
         const char* type = fs_get_3dsx_path() != NULL ? "tdsx" : "cia";
 
         json_t* entry = NULL;

@@ -10,7 +10,7 @@
 static void action_import_seed_update(ui_view* view, void* data, float* progress, char* text) {
     title_info* info = (title_info*) data;
 
-    Result res = task_download_seed_sync(info->titleId);
+    Result res = http_download_seed(info->titleId);
 
     ui_pop();
     info_destroy(view);
