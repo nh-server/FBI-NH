@@ -11,23 +11,45 @@
 #include "task/uitask.h"
 #include "../core/core.h"
 
+typedef struct {
+    u32 id;
+    u32 subId;
+    bool cia;
+} update_data;
+
+static void update_finished_url(void* data, u32 index) {
+    update_data* updateData = (update_data*) data;
+
+    task_populate_titledb_cache_installed(updateData->id, updateData->subId, updateData->cia);
+}
+
+static void update_finished_all(void* data) {
+    free(data);
+}
+
 static void update_check_update(ui_view* view, void* data, float* progress, char* text) {
+    update_data* updateData = (update_data*) data;
+
     bool hasUpdate = false;
     char updateURL[DOWNLOAD_URL_MAX];
 
     Result res = 0;
 
     json_t* json = NULL;
-    if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true&only=cia.id&only=cia.version&only=tdsx.id&only=tdsx.version&_filters=%7B%22name%22%3A%20%22FBI%22%7D", &json, 16 * 1024))) {
+    if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true&only=id&only=cia.id&only=cia.version&only=tdsx.id&only=tdsx.version&_filters=%7B%22name%22%3A%20%22FBI%22%7D", &json, 16 * 1024))) {
         const char* type = fs_get_3dsx_path() != NULL ? "tdsx" : "cia";
 
         json_t* entry = NULL;
+        json_t* idJson = NULL;
         json_t* objs = NULL;
         if(json_is_array(json) && json_array_size(json) == 1
            && json_is_object(entry = json_array_get(json, 0))
+           && json_is_integer(idJson = json_object_get(entry, "id"))
            && json_is_array(objs = json_object_get(entry, type))) {
             if(json_array_size(json) > 0) {
-                u32 latestId = 0;
+                updateData->id = (u32) json_integer_value(idJson);
+
+                u32 latestSubId = 0;
                 u32 latestMajor = 0;
                 u32 latestMinor = 0;
                 u32 latestMicro = 0;
@@ -35,10 +57,10 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                 for(u32 i = 0; i < json_array_size(objs); i++) {
                     json_t* obj = json_array_get(objs, i);
                     if(json_is_object(obj)) {
-                        json_t* idJson = json_object_get(obj, "id");
+                        json_t* subIdJson = json_object_get(obj, "id");
                         json_t* versionJson = json_object_get(obj, "version");
-                        if(json_is_integer(idJson) && json_is_string(versionJson)) {
-                            u32 id = (u32) json_integer_value(idJson);
+                        if(json_is_integer(subIdJson) && json_is_string(versionJson)) {
+                            u32 subId = (u32) json_integer_value(subIdJson);
                             const char* version = json_string_value(versionJson);
 
                             u32 major = 0;
@@ -49,7 +71,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                             if(major > latestMajor
                                || (major == latestMajor && minor > latestMinor)
                                || (major == latestMajor && minor == latestMinor && micro > latestMicro)) {
-                                latestId = id;
+                                latestSubId = subId;
                                 latestMajor = major;
                                 latestMinor = minor;
                                 latestMicro = micro;
@@ -58,10 +80,13 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                     }
                 }
 
+                updateData->subId = latestSubId;
+                updateData->cia = fs_get_3dsx_path() != NULL;
+
                 if(latestMajor > VERSION_MAJOR
                    || (latestMajor == VERSION_MAJOR && latestMinor > VERSION_MINOR)
                    || (latestMajor == VERSION_MAJOR && latestMinor == VERSION_MINOR && latestMicro > VERSION_MICRO)) {
-                    snprintf(updateURL, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/%s/%lu/download", type, latestId);
+                    snprintf(updateURL, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/%s/%lu/download", type, latestSubId);
                     hasUpdate = true;
                 }
             }
@@ -76,16 +101,25 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     info_destroy(view);
 
     if(hasUpdate) {
-        action_install_url("Update FBI to the latest version?", updateURL, fs_get_3dsx_path(), NULL, NULL, NULL, NULL);
+        action_install_url("Update FBI to the latest version?", updateURL, fs_get_3dsx_path(), updateData, update_finished_url, update_finished_all, NULL);
     } else {
         if(R_FAILED(res)) {
             error_display_res(NULL, NULL, res, "Failed to check for update.");
         } else {
             prompt_display_notify("Success", "No updates available.", COLOR_TEXT, NULL, NULL, NULL);
         }
+
+        free(updateData);
     }
 }
 
 void update_open() {
-    info_display("Checking For Updates", "", false, NULL, update_check_update, NULL);
+    update_data* data = (update_data*) calloc(1, sizeof(update_data));
+    if(data == NULL) {
+        error_display(NULL, NULL, "Failed to allocate update data.");
+
+        return;
+    }
+
+    info_display("Checking For Updates", "", false, data, update_check_update, NULL);
 }

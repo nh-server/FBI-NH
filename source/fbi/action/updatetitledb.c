@@ -31,8 +31,9 @@ static void action_update_titledb_draw_top(ui_view* view, void* data, float x1, 
 static void action_update_titledb_finished_url(void* data, u32 index) {
     update_titledb_data* updateData = (update_titledb_data*) data;
     list_item* item = updateData->items[index];
+    titledb_info* info = (titledb_info*) item->data;
 
-    task_populate_titledb_cache_installed((titledb_info*) item->data, updateData->cia[index]);
+    task_populate_titledb_cache_installed(info->id, updateData->cia[index] ? info->cia.id : info->tdsx.id, updateData->cia[index]);
     task_populate_titledb_update_status(item);
 }
 
