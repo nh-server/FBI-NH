@@ -151,10 +151,10 @@ static void task_populate_titledb_thread(void* arg) {
     linked_list_init(&titles);
 
     json_t* root = NULL;
-    if(R_SUCCEEDED(res = task_download_json_sync("https://api.titledb.com/v1/entry?nested=true"
-                                                         "&only=id&only=name&only=author&only=headline&only=category&only=updated_at"
-                                                         "&only=cia.id&only=cia.updated_at&only=cia.version&only=cia.size&only=cia.titleid"
-                                                         "&only=tdsx.id&only=tdsx.updated_at&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
+    if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true"
+                                                    "&only=id&only=name&only=author&only=headline&only=category&only=updated_at"
+                                                    "&only=cia.id&only=cia.updated_at&only=cia.version&only=cia.size&only=cia.titleid"
+                                                    "&only=tdsx.id&only=tdsx.updated_at&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
                                             &root, 1024 * 1024))) {
         if(json_is_array(root)) {
             for(u32 i = 0; i < json_array_size(root) && R_SUCCEEDED(res); i++) {
@@ -307,7 +307,7 @@ static void task_populate_titledb_thread(void* arg) {
 
             u8 icon[0x1200];
             u32 iconSize = 0;
-            if(R_SUCCEEDED(task_download_sync(url, &iconSize, &icon, sizeof(icon))) && iconSize == sizeof(icon)) {
+            if(R_SUCCEEDED(http_download(url, &iconSize, &icon, sizeof(icon))) && iconSize == sizeof(icon)) {
                 titledbInfo->meta.texture = screen_allocate_free_texture();
                 screen_load_texture_tiled(titledbInfo->meta.texture, icon, sizeof(icon), 48, 48, GPU_RGB565, false);
             }

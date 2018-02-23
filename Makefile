@@ -46,7 +46,7 @@ endif
 
 ifeq ($(TARGET),3DS)
     LIBRARY_DIRS += $(DEVKITPRO)/libctru $(DEVKITPRO)/portlibs/armv6k $(DEVKITPRO)/portlibs/3ds
-    LIBRARIES += jansson curl mbedtls mbedcrypto mbedx509 z citro3d ctru
+    LIBRARIES += jansson z citro3d ctru
 
     PRODUCT_CODE := CTR-P-CFBI
     UNIQUE_ID := 0xF8001

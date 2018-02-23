@@ -2,7 +2,6 @@
 #include <malloc.h>
 
 #include <3ds.h>
-#include <curl/curl.h>
 
 #include "../core/clipboard.h"
 #include "../core/error.h"
@@ -148,8 +147,6 @@ void init() {
     }
 
     AM_InitializeExternalTitleDatabase(false);
-
-    curl_global_init(CURL_GLOBAL_ALL);
 
     screen_init();
     ui_init();

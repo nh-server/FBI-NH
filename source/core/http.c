@@ -3,12 +3,18 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <jansson.h>
 #include <zlib.h>
 
+#include "fs.h"
 #include "error.h"
 #include "http.h"
 
-#define HTTPC_TIMEOUT 15000000000
+#define MAKE_HTTP_USER_AGENT_(major, minor, micro) ("Mozilla/5.0 (Nintendo 3DS; Mobile; rv:10.0) Gecko/20100101 FBI/" #major "." #minor "." #micro)
+#define MAKE_HTTP_USER_AGENT(major, minor, micro) MAKE_HTTP_USER_AGENT_(major, minor, micro)
+#define HTTP_USER_AGENT MAKE_HTTP_USER_AGENT(VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO)
+
+#define HTTP_TIMEOUT 15000000000
 
 struct http_context_s {
     httpcContext httpc;
@@ -53,7 +59,7 @@ Result http_open_ranged(http_context* context, const char* url, bool userAgent, 
                    && R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "Accept-Encoding", "gzip, deflate"))
                    && R_SUCCEEDED(res = httpcSetKeepAlive(&ctx->httpc, HTTPC_KEEPALIVE_ENABLED))
                    && R_SUCCEEDED(res = httpcBeginRequest(&ctx->httpc))
-                   && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(&ctx->httpc, &response, HTTPC_TIMEOUT))) {
+                   && R_SUCCEEDED(res = httpcGetResponseStatusCodeTimeout(&ctx->httpc, &response, HTTP_TIMEOUT))) {
                     if(response == 301 || response == 302 || response == 303) {
                         redirectCount++;
 
@@ -179,7 +185,7 @@ Result http_read(http_context context, u32* bytesRead, void* buffer, u32 size) {
             u32 lastPos = context->bufferSize;
             while(res == HTTPC_RESULTCODE_DOWNLOADPENDING && outPos < size) {
                 if((context->bufferSize > 0
-                    || R_SUCCEEDED(res = httpcReceiveDataTimeout(&context->httpc, &context->buffer[context->bufferSize], sizeof(context->buffer) - context->bufferSize, HTTPC_TIMEOUT))
+                    || R_SUCCEEDED(res = httpcReceiveDataTimeout(&context->httpc, &context->buffer[context->bufferSize], sizeof(context->buffer) - context->bufferSize, HTTP_TIMEOUT))
                     || res == HTTPC_RESULTCODE_DOWNLOADPENDING)) {
                     Result posRes = 0;
                     u32 currPos = 0;
@@ -204,7 +210,7 @@ Result http_read(http_context context, u32* bytesRead, void* buffer, u32 size) {
             }
         } else {
             while(res == HTTPC_RESULTCODE_DOWNLOADPENDING && outPos < size) {
-                if(R_SUCCEEDED(res = httpcReceiveDataTimeout(&context->httpc, &((u8*) buffer)[outPos], size - outPos, HTTPC_TIMEOUT)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING) {
+                if(R_SUCCEEDED(res = httpcReceiveDataTimeout(&context->httpc, &((u8*) buffer)[outPos], size - outPos, HTTP_TIMEOUT)) || res == HTTPC_RESULTCODE_DOWNLOADPENDING) {
                     Result posRes = 0;
                     u32 currPos = 0;
                     if(R_SUCCEEDED(posRes = httpcGetDownloadSizeState(&context->httpc, &currPos, NULL))) {
@@ -223,6 +229,114 @@ Result http_read(http_context context, u32* bytesRead, void* buffer, u32 size) {
         if(R_SUCCEEDED(res) && bytesRead != NULL) {
             *bytesRead = outPos;
         }
+    }
+
+    return res;
+}
+
+Result http_download(const char* url, u32* downloadedSize, void* buf, size_t size) {
+    Result res = 0;
+
+    http_context context = NULL;
+    if(R_SUCCEEDED(res = http_open(&context, url, true))) {
+        res = http_read(context, downloadedSize, buf, size);
+
+        Result closeRes = http_close(context);
+        if(R_SUCCEEDED(res)) {
+            res = closeRes;
+        }
+    }
+
+    return res;
+}
+
+Result http_download_json(const char* url, json_t** json, size_t maxSize) {
+    if(url == NULL || json == NULL) {
+        return R_APP_INVALID_ARGUMENT;
+    }
+
+    Result res = 0;
+
+    char* text = (char*) calloc(sizeof(char), maxSize);
+    if(text != NULL) {
+        u32 textSize = 0;
+        if(R_SUCCEEDED(res = http_download(url, &textSize, text, maxSize))) {
+            json_error_t error;
+            json_t* parsed = json_loads(text, 0, &error);
+            if(parsed != NULL) {
+                *json = parsed;
+            } else {
+                res = R_APP_PARSE_FAILED;
+            }
+        }
+
+        free(text);
+    } else {
+        res = R_APP_OUT_OF_MEMORY;
+    }
+
+    return res;
+}
+
+static Result FSUSER_AddSeed(u64 titleId, const void* seed) {
+    u32 *cmdbuf = getThreadCommandBuffer();
+
+    cmdbuf[0] = 0x087A0180;
+    cmdbuf[1] = (u32) (titleId & 0xFFFFFFFF);
+    cmdbuf[2] = (u32) (titleId >> 32);
+    memcpy(&cmdbuf[3], seed, 16);
+
+    Result ret = 0;
+    if(R_FAILED(ret = svcSendSyncRequest(*fsGetSessionHandle()))) return ret;
+
+    ret = cmdbuf[1];
+    return ret;
+}
+
+Result http_download_seed(u64 titleId) {
+    char pathBuf[64];
+    snprintf(pathBuf, 64, "/fbi/seed/%016llX.dat", titleId);
+
+    Result res = 0;
+
+    FS_Path* fsPath = fs_make_path_utf8(pathBuf);
+    if(fsPath != NULL) {
+        u8 seed[16];
+
+        Handle fileHandle = 0;
+        if(R_SUCCEEDED(res = FSUSER_OpenFileDirectly(&fileHandle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
+            u32 bytesRead = 0;
+            res = FSFILE_Read(fileHandle, &bytesRead, 0, seed, sizeof(seed));
+
+            FSFILE_Close(fileHandle);
+        }
+
+        fs_free_path_utf8(fsPath);
+
+        if(R_FAILED(res)) {
+            u8 region = CFG_REGION_USA;
+            CFGU_SecureInfoGetRegion(&region);
+
+            if(region <= CFG_REGION_TWN) {
+                static const char* regionStrings[] = {"JP", "US", "GB", "GB", "HK", "KR", "TW"};
+
+                char url[128];
+                snprintf(url, 128, "https://kagiya-ctr.cdn.nintendo.net/title/0x%016llX/ext_key?country=%s", titleId, regionStrings[region]);
+
+                u32 downloadedSize = 0;
+                if(R_SUCCEEDED(res = http_download(url, &downloadedSize, seed, sizeof(seed))) && downloadedSize != sizeof(seed)) {
+                    res = R_APP_BAD_DATA;
+                }
+            } else {
+                res = R_APP_OUT_OF_RANGE;
+            }
+        }
+
+        if(R_SUCCEEDED(res)) {
+            res = FSUSER_AddSeed(titleId, seed);
+        }
+    } else {
+        res = R_APP_OUT_OF_MEMORY;
     }
 
     return res;

@@ -154,7 +154,7 @@ static Result action_install_cias_close_dst(void* data, u32 index, bool succeede
 
         Result res = 0;
         if(R_SUCCEEDED(res = AM_FinishCiaInstall(handle))) {
-            task_download_seed_sync(info->ciaInfo.titleId);
+            http_download_seed(info->ciaInfo.titleId);
 
             if((info->ciaInfo.titleId & 0xFFFFFFF) == 0x0000002) {
                 res = AM_InstallFirm(info->ciaInfo.titleId);
