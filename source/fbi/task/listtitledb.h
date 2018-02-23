@@ -62,7 +62,7 @@ typedef struct populate_titledb_data_s {
 } populate_titledb_data;
 
 void task_populate_titledb_unload_cache();
-void task_populate_titledb_cache_installed(titledb_info* info, bool cia);
+void task_populate_titledb_cache_installed(u32 id, u32 subId, bool cia);
 
 void task_populate_titledb_update_status(list_item* item);
 void task_free_titledb(list_item* item);

@@ -77,13 +77,13 @@ static json_t* task_populate_titledb_get_cache_entry(u32 id) {
     }
 }
 
-void task_populate_titledb_cache_installed(titledb_info* info, bool cia) {
-    json_t* cache = task_populate_titledb_get_cache_entry(info->id);
+void task_populate_titledb_cache_installed(u32 id, u32 subId, bool cia) {
+    json_t* cache = task_populate_titledb_get_cache_entry(id);
     if(json_is_object(cache)) {
         if(cia) {
-            json_object_set(cache, "cia_id", json_integer(info->cia.id));
+            json_object_set(cache, "cia_id", json_integer(subId));
         } else {
-            json_object_set(cache, "tdsx_id", json_integer(info->tdsx.id));
+            json_object_set(cache, "tdsx_id", json_integer(subId));
         }
 
         task_populate_titledb_save_cache();
@@ -187,8 +187,6 @@ static void task_populate_titledb_thread(void* arg) {
                             } else {
                                 titledbInfo->headline[0] = '\0';
                             }
-
-
 
                             json_t* cias = json_object_get(entry, "cia");
                             if(json_is_array(cias)) {

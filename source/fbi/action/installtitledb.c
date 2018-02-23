@@ -25,8 +25,9 @@ static void action_install_titledb_draw_top(ui_view* view, void* data, float x1,
 static void action_install_titledb_finished_url(void* data, u32 index) {
     install_titledb_data* installData = (install_titledb_data*) data;
     list_item* item = installData->selected;
+    titledb_info* info = (titledb_info*) item->data;
 
-    task_populate_titledb_cache_installed((titledb_info*) item->data, installData->cia);
+    task_populate_titledb_cache_installed(info->id, installData->cia ? info->cia.id : info->tdsx.id, installData->cia);
     task_populate_titledb_update_status(item);
 }
 
