@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -6,6 +7,7 @@
 #include "error.h"
 #include "fs.h"
 #include "linkedlist.h"
+#include "stringutil.h"
 
 bool fs_is_dir(FS_Archive archive, const char* path) {
     Result res = 0;
@@ -169,6 +171,20 @@ void fs_set_3dsx_path(const char* path) {
     } else {
         strncpy(path_3dsx, path, FILE_PATH_MAX);
     }
+}
+
+int fs_make_3dsx_path(char* out, const char* name, size_t size) {
+    char filename[FILE_NAME_MAX];
+    string_escape_file_name(filename, name, sizeof(filename));
+
+    return snprintf(out, size, "/3ds/%s/%s.3dsx", filename, filename);
+}
+
+int fs_make_smdh_path(char* out, const char* name, size_t size) {
+    char filename[FILE_NAME_MAX];
+    string_escape_file_name(filename, name, sizeof(filename));
+
+    return snprintf(out, size, "/3ds/%s/%s.smdh", filename, filename);
 }
 
 FS_MediaType fs_get_title_destination(u64 titleId) {

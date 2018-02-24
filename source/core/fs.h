@@ -17,6 +17,9 @@ Result fs_close_archive(FS_Archive archive);
 const char* fs_get_3dsx_path();
 void fs_set_3dsx_path(const char* path);
 
+int fs_make_3dsx_path(char* out, const char* name, size_t size);
+int fs_make_smdh_path(char* out, const char* name, size_t size);
+
 FS_MediaType fs_get_title_destination(u64 titleId);
 
 bool fs_filter_cias(void* data, const char* name, u32 attributes);

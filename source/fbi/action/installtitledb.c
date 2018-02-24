@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <3ds.h>
 
@@ -27,7 +28,18 @@ static void action_install_titledb_finished_url(void* data, u32 index) {
     list_item* item = installData->selected;
     titledb_info* info = (titledb_info*) item->data;
 
-    task_populate_titledb_cache_installed(info->id, installData->cia ? info->cia.id : info->tdsx.id, installData->cia);
+    titledb_cache_entry entry;
+    if(installData->cia) {
+        entry.id = info->cia.id;
+        strncpy(entry.updatedAt, info->cia.updatedAt, sizeof(entry.updatedAt));
+        strncpy(entry.version, info->cia.version, sizeof(entry.version));
+    } else {
+        entry.id = info->tdsx.id;
+        strncpy(entry.updatedAt, info->tdsx.updatedAt, sizeof(entry.updatedAt));
+        strncpy(entry.version, info->tdsx.version, sizeof(entry.version));
+    }
+
+    task_populate_titledb_cache_set(info->id, installData->cia, &entry);
     task_populate_titledb_update_status(item);
 }
 
@@ -53,18 +65,20 @@ void action_install_titledb(linked_list* items, list_item* selected, bool cia) {
     if(data->cia) {
         snprintf(urls, sizeof(urls), "https://3ds.titledb.com/v1/cia/%lu/download", info->cia.id);
     } else {
-        char name[FILE_NAME_MAX];
-        string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
+        char filePath[FILE_PATH_MAX];
+        fs_make_3dsx_path(filePath, info->meta.shortDescription, sizeof(filePath));
 
         u32 urlsPos = 0;
         u32 pathsPos = 0;
 
         urlsPos += snprintf(urls + urlsPos, sizeof(urls) - urlsPos, "https://3ds.titledb.com/v1/tdsx/%lu/download\n", info->tdsx.id);
-        pathsPos += snprintf(paths + pathsPos, sizeof(paths) - pathsPos, "/3ds/%s/%s.3dsx\n", name, name);
+        pathsPos += snprintf(paths + pathsPos, sizeof(paths) - pathsPos, "%s\n", filePath);
 
         if(info->tdsx.smdh.exists) {
+            fs_make_smdh_path(filePath, info->meta.shortDescription, sizeof(filePath));
+
             snprintf(urls + urlsPos, sizeof(urls) - urlsPos, "https://3ds.titledb.com/v1/smdh/%lu/download\n", info->tdsx.smdh.id);
-            snprintf(paths + pathsPos, sizeof(paths) - pathsPos, "/3ds/%s/%s.smdh\n", name, name);
+            snprintf(paths + pathsPos, sizeof(paths) - pathsPos, "%s\n", filePath);
         }
     }
 
