@@ -93,15 +93,18 @@ void task_populate_titledb_cache_installed(u32 id, u32 subId, bool cia) {
 void task_populate_titledb_update_status(list_item* item) {
     titledb_info* info = (titledb_info*) item->data;
 
+    info->cia.installed = false;
+    info->cia.outdated = false;
+
+    info->tdsx.installed = false;
+    info->tdsx.outdated = false;
+
     if(info->cia.exists) {
         AM_TitleEntry entry;
         info->cia.installed = R_SUCCEEDED(AM_GetTitleInfo(fs_get_title_destination(info->cia.titleId), 1, &info->cia.titleId, &entry));
-        info->cia.installedVersion = info->cia.installed ? entry.version : (u16) 0;
     }
 
     if(info->tdsx.exists) {
-        info->tdsx.installed = false;
-
         char name[FILE_NAME_MAX];
         string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
 
@@ -124,19 +127,30 @@ void task_populate_titledb_update_status(list_item* item) {
     if((info->cia.exists && info->cia.installed) || (info->tdsx.exists && info->tdsx.installed)) {
         json_t* cache = task_populate_titledb_get_cache_entry(info->id);
         if(json_is_object(cache)) {
-            info->cia.outdated = info->cia.installed && json_object_get_integer(cache, "cia_id", 0) < info->cia.id;
-            info->tdsx.outdated = info->tdsx.installed && json_object_get_integer(cache, "tdsx_id", 0) < info->tdsx.id;
-        } else {
-            // If unknown, assume outdated.
-            info->cia.outdated = true;
-            info->tdsx.outdated = true;
-        }
+            json_t* ciaId = json_object_get(cache, "cia_id");
+            json_t* tdsxId = json_object_get(cache, "tdsx_id");
 
-        if(info->cia.outdated || info->tdsx.outdated) {
-            item->color = COLOR_TITLEDB_OUTDATED;
+            info->cia.installed = info->cia.installed && json_is_integer(ciaId);
+            info->cia.outdated = info->cia.installed && json_integer_value(ciaId) < info->cia.id;
+
+            info->tdsx.installed = info->tdsx.installed && json_is_integer(tdsxId);
+            info->tdsx.outdated = info->tdsx.installed && json_integer_value(tdsxId) < info->tdsx.id;
         } else {
-            item->color = COLOR_TITLEDB_INSTALLED;
+            // If no cache entry exists, consider this entry as not installed.
+            // Assuming an entry is outdated can cause issues with multiple entries that have the same name/title ID.
+
+            info->cia.installed = false;
+            info->cia.outdated = false;
+
+            info->tdsx.installed = false;
+            info->tdsx.outdated = false;
         }
+    }
+
+    if(info->cia.outdated || info->tdsx.outdated) {
+        item->color = COLOR_TITLEDB_OUTDATED;
+    } else if(info->cia.installed || info->tdsx.installed) {
+        item->color = COLOR_TITLEDB_INSTALLED;
     } else {
         item->color = COLOR_TITLEDB_NOT_INSTALLED;
     }

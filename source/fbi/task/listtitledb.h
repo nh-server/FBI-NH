@@ -14,7 +14,6 @@ typedef struct titledb_cia_info_s {
 
     bool installed;
     bool outdated;
-    u16 installedVersion;
 } titledb_cia_info;
 
 typedef struct titledb_smdh_info_s {

@@ -308,13 +308,11 @@ void task_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, f
     snprintf(infoText, sizeof(infoText),
              "Title ID: %016llX\n"
                      "TitleDB Version: %s\n"
-                     "Installed Version: %hu (%d.%d.%d)\n"
                      "Size: %.2f %s\n"
                      "Updated At: %s %s\n"
                      "Update Available: %s",
              info->cia.titleId,
              info->cia.version,
-             info->cia.installedVersion, (info->cia.installedVersion >> 10) & 0x3F, (info->cia.installedVersion >> 4) & 0x3F, info->cia.installedVersion & 0xF,
              ui_get_display_size(info->cia.size), ui_get_display_size_units(info->cia.size),
              updatedDate, updatedTime,
              info->cia.outdated ? "Yes" : "No");
