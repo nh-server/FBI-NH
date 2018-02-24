@@ -13,14 +13,14 @@
 
 typedef struct {
     u32 id;
-    u32 subId;
     bool cia;
+    titledb_cache_entry data;
 } update_data;
 
 static void update_finished_url(void* data, u32 index) {
     update_data* updateData = (update_data*) data;
 
-    task_populate_titledb_cache_installed(updateData->id, updateData->subId, updateData->cia);
+    task_populate_titledb_cache_set(updateData->id, updateData->cia, &updateData->data);
 }
 
 static void update_finished_all(void* data) {
@@ -36,7 +36,10 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     Result res = 0;
 
     json_t* json = NULL;
-    if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true&only=id&only=cia.id&only=cia.version&only=tdsx.id&only=tdsx.version&_filters=%7B%22name%22%3A%20%22FBI%22%7D", &json, 16 * 1024))) {
+    if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true&only=id"
+                                                    "&only=cia.id&only=cia.version&only=cia.updated_at"
+                                                    "&only=tdsx.id&only=tdsx.version&only=tdsx.updated_at"
+                                                    "&_filters=%7B%22name%22%3A%20%22FBI%22%7D", &json, 16 * 1024))) {
         const char* type = fs_get_3dsx_path() != NULL ? "tdsx" : "cia";
 
         json_t* entry = NULL;
@@ -48,8 +51,8 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
            && json_is_array(objs = json_object_get(entry, type))) {
             if(json_array_size(json) > 0) {
                 updateData->id = (u32) json_integer_value(idJson);
+                updateData->cia = fs_get_3dsx_path() != NULL;
 
-                u32 latestSubId = 0;
                 u32 latestMajor = 0;
                 u32 latestMinor = 0;
                 u32 latestMicro = 0;
@@ -59,9 +62,11 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                     if(json_is_object(obj)) {
                         json_t* subIdJson = json_object_get(obj, "id");
                         json_t* versionJson = json_object_get(obj, "version");
-                        if(json_is_integer(subIdJson) && json_is_string(versionJson)) {
+                        json_t* updatedAtJson = json_object_get(obj, "updated_at");
+                        if(json_is_integer(subIdJson) && json_is_string(versionJson) && json_is_string(updatedAtJson)) {
                             u32 subId = (u32) json_integer_value(subIdJson);
                             const char* version = json_string_value(versionJson);
+                            const char* updatedAt = json_string_value(updatedAtJson);
 
                             u32 major = 0;
                             u32 minor = 0;
@@ -71,7 +76,10 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                             if(major > latestMajor
                                || (major == latestMajor && minor > latestMinor)
                                || (major == latestMajor && minor == latestMinor && micro > latestMicro)) {
-                                latestSubId = subId;
+                                updateData->data.id = subId;
+                                strncpy(updateData->data.updatedAt, updatedAt, sizeof(updateData->data.updatedAt));
+                                strncpy(updateData->data.version, version, sizeof(updateData->data.version));
+
                                 latestMajor = major;
                                 latestMinor = minor;
                                 latestMicro = micro;
@@ -80,13 +88,10 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                     }
                 }
 
-                updateData->subId = latestSubId;
-                updateData->cia = fs_get_3dsx_path() != NULL;
-
                 if(latestMajor > VERSION_MAJOR
                    || (latestMajor == VERSION_MAJOR && latestMinor > VERSION_MINOR)
                    || (latestMajor == VERSION_MAJOR && latestMinor == VERSION_MINOR && latestMicro > VERSION_MICRO)) {
-                    snprintf(updateURL, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/%s/%lu/download", type, latestSubId);
+                    snprintf(updateURL, DOWNLOAD_URL_MAX, "https://3ds.titledb.com/v1/%s/%lu/download", type, updateData->data.id);
                     hasUpdate = true;
                 }
             }

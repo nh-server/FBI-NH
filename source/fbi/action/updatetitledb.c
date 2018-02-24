@@ -33,7 +33,18 @@ static void action_update_titledb_finished_url(void* data, u32 index) {
     list_item* item = updateData->items[index];
     titledb_info* info = (titledb_info*) item->data;
 
-    task_populate_titledb_cache_installed(info->id, updateData->cia[index] ? info->cia.id : info->tdsx.id, updateData->cia[index]);
+    titledb_cache_entry entry;
+    if(updateData->cia[index]) {
+        entry.id = info->cia.id;
+        strncpy(entry.updatedAt, info->cia.updatedAt, sizeof(entry.updatedAt));
+        strncpy(entry.version, info->cia.version, sizeof(entry.version));
+    } else {
+        entry.id = info->tdsx.id;
+        strncpy(entry.updatedAt, info->tdsx.updatedAt, sizeof(entry.updatedAt));
+        strncpy(entry.version, info->tdsx.version, sizeof(entry.version));
+    }
+
+    task_populate_titledb_cache_set(info->id, updateData->cia[index], &entry);
     task_populate_titledb_update_status(item);
 }
 
@@ -59,7 +70,7 @@ void action_update_titledb(linked_list* items, list_item* selected) {
         list_item* item = linked_list_iter_next(&iter);
         titledb_info* info = (titledb_info*) item->data;
 
-        if(info->cia.outdated) {
+        if(info->cia.installed && info->cia.installedInfo.id != info->cia.id) {
             urlsPos += snprintf(data->urls + urlsPos, INSTALL_URLS_MAX * DOWNLOAD_URL_MAX - urlsPos,
                                 "https://3ds.titledb.com/v1/cia/%lu/download\n",
                                 info->cia.id);
@@ -72,20 +83,22 @@ void action_update_titledb(linked_list* items, list_item* selected) {
             index++;
         }
 
-        if(info->tdsx.outdated && (!info->tdsx.smdh.exists || index < INSTALL_URLS_MAX - 1)) {
-            char name[FILE_NAME_MAX];
-            string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
+        if(info->tdsx.installed && info->tdsx.installedInfo.id != info->tdsx.id && (!info->tdsx.smdh.exists || index < INSTALL_URLS_MAX - 1)) {
+            char filePath[FILE_PATH_MAX];
+            fs_make_3dsx_path(filePath, info->meta.shortDescription, sizeof(filePath));
 
             urlsPos += snprintf(data->urls + urlsPos, INSTALL_URLS_MAX * DOWNLOAD_URL_MAX - urlsPos, "https://3ds.titledb.com/v1/tdsx/%lu/download\n", info->tdsx.id);
-            pathsPos += snprintf(data->paths + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "/3ds/%s/%s.3dsx\n", name, name);
+            pathsPos += snprintf(data->paths + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "%s\n", filePath);
             data->cia[index] = false;
             data->items[index] = item;
 
             index++;
 
             if(info->tdsx.smdh.exists) {
+                fs_make_smdh_path(filePath, info->meta.shortDescription, sizeof(filePath));
+
                 urlsPos += snprintf(data->urls + urlsPos, INSTALL_URLS_MAX * DOWNLOAD_URL_MAX - urlsPos, "https://3ds.titledb.com/v1/smdh/%lu/download\n", info->tdsx.smdh.id);
-                pathsPos += snprintf(data->paths + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "/3ds/%s/%s.smdh\n", name, name);
+                pathsPos += snprintf(data->paths + pathsPos, INSTALL_URLS_MAX * FILE_PATH_MAX - pathsPos, "%s\n", filePath);
                 data->cia[index] = false;
                 data->items[index] = item;
 

@@ -138,7 +138,7 @@ static void titledb_entry_update(ui_view* view, void* data, linked_list* items, 
             if(item != NULL) {
                 strncpy(item->name, "CIA", sizeof(item->name));
                 item->data = (void*) true;
-                item->color = info->cia.installed ? info->cia.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+                item->color = info->cia.installed ? info->cia.installedInfo.id != info->cia.id ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
 
                 linked_list_add(items, item);
             }
@@ -149,7 +149,7 @@ static void titledb_entry_update(ui_view* view, void* data, linked_list* items, 
             if(item != NULL) {
                 strncpy(item->name, "3DSX", sizeof(item->name));
                 item->data = (void*) false;
-                item->color = info->tdsx.installed ? info->tdsx.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+                item->color = info->tdsx.installed ? info->tdsx.installedInfo.id != info->tdsx.id ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
 
                 linked_list_add(items, item);
             }
@@ -162,9 +162,9 @@ static void titledb_entry_update(ui_view* view, void* data, linked_list* items, 
             list_item* item = (list_item*) linked_list_iter_next(&iter);
 
             if((bool) item->data) {
-                item->color = info->cia.installed ? info->cia.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+                item->color = info->cia.installed ? info->cia.installedInfo.id != info->cia.id ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
             } else {
-                item->color = info->tdsx.installed ? info->tdsx.outdated ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
+                item->color = info->tdsx.installed ? info->tdsx.installedInfo.id != info->tdsx.id ? COLOR_TITLEDB_OUTDATED : COLOR_TITLEDB_INSTALLED : COLOR_TITLEDB_NOT_INSTALLED;
             }
         }
     }

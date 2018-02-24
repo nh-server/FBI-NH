@@ -22,7 +22,7 @@
 
 static json_t* installedApps = NULL;
 
-static void task_populate_titledb_load_cache() {
+static void task_populate_titledb_cache_load() {
     if(installedApps != NULL) {
         json_decref(installedApps);
     }
@@ -39,7 +39,7 @@ static void task_populate_titledb_load_cache() {
     }
 }
 
-static void task_populate_titledb_save_cache() {
+static void task_populate_titledb_cache_save() {
     if(json_is_object(installedApps)) {
         mkdir(TITLEDB_CACHE_DIR, 755);
 
@@ -47,18 +47,18 @@ static void task_populate_titledb_save_cache() {
     }
 }
 
-void task_populate_titledb_unload_cache() {
+void task_populate_titledb_cache_unload() {
     if(json_is_object(installedApps)) {
-        task_populate_titledb_save_cache();
+        task_populate_titledb_cache_save();
 
         json_decref(installedApps);
         installedApps = NULL;
     }
 }
 
-static json_t* task_populate_titledb_get_cache_entry(u32 id) {
+static json_t* task_populate_titledb_cache_get_base(u32 id, bool cia, bool create) {
     if(!json_is_object(installedApps)) {
-        task_populate_titledb_load_cache();
+        task_populate_titledb_cache_load();
     }
 
     if(json_is_object(installedApps)) {
@@ -67,26 +67,68 @@ static json_t* task_populate_titledb_get_cache_entry(u32 id) {
 
         json_t* cache = json_object_get(installedApps, idString);
         if(!json_is_object(cache)) {
-            cache = json_object();
-            json_object_set(installedApps, idString, cache);
+            if(create) {
+                cache = json_object();
+                json_object_set(installedApps, idString, cache);
+            } else {
+                cache = NULL;
+            }
         }
 
-        return cache;
-    } else {
-        return NULL;
+        if(json_is_object(cache)) {
+            // Get old cache entry.
+            const char* objIdKey = cia ? "cia_id" : "tdsx_id";
+            json_t* objId = json_object_get(cache, objIdKey);
+
+            const char* objKey = cia ? "cia" : "tdsx";
+            json_t* obj = json_object_get(cache, objKey);
+            if(!json_is_object(obj)) {
+                // Force creation if old value to migrate exists.
+                if(create || json_is_integer(objId)) {
+                    obj = json_object();
+                    json_object_set(cache, objKey, obj);
+                } else {
+                    obj = NULL;
+                }
+            }
+
+            // Migrate old cache entry.
+            if(json_is_integer(objId)) {
+                json_object_set(obj, "id", json_integer(json_integer_value(objId)));
+                json_object_del(cache, objIdKey);
+            }
+
+            return obj;
+        }
     }
+
+    return NULL;
 }
 
-void task_populate_titledb_cache_installed(u32 id, u32 subId, bool cia) {
-    json_t* cache = task_populate_titledb_get_cache_entry(id);
-    if(json_is_object(cache)) {
-        if(cia) {
-            json_object_set(cache, "cia_id", json_integer(subId));
-        } else {
-            json_object_set(cache, "tdsx_id", json_integer(subId));
-        }
+static bool task_populate_titledb_cache_get(u32 id, bool cia, titledb_cache_entry* entry) {
+    json_t* obj = task_populate_titledb_cache_get_base(id, cia, false);
+    if(json_is_object(obj)) {
+        json_t* idJson = json_object_get(obj, "id");
+        if(json_is_integer(idJson)) {
+            entry->id = (u32) json_integer_value(idJson);
+            strncpy(entry->updatedAt, json_object_get_string(obj, "updated_at", "Unknown"), sizeof(entry->updatedAt));
+            strncpy(entry->version, json_object_get_string(obj, "version", "Unknown"), sizeof(entry->version));
 
-        task_populate_titledb_save_cache();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void task_populate_titledb_cache_set(u32 id, bool cia, titledb_cache_entry* entry) {
+    json_t* obj = task_populate_titledb_cache_get_base(id, cia, true);
+    if(json_is_object(obj)) {
+        json_object_set(obj, "id", json_integer(entry->id));
+        json_object_set(obj, "updated_at", json_string(entry->updatedAt));
+        json_object_set(obj, "version", json_string(entry->version));
+
+        task_populate_titledb_cache_save();
     }
 }
 
@@ -94,22 +136,17 @@ void task_populate_titledb_update_status(list_item* item) {
     titledb_info* info = (titledb_info*) item->data;
 
     info->cia.installed = false;
-    info->cia.outdated = false;
-
     info->tdsx.installed = false;
-    info->tdsx.outdated = false;
 
     if(info->cia.exists) {
         AM_TitleEntry entry;
-        info->cia.installed = R_SUCCEEDED(AM_GetTitleInfo(fs_get_title_destination(info->cia.titleId), 1, &info->cia.titleId, &entry));
+        info->cia.installed = R_SUCCEEDED(AM_GetTitleInfo(fs_get_title_destination(info->cia.titleId), 1, &info->cia.titleId, &entry))
+                              && task_populate_titledb_cache_get(info->id, true, &info->cia.installedInfo);
     }
 
     if(info->tdsx.exists) {
-        char name[FILE_NAME_MAX];
-        string_escape_file_name(name, info->meta.shortDescription, sizeof(name));
-
         char path3dsx[FILE_PATH_MAX];
-        snprintf(path3dsx, sizeof(path3dsx), "/3ds/%s/%s.3dsx", name, name);
+        fs_make_3dsx_path(path3dsx, info->meta.shortDescription, sizeof(path3dsx));
 
         FS_Path* fsPath = fs_make_path_utf8(path3dsx);
         if(fsPath != NULL) {
@@ -117,43 +154,35 @@ void task_populate_titledb_update_status(list_item* item) {
             if(R_SUCCEEDED(FSUSER_OpenFileDirectly(&handle, ARCHIVE_SDMC, fsMakePath(PATH_EMPTY, ""), *fsPath, FS_OPEN_READ, 0))) {
                 FSFILE_Close(handle);
 
-                info->tdsx.installed = true;
+                info->tdsx.installed = task_populate_titledb_cache_get(info->id, false, &info->tdsx.installedInfo);
             }
 
             fs_free_path_utf8(fsPath);
         }
     }
 
-    if((info->cia.exists && info->cia.installed) || (info->tdsx.exists && info->tdsx.installed)) {
-        json_t* cache = task_populate_titledb_get_cache_entry(info->id);
-        if(json_is_object(cache)) {
-            json_t* ciaId = json_object_get(cache, "cia_id");
-            json_t* tdsxId = json_object_get(cache, "tdsx_id");
-
-            info->cia.installed = info->cia.installed && json_is_integer(ciaId);
-            info->cia.outdated = info->cia.installed && json_integer_value(ciaId) < info->cia.id;
-
-            info->tdsx.installed = info->tdsx.installed && json_is_integer(tdsxId);
-            info->tdsx.outdated = info->tdsx.installed && json_integer_value(tdsxId) < info->tdsx.id;
-        } else {
-            // If no cache entry exists, consider this entry as not installed.
-            // Assuming an entry is outdated can cause issues with multiple entries that have the same name/title ID.
-
-            info->cia.installed = false;
-            info->cia.outdated = false;
-
-            info->tdsx.installed = false;
-            info->tdsx.outdated = false;
-        }
-    }
-
-    if(info->cia.outdated || info->tdsx.outdated) {
+    if((info->cia.installed && info->cia.installedInfo.id != info->cia.id) || (info->tdsx.installed && info->tdsx.installedInfo.id != info->tdsx.id)) {
         item->color = COLOR_TITLEDB_OUTDATED;
     } else if(info->cia.installed || info->tdsx.installed) {
         item->color = COLOR_TITLEDB_INSTALLED;
     } else {
         item->color = COLOR_TITLEDB_NOT_INSTALLED;
     }
+}
+
+static int task_populate_titledb_compare_dates(const char* date1, const char* date2, size_t size) {
+    bool unk1 = strncmp(date1, "Unknown", size) == 0;
+    bool unk2 = strncmp(date2, "Unknown", size) == 0;
+
+    if(unk1 && !unk2) {
+        return -1;
+    } else if(!unk1 && unk2) {
+        return 1;
+    } else if(unk1 && unk2) {
+        return 0;
+    }
+
+    return strncmp(date1, date2, size);
 }
 
 static void task_populate_titledb_thread(void* arg) {
@@ -185,7 +214,7 @@ static void task_populate_titledb_thread(void* arg) {
                         if(titledbInfo != NULL) {
                             titledbInfo->id = (u32) json_object_get_integer(entry, "id", 0);
                             strncpy(titledbInfo->category, json_object_get_string(entry, "category", "Unknown"), sizeof(titledbInfo->category));
-                            strncpy(titledbInfo->updatedAt, json_object_get_string(entry, "updated_at", ""), sizeof(titledbInfo->updatedAt));
+                            strncpy(titledbInfo->updatedAt, json_object_get_string(entry, "updated_at", "Unknown"), sizeof(titledbInfo->updatedAt));
                             strncpy(titledbInfo->meta.shortDescription, json_object_get_string(entry, "name", ""), sizeof(titledbInfo->meta.shortDescription));
                             strncpy(titledbInfo->meta.publisher, json_object_get_string(entry, "author", ""), sizeof(titledbInfo->meta.publisher));
 
@@ -207,8 +236,8 @@ static void task_populate_titledb_thread(void* arg) {
                                 for(u32 j = 0; j < json_array_size(cias); j++) {
                                     json_t* cia = json_array_get(cias, j);
                                     if(json_is_object(cia)) {
-                                        const char* updatedAt = json_object_get_string(cia, "updated_at", "");
-                                        if(!titledbInfo->cia.exists || strncmp(updatedAt, titledbInfo->cia.updatedAt, sizeof(titledbInfo->cia.updatedAt)) >= 0) {
+                                        const char* updatedAt = json_object_get_string(cia, "updated_at", "Unknown");
+                                        if(!titledbInfo->cia.exists || task_populate_titledb_compare_dates(updatedAt, titledbInfo->cia.updatedAt, sizeof(titledbInfo->cia.updatedAt)) >= 0) {
                                             titledbInfo->cia.exists = true;
 
                                             titledbInfo->cia.id = (u32) json_object_get_integer(cia, "id", 0);
@@ -226,8 +255,8 @@ static void task_populate_titledb_thread(void* arg) {
                                 for(u32 j = 0; j < json_array_size(tdsxs); j++) {
                                     json_t* tdsx = json_array_get(tdsxs, j);
                                     if(json_is_object(tdsx)) {
-                                        const char* updatedAt = json_object_get_string(tdsx, "updated_at", "");
-                                        if(!titledbInfo->tdsx.exists || strncmp(updatedAt, titledbInfo->tdsx.updatedAt, sizeof(titledbInfo->tdsx.updatedAt)) >= 0) {
+                                        const char* updatedAt = json_object_get_string(tdsx, "updated_at", "Unknown");
+                                        if(!titledbInfo->tdsx.exists || task_populate_titledb_compare_dates(updatedAt, titledbInfo->tdsx.updatedAt, sizeof(titledbInfo->tdsx.updatedAt)) >= 0) {
                                             titledbInfo->tdsx.exists = true;
 
                                             titledbInfo->tdsx.id = (u32) json_object_get_integer(tdsx, "id", 0);

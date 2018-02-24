@@ -155,7 +155,7 @@ void init() {
 
 void cleanup() {
     clipboard_clear();
-    task_populate_titledb_unload_cache();
+    task_populate_titledb_cache_unload();
 
     task_exit();
     ui_exit();
