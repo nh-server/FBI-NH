@@ -78,6 +78,7 @@ else:
             print('Detecting host IP...')
             hostIp = [(s.connect(('8.8.8.8', 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]
 
+target_path = target_path.strip()
 if not os.path.exists(target_path):
     print(target_path + ': No such file or directory.')
     sys.exit(1)
