@@ -11,6 +11,7 @@
 #include "../core/core.h"
 
 static list_item install = {"Install", COLOR_TEXT, action_install_titledb};
+static list_item mark_updated = {"Mark Updated", COLOR_TEXT, action_mark_titledb_updated};
 
 typedef struct {
     populate_titledb_data populateData;
@@ -76,6 +77,7 @@ static void titledb_action_update(ui_view* view, void* data, linked_list* items,
 
     if(linked_list_size(items) == 0) {
         linked_list_add(items, &install);
+        linked_list_add(items, &mark_updated);
     }
 }
 
