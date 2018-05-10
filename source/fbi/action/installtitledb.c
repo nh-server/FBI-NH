@@ -31,11 +31,11 @@ static void action_install_titledb_finished_url(void* data, u32 index) {
     titledb_cache_entry entry;
     if(installData->cia) {
         entry.id = info->cia.id;
-        strncpy(entry.updatedAt, info->cia.updatedAt, sizeof(entry.updatedAt));
+        strncpy(entry.mtime, info->cia.mtime, sizeof(entry.mtime));
         strncpy(entry.version, info->cia.version, sizeof(entry.version));
     } else {
         entry.id = info->tdsx.id;
-        strncpy(entry.updatedAt, info->tdsx.updatedAt, sizeof(entry.updatedAt));
+        strncpy(entry.mtime, info->tdsx.mtime, sizeof(entry.mtime));
         strncpy(entry.version, info->tdsx.version, sizeof(entry.version));
     }
 

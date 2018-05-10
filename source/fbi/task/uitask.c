@@ -279,8 +279,8 @@ void task_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float
 
     task_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
 
-    char updatedAt[32];
-    task_format_date(updatedAt, info->updatedAt, sizeof(updatedAt));
+    char mtime[32];
+    task_format_date(mtime, info->mtime, sizeof(mtime));
 
     char infoText[1024];
 
@@ -292,7 +292,7 @@ void task_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float
                      "Update Available: %s",
              info->headline,
              info->category,
-             updatedAt,
+             mtime,
              (info->cia.installed && info->cia.installedInfo.id != info->cia.id) || (info->tdsx.installed && info->tdsx.installedInfo.id != info->tdsx.id) ? "Yes" : "No");
 
     float infoWidth;
@@ -308,11 +308,11 @@ void task_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, f
 
     task_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
 
-    char dbUpdatedAt[32];
-    task_format_date(dbUpdatedAt, info->cia.updatedAt, sizeof(dbUpdatedAt));
+    char dbMtime[32];
+    task_format_date(dbMtime, info->cia.mtime, sizeof(dbMtime));
 
-    char localUpdatedAt[32];
-    task_format_date(localUpdatedAt, info->cia.installedInfo.updatedAt, sizeof(localUpdatedAt));
+    char localMtime[32];
+    task_format_date(localMtime, info->cia.installedInfo.mtime, sizeof(localMtime));
 
     char infoText[512];
 
@@ -326,8 +326,8 @@ void task_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, f
                      "Update Available: %s",
              info->cia.titleId,
              ui_get_display_size(info->cia.size), ui_get_display_size_units(info->cia.size),
-             dbUpdatedAt,
-             info->cia.installed ? localUpdatedAt : "Not Installed",
+             dbMtime,
+             info->cia.installed ? localMtime : "Not Installed",
              info->cia.version,
              info->cia.installed ? info->cia.installedInfo.version : "Not Installed",
              info->cia.installed && info->cia.installedInfo.id != info->cia.id ? "Yes" : "No");
@@ -345,11 +345,11 @@ void task_draw_titledb_info_tdsx(ui_view* view, void* data, float x1, float y1, 
 
     task_draw_meta_info(view, &info->meta, x1, y1, x2, y2);
 
-    char dbUpdatedAt[32];
-    task_format_date(dbUpdatedAt, info->tdsx.updatedAt, sizeof(dbUpdatedAt));
+    char dbMtime[32];
+    task_format_date(dbMtime, info->tdsx.mtime, sizeof(dbMtime));
 
-    char localUpdatedAt[32];
-    task_format_date(localUpdatedAt, info->tdsx.installedInfo.updatedAt, sizeof(localUpdatedAt));
+    char localMtime[32];
+    task_format_date(localMtime, info->tdsx.installedInfo.mtime, sizeof(localMtime));
 
     char infoText[512];
 
@@ -361,8 +361,8 @@ void task_draw_titledb_info_tdsx(ui_view* view, void* data, float x1, float y1, 
                      "Local Version: %s\n"
                      "Update Available: %s",
              ui_get_display_size(info->tdsx.size), ui_get_display_size_units(info->tdsx.size),
-             dbUpdatedAt,
-             info->tdsx.installed ? localUpdatedAt : "Not Installed",
+             dbMtime,
+             info->tdsx.installed ? localMtime : "Not Installed",
              info->tdsx.version,
              info->tdsx.installed ? info->tdsx.installedInfo.version : "Not Installed",
              info->tdsx.installed && info->tdsx.installedInfo.id != info->tdsx.id ? "Yes" : "No");

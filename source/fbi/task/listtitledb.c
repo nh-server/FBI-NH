@@ -111,7 +111,7 @@ static bool task_populate_titledb_cache_get(u32 id, bool cia, titledb_cache_entr
         json_t* idJson = json_object_get(obj, "id");
         if(json_is_integer(idJson)) {
             entry->id = (u32) json_integer_value(idJson);
-            strncpy(entry->updatedAt, json_object_get_string(obj, "updated_at", "Unknown"), sizeof(entry->updatedAt));
+            strncpy(entry->mtime, json_object_get_string(obj, "mtime", "Unknown"), sizeof(entry->mtime));
             strncpy(entry->version, json_object_get_string(obj, "version", "Unknown"), sizeof(entry->version));
 
             return true;
@@ -125,7 +125,7 @@ void task_populate_titledb_cache_set(u32 id, bool cia, titledb_cache_entry* entr
     json_t* obj = task_populate_titledb_cache_get_base(id, cia, true);
     if(json_is_object(obj)) {
         json_object_set(obj, "id", json_integer(entry->id));
-        json_object_set(obj, "updated_at", json_string(entry->updatedAt));
+        json_object_set(obj, "mtime", json_string(entry->mtime));
         json_object_set(obj, "version", json_string(entry->version));
 
         task_populate_titledb_cache_save();
@@ -195,9 +195,9 @@ static void task_populate_titledb_thread(void* arg) {
 
     json_t* root = NULL;
     if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true"
-                                                    "&only=id&only=name&only=author&only=headline&only=category&only=updated_at"
-                                                    "&only=cia.id&only=cia.updated_at&only=cia.version&only=cia.size&only=cia.titleid"
-                                                    "&only=tdsx.id&only=tdsx.updated_at&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
+                                                    "&only=id&only=name&only=author&only=headline&only=category"
+                                                    "&only=cia.id&only=cia.mtime&only=cia.version&only=cia.size&only=cia.titleid"
+                                                    "&only=tdsx.id&only=tdsx.mtime&only=tdsx.version&only=tdsx.size&only=tdsx.smdh.id",
                                             &root, 1024 * 1024))) {
         if(json_is_array(root)) {
             for(u32 i = 0; i < json_array_size(root) && R_SUCCEEDED(res); i++) {
@@ -214,7 +214,6 @@ static void task_populate_titledb_thread(void* arg) {
                         if(titledbInfo != NULL) {
                             titledbInfo->id = (u32) json_object_get_integer(entry, "id", 0);
                             strncpy(titledbInfo->category, json_object_get_string(entry, "category", "Unknown"), sizeof(titledbInfo->category));
-                            strncpy(titledbInfo->updatedAt, json_object_get_string(entry, "updated_at", "Unknown"), sizeof(titledbInfo->updatedAt));
                             strncpy(titledbInfo->meta.shortDescription, json_object_get_string(entry, "name", ""), sizeof(titledbInfo->meta.shortDescription));
                             strncpy(titledbInfo->meta.publisher, json_object_get_string(entry, "author", ""), sizeof(titledbInfo->meta.publisher));
 
@@ -236,12 +235,12 @@ static void task_populate_titledb_thread(void* arg) {
                                 for(u32 j = 0; j < json_array_size(cias); j++) {
                                     json_t* cia = json_array_get(cias, j);
                                     if(json_is_object(cia)) {
-                                        const char* updatedAt = json_object_get_string(cia, "updated_at", "Unknown");
-                                        if(!titledbInfo->cia.exists || task_populate_titledb_compare_dates(updatedAt, titledbInfo->cia.updatedAt, sizeof(titledbInfo->cia.updatedAt)) >= 0) {
+                                        const char* mtime = json_object_get_string(cia, "mtime", "Unknown");
+                                        if(!titledbInfo->cia.exists || task_populate_titledb_compare_dates(mtime, titledbInfo->cia.mtime, sizeof(titledbInfo->cia.mtime)) >= 0) {
                                             titledbInfo->cia.exists = true;
 
                                             titledbInfo->cia.id = (u32) json_object_get_integer(cia, "id", 0);
-                                            strncpy(titledbInfo->cia.updatedAt, updatedAt, sizeof(titledbInfo->cia.updatedAt));
+                                            strncpy(titledbInfo->cia.mtime, mtime, sizeof(titledbInfo->cia.mtime));
                                             strncpy(titledbInfo->cia.version, json_object_get_string(cia, "version", "Unknown"), sizeof(titledbInfo->cia.version));
                                             titledbInfo->cia.size = (u32) json_object_get_integer(cia, "size", 0);
                                             titledbInfo->cia.titleId = strtoull(json_object_get_string(cia, "titleid", "0"), NULL, 16);
@@ -255,12 +254,12 @@ static void task_populate_titledb_thread(void* arg) {
                                 for(u32 j = 0; j < json_array_size(tdsxs); j++) {
                                     json_t* tdsx = json_array_get(tdsxs, j);
                                     if(json_is_object(tdsx)) {
-                                        const char* updatedAt = json_object_get_string(tdsx, "updated_at", "Unknown");
-                                        if(!titledbInfo->tdsx.exists || task_populate_titledb_compare_dates(updatedAt, titledbInfo->tdsx.updatedAt, sizeof(titledbInfo->tdsx.updatedAt)) >= 0) {
+                                        const char* mtime = json_object_get_string(tdsx, "mtime", "Unknown");
+                                        if(!titledbInfo->tdsx.exists || task_populate_titledb_compare_dates(mtime, titledbInfo->tdsx.mtime, sizeof(titledbInfo->tdsx.mtime)) >= 0) {
                                             titledbInfo->tdsx.exists = true;
 
                                             titledbInfo->tdsx.id = (u32) json_object_get_integer(tdsx, "id", 0);
-                                            strncpy(titledbInfo->tdsx.updatedAt, updatedAt, sizeof(titledbInfo->tdsx.updatedAt));
+                                            strncpy(titledbInfo->tdsx.mtime, mtime, sizeof(titledbInfo->tdsx.mtime));
                                             strncpy(titledbInfo->tdsx.version, json_object_get_string(tdsx, "version", "Unknown"), sizeof(titledbInfo->tdsx.version));
                                             titledbInfo->tdsx.size = (u32) json_object_get_integer(tdsx, "size", 0);
 
@@ -274,6 +273,21 @@ static void task_populate_titledb_thread(void* arg) {
                                     }
                                 }
                             }
+
+                            char* latestTime = "Unknown";
+                            if(titledbInfo->cia.exists && titledbInfo->tdsx.exists) {
+                                if(task_populate_titledb_compare_dates(titledbInfo->cia.mtime, titledbInfo->tdsx.mtime, sizeof(titledbInfo->cia.mtime)) >= 0) {
+                                    latestTime = titledbInfo->cia.mtime;
+                                } else {
+                                    latestTime = titledbInfo->tdsx.mtime;
+                                }
+                            } else if(titledbInfo->cia.exists) {
+                                latestTime = titledbInfo->cia.mtime;
+                            } else if(titledbInfo->tdsx.exists) {
+                                latestTime = titledbInfo->tdsx.mtime;
+                            }
+
+                            strncpy(titledbInfo->mtime, latestTime, sizeof(titledbInfo->mtime));
 
                             if((titledbInfo->cia.exists || titledbInfo->tdsx.exists) && (data->filter == NULL || data->filter(data->userData, titledbInfo))) {
                                 strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);

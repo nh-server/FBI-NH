@@ -196,7 +196,7 @@ static int titledb_compare(void* data, const void* p1, const void* p2) {
     if(listData->sortByName) {
         return strncasecmp(info1->name, info2->name, sizeof(info1->name));
     } else if(listData->sortByUpdate) {
-        return strncasecmp(data2->updatedAt, data1->updatedAt, sizeof(data2->updatedAt));
+        return strncasecmp(data2->mtime, data1->mtime, sizeof(data2->mtime));
     } else {
         return 0;
     }
