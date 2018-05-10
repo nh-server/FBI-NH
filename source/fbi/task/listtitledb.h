@@ -5,7 +5,7 @@ typedef struct list_item_s list_item;
 
 typedef struct titledb_cache_entry_s {
     u32 id;
-    char updatedAt[32];
+    char mtime[32];
     char version[32];
 } titledb_cache_entry;
 
@@ -13,7 +13,7 @@ typedef struct titledb_cia_info_s {
     bool exists;
 
     u32 id;
-    char updatedAt[32];
+    char mtime[32];
     char version[32];
     u64 size;
     u64 titleId;
@@ -32,7 +32,7 @@ typedef struct titledb_tdsx_info_s {
     bool exists;
 
     u32 id;
-    char updatedAt[32];
+    char mtime[32];
     char version[32];
     u64 size;
     titledb_smdh_info smdh;
@@ -45,7 +45,7 @@ typedef struct titledb_info_s {
     u32 id;
     char category[64];
     char headline[512];
-    char updatedAt[32];
+    char mtime[32];
     titledb_cia_info cia;
     titledb_tdsx_info tdsx;
 
