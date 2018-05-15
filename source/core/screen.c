@@ -24,6 +24,7 @@ static C3D_Mtx projection_top;
 static C3D_Mtx projection_bottom;
 
 static C3D_Tex* glyph_sheets;
+static u32 glyph_count;
 static float font_scale;
 
 static u8 base_alpha = 0xFF;
@@ -43,6 +44,8 @@ static void screen_set_blend(u32 color, bool rgb, bool alpha) {
         error_panic("Failed to retrieve combiner settings.");
         return;
     }
+
+    C3D_TexEnvInit(env);
 
     if(rgb) {
         C3D_TexEnvSrc(env, C3D_RGB, GPU_CONSTANT, GPU_PRIMARY_COLOR, GPU_PRIMARY_COLOR);
@@ -80,7 +83,6 @@ void screen_init() {
     }
 
     C3D_RenderTargetSetOutput(target_top, GFX_TOP, GFX_LEFT, displayFlags);
-    C3D_RenderTargetSetClear(target_top, C3D_CLEAR_ALL, 0, 0);
 
     target_bottom = C3D_RenderTargetCreate(BOTTOM_SCREEN_HEIGHT, BOTTOM_SCREEN_WIDTH, GPU_RB_RGB8, 0);
     if(target_bottom == NULL) {
@@ -89,7 +91,6 @@ void screen_init() {
     }
 
     C3D_RenderTargetSetOutput(target_bottom, GFX_BOTTOM, GFX_LEFT, displayFlags);
-    C3D_RenderTargetSetClear(target_bottom, C3D_CLEAR_ALL, 0, 0);
 
     Mtx_OrthoTilt(&projection_top, 0.0, TOP_SCREEN_WIDTH, TOP_SCREEN_HEIGHT, 0.0, 0.0, 1.0, true);
     Mtx_OrthoTilt(&projection_bottom, 0.0, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT, 0.0, 0.0, 1.0, true);
@@ -137,13 +138,15 @@ void screen_init() {
     }
 
     TGLP_s* glyphInfo = fontGetGlyphInfo();
-    glyph_sheets = calloc(glyphInfo->nSheets, sizeof(C3D_Tex));
+
+    glyph_count = glyphInfo->nSheets;
+    glyph_sheets = calloc(glyph_count, sizeof(C3D_Tex));
     if(glyph_sheets == NULL) {
         error_panic("Failed to allocate font glyph texture data.");
         return;
     }
 
-    for(int i = 0; i < glyphInfo->nSheets; i++) {
+    for(int i = 0; i < glyph_count; i++) {
         C3D_Tex* tex = &glyph_sheets[i];
         tex->data = fontGetGlyphSheetTex(i);
         tex->fmt = (GPU_TEXCOLOR) glyphInfo->sheetFmt;
@@ -414,7 +417,10 @@ void screen_end_frame() {
 }
 
 void screen_select(gfxScreen_t screen) {
-    if(!C3D_FrameDrawOn(screen == GFX_TOP ? target_top : target_bottom)) {
+    C3D_RenderTarget* target = screen == GFX_TOP ? target_top : target_bottom;
+
+    C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
+    if(!C3D_FrameDrawOn(target)) {
         error_panic("Failed to select render target.");
         return;
     }
@@ -688,7 +694,11 @@ static void screen_draw_string_internal(const char* text, float x, float y, floa
                 fontGlyphPos_s data;
                 fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(code), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
 
-                if(data.sheetIndex != lastSheet) {
+                if(data.sheetIndex >= glyph_count) {
+                    fontCalcGlyphPos(&data, fontGlyphIndexFromCodePoint(0xFFFD), GLYPH_POS_CALC_VTXCOORD, scaleX * font_scale, scaleY * font_scale);
+                }
+
+                if(data.sheetIndex < glyph_count && data.sheetIndex != lastSheet) {
                     lastSheet = data.sheetIndex;
                     C3D_TexBind(0, &glyph_sheets[lastSheet]);
                 }
