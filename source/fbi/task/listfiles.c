@@ -133,7 +133,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                 if(len == 0 || path[len - 1] != '/') {
                     snprintf(fileInfo->path, FILE_PATH_MAX, "%s/", path);
                 } else {
-                    strncpy(fileInfo->path, path, FILE_PATH_MAX);
+                    string_copy(fileInfo->path, path, FILE_PATH_MAX);
                 }
 
                 if(attributes == 0) {
@@ -142,7 +142,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
             } else {
                 item->color = COLOR_FILE;
 
-                strncpy(fileInfo->path, path, FILE_PATH_MAX);
+                string_copy(fileInfo->path, path, FILE_PATH_MAX);
 
                 if(fs_filter_cias(NULL, fileInfo->path, fileInfo->attributes)) {
                     fileInfo->isCia = true;
@@ -155,7 +155,7 @@ Result task_create_file_item(list_item** out, FS_Archive archive, const char* pa
                 }
             }
 
-            strncpy(item->name, fileInfo->name, LIST_ITEM_NAME_MAX);
+            string_copy(item->name, fileInfo->name, LIST_ITEM_NAME_MAX);
             item->data = fileInfo;
 
             *out = item;
@@ -199,9 +199,9 @@ static void task_populate_files_thread(void* arg) {
     if(R_SUCCEEDED(res = task_create_file_item(&baseItem, data->archive, data->path, 0, false))) {
         file_info* baseInfo = (file_info*) baseItem->data;
         if(baseInfo->attributes & FS_ATTRIBUTE_DIRECTORY) {
-            strncpy(baseItem->name, "<current directory>", LIST_ITEM_NAME_MAX);
+            string_copy(baseItem->name, "<current directory>", LIST_ITEM_NAME_MAX);
         } else {
-            strncpy(baseItem->name, "<current file>", LIST_ITEM_NAME_MAX);
+            string_copy(baseItem->name, "<current file>", LIST_ITEM_NAME_MAX);
         }
 
         linked_list queue;

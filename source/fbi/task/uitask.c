@@ -264,10 +264,10 @@ void task_draw_title_info(ui_view* view, void* data, float x1, float y1, float x
 
 static void task_format_date(char* out, const char* date, size_t size) {
     if(strncmp(date, "Unknown", size) == 0) {
-        strncpy(out, date, size);
+        string_copy(out, date, size);
     } else {
-        char updatedDate[32] = "";
-        char updatedTime[32] = "";
+        char updatedDate[16] = "";
+        char updatedTime[16] = "";
         sscanf(date, "%31[^T]T%31[^Z]Z", updatedDate, updatedTime);
 
         snprintf(out, size, "%s %s", updatedDate, updatedTime);

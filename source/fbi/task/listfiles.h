@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef FILE_NAME_MAX
-#define FILE_NAME_MAX 512
+#define FILE_NAME_MAX 256
 #define FILE_PATH_MAX 512
 #endif
 

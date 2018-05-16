@@ -205,7 +205,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
             char dir[FILE_PATH_MAX];
             if(strlen(installData->paths[index]) > 0) {
                 string_get_parent_path(dir, installData->paths[index], FILE_PATH_MAX);
-                strncpy(installData->currPath, installData->paths[index], FILE_PATH_MAX);
+                string_copy(installData->currPath, installData->paths[index], FILE_PATH_MAX);
             } else {
                 char filename[FILE_NAME_MAX];
                 if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
@@ -406,14 +406,14 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
                     len = DOWNLOAD_URL_MAX - 7;
                 }
 
-                strncpy(data->urls[data->installInfo.total], "http://", 7);
-                strncpy(&data->urls[data->installInfo.total][7], currStart, len);
+                string_copy(data->urls[data->installInfo.total], "http://", 7);
+                string_copy(&data->urls[data->installInfo.total][7], currStart, len);
             } else {
                 if(len > DOWNLOAD_URL_MAX) {
                     len = DOWNLOAD_URL_MAX;
                 }
 
-                strncpy(data->urls[data->installInfo.total], currStart, len);
+                string_copy(data->urls[data->installInfo.total], currStart, len);
             }
 
             data->installInfo.total++;
@@ -436,7 +436,7 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
                     len = FILE_PATH_MAX;
                 }
 
-                strncpy(data->paths[i], currStart, len);
+                string_copy(data->paths[i], currStart, len);
 
                 currStart = currEnd + 1;
             }

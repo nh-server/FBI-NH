@@ -5,6 +5,7 @@
 
 #include "clipboard.h"
 #include "fs.h"
+#include "stringutil.h"
 
 static bool clipboard_has = false;
 static bool clipboard_contents_only;
@@ -37,7 +38,7 @@ Result clipboard_set_contents(FS_Archive archive, const char* path, bool content
         clipboard_contents_only = contentsOnly;
 
         clipboard_archive = archive;
-        strncpy(clipboard_path, path, FILE_PATH_MAX);
+        string_copy(clipboard_path, path, FILE_PATH_MAX);
     }
 
     return res;

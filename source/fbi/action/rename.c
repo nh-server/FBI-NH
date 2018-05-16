@@ -58,11 +58,11 @@ static void action_rename_onresponse(ui_view* view, void* data, SwkbdButton butt
 
         if(R_SUCCEEDED(res)) {
             if(strncmp(selected->name, "<current directory>", LIST_ITEM_NAME_MAX) != 0 && strncmp(selected->name, "<current file>", LIST_ITEM_NAME_MAX) != 0) {
-                strncpy(selected->name, fileName, LIST_ITEM_NAME_MAX);
+                string_copy(selected->name, fileName, LIST_ITEM_NAME_MAX);
             }
 
-            strncpy(targetInfo->name, fileName, FILE_NAME_MAX);
-            strncpy(targetInfo->path, dstPath, FILE_PATH_MAX);
+            string_copy(targetInfo->name, fileName, FILE_NAME_MAX);
+            string_copy(targetInfo->path, dstPath, FILE_PATH_MAX);
 
             linked_list_sort(renameData->items, NULL, task_compare_files);
 

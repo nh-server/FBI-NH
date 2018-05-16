@@ -34,14 +34,14 @@ static void action_paste_contents_draw_top(ui_view* view, void* data, float x1, 
 static void action_paste_contents_get_dst_path(paste_contents_data* data, u32 index, char* dstPath) {
     char baseSrcPath[FILE_PATH_MAX];
     if(clipboard_is_contents_only()) {
-        strncpy(baseSrcPath, clipboard_get_path(), FILE_PATH_MAX);
+        string_copy(baseSrcPath, clipboard_get_path(), FILE_PATH_MAX);
     } else {
         string_get_parent_path(baseSrcPath, clipboard_get_path(), FILE_PATH_MAX);
     }
 
     char baseDstPath[FILE_PATH_MAX];
     if(data->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
-        strncpy(baseDstPath, data->target->path, FILE_PATH_MAX);
+        string_copy(baseDstPath, data->target->path, FILE_PATH_MAX);
     } else {
         string_get_parent_path(baseDstPath, data->target->path, FILE_PATH_MAX);
     }
@@ -77,7 +77,7 @@ static Result action_paste_contents_make_dst_directory(void* data, u32 index) {
 
             char baseDstPath[FILE_PATH_MAX];
             if(pasteData->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
-                strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+                string_copy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
             } else {
                 string_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
             }
@@ -182,7 +182,7 @@ static Result action_paste_contents_close_dst(void* data, u32 index, bool succee
 
         char baseDstPath[FILE_PATH_MAX];
         if(pasteData->target->attributes & FS_ATTRIBUTE_DIRECTORY) {
-            strncpy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
+            string_copy(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
         } else {
             string_get_parent_path(baseDstPath, pasteData->target->path, FILE_PATH_MAX);
         }
@@ -395,7 +395,7 @@ void action_paste_contents(linked_list* items, list_item* selected) {
 
     loadingData->popData.items = &data->contents;
     loadingData->popData.archive = clipboard_get_archive();
-    strncpy(loadingData->popData.path, clipboard_get_path(), FILE_PATH_MAX);
+    string_copy(loadingData->popData.path, clipboard_get_path(), FILE_PATH_MAX);
     loadingData->popData.recursive = true;
     loadingData->popData.includeBase = !clipboard_is_contents_only() || !fs_is_dir(clipboard_get_archive(), clipboard_get_path());
     loadingData->popData.meta = false;

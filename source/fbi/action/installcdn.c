@@ -262,7 +262,7 @@ static void action_install_cdn_version_onresponse(ui_view* view, void* data, Swk
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(button == SWKBD_BUTTON_CONFIRM) {
-        strncpy(installData->tmdVersion, response, sizeof(installData->tmdVersion));
+        string_copy(installData->tmdVersion, response, sizeof(installData->tmdVersion));
 
         bool n3ds = false;
         if(R_SUCCEEDED(APT_CheckNew3DS(&n3ds)) && !n3ds && ((installData->ticket->titleId >> 28) & 0xF) == 2) {

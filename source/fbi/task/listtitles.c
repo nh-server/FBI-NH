@@ -127,7 +127,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
             if(titleInfo != NULL) {
                 titleInfo->mediaType = mediaType;
                 titleInfo->titleId = realTitleId;
-                strncpy(titleInfo->productCode, productCode, 12);
+                string_copy(titleInfo->productCode, productCode, 12);
                 titleInfo->version = version;
                 titleInfo->installedSize = installedSize;
                 titleInfo->twl = true;
@@ -143,8 +143,8 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
 
                         if(strchr(title, '\n') == NULL) {
                             size_t len = strlen(title);
-                            strncpy(item->name, title, len);
-                            strncpy(titleInfo->meta.shortDescription, title, len);
+                            string_copy(item->name, title, len);
+                            string_copy(titleInfo->meta.shortDescription, title, len);
                         } else {
                             char* destinations[] = {titleInfo->meta.shortDescription, titleInfo->meta.longDescription, titleInfo->meta.publisher};
                             int currDest = 0;
@@ -153,14 +153,14 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                             char* curr = NULL;
 
                             while(currDest < 3 && (curr = strchr(last, '\n')) != NULL) {
-                                strncpy(destinations[currDest++], last, curr - last);
+                                string_copy(destinations[currDest++], last, curr - last);
                                 last = curr + 1;
                                 *curr = ' ';
                             }
 
-                            strncpy(item->name, title, last - title);
+                            string_copy(item->name, title, last - title);
                             if(currDest < 3) {
-                                strncpy(destinations[currDest], last, strlen(title) - (last - title));
+                                string_copy(destinations[currDest], last, strlen(title) - (last - title));
                             }
                         }
 

@@ -77,8 +77,8 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
                                || (major == latestMajor && minor > latestMinor)
                                || (major == latestMajor && minor == latestMinor && micro > latestMicro)) {
                                 updateData->data.id = subId;
-                                strncpy(updateData->data.mtime, updatedAt, sizeof(updateData->data.mtime));
-                                strncpy(updateData->data.version, version, sizeof(updateData->data.version));
+                                string_copy(updateData->data.mtime, updatedAt, sizeof(updateData->data.mtime));
+                                string_copy(updateData->data.version, version, sizeof(updateData->data.version));
 
                                 latestMajor = major;
                                 latestMinor = minor;

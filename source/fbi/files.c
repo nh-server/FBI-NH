@@ -242,7 +242,7 @@ static void files_repopulate(files_data* listData, linked_list* items) {
 
     listData->populateData.items = items;
     listData->populateData.archive = listData->archive;
-    strncpy(listData->populateData.path, listData->currDir, FILE_PATH_MAX);
+    string_copy(listData->populateData.path, listData->currDir, FILE_PATH_MAX);
 
     Result res = task_populate_files(&listData->populateData);
     if(R_FAILED(res)) {
@@ -253,7 +253,7 @@ static void files_repopulate(files_data* listData, linked_list* items) {
 }
 
 static void files_navigate(files_data* listData, linked_list* items, const char* path) {
-    strncpy(listData->currDir, path, FILE_PATH_MAX);
+    string_copy(listData->currDir, path, FILE_PATH_MAX);
 
     listData->populated = false;
 }
@@ -286,7 +286,7 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
         // Detect whether the current directory was renamed by an action.
         list_item* currDirItem = linked_list_get(items, 0);
         if(currDirItem != NULL && strncmp(listData->currDir, ((file_info*) currDirItem->data)->path, FILE_PATH_MAX) != 0) {
-            strncpy(listData->currDir, ((file_info*) currDirItem->data)->path, FILE_PATH_MAX);
+            string_copy(listData->currDir, ((file_info*) currDirItem->data)->path, FILE_PATH_MAX);
         }
     }
 

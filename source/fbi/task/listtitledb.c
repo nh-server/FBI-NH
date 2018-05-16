@@ -12,7 +12,6 @@
 #include "../resources.h"
 #include "../../core/core.h"
 #include "../../core/task/dataop.h"
-#include "../../libs/stb_image/stb_image.h"
 
 #define json_object_get_string(obj, name, def) (json_is_string(json_object_get(obj, name)) ? json_string_value(json_object_get(obj, name)) : def)
 #define json_object_get_integer(obj, name, def) (json_is_integer(json_object_get(obj, name)) ? json_integer_value(json_object_get(obj, name)) : def)
@@ -111,8 +110,8 @@ static bool task_populate_titledb_cache_get(u32 id, bool cia, titledb_cache_entr
         json_t* idJson = json_object_get(obj, "id");
         if(json_is_integer(idJson)) {
             entry->id = (u32) json_integer_value(idJson);
-            strncpy(entry->mtime, json_object_get_string(obj, "mtime", "Unknown"), sizeof(entry->mtime));
-            strncpy(entry->version, json_object_get_string(obj, "version", "Unknown"), sizeof(entry->version));
+            string_copy(entry->mtime, json_object_get_string(obj, "mtime", "Unknown"), sizeof(entry->mtime));
+            string_copy(entry->version, json_object_get_string(obj, "version", "Unknown"), sizeof(entry->version));
 
             return true;
         }
@@ -213,9 +212,9 @@ static void task_populate_titledb_thread(void* arg) {
                         titledb_info* titledbInfo = (titledb_info*) calloc(1, sizeof(titledb_info));
                         if(titledbInfo != NULL) {
                             titledbInfo->id = (u32) json_object_get_integer(entry, "id", 0);
-                            strncpy(titledbInfo->category, json_object_get_string(entry, "category", "Unknown"), sizeof(titledbInfo->category));
-                            strncpy(titledbInfo->meta.shortDescription, json_object_get_string(entry, "name", ""), sizeof(titledbInfo->meta.shortDescription));
-                            strncpy(titledbInfo->meta.publisher, json_object_get_string(entry, "author", ""), sizeof(titledbInfo->meta.publisher));
+                            string_copy(titledbInfo->category, json_object_get_string(entry, "category", "Unknown"), sizeof(titledbInfo->category));
+                            string_copy(titledbInfo->meta.shortDescription, json_object_get_string(entry, "name", ""), sizeof(titledbInfo->meta.shortDescription));
+                            string_copy(titledbInfo->meta.publisher, json_object_get_string(entry, "author", ""), sizeof(titledbInfo->meta.publisher));
 
                             json_t* headline = json_object_get(entry, "headline");
                             if(json_is_string(headline)) {
@@ -224,7 +223,7 @@ static void task_populate_titledb_thread(void* arg) {
                                 if(json_string_length(headline) > sizeof(titledbInfo->headline) - 1) {
                                     snprintf(titledbInfo->headline, sizeof(titledbInfo->headline), "%.508s...", val);
                                 } else {
-                                    strncpy(titledbInfo->headline, val, sizeof(titledbInfo->headline));
+                                    string_copy(titledbInfo->headline, val, sizeof(titledbInfo->headline));
                                 }
                             } else {
                                 titledbInfo->headline[0] = '\0';
@@ -240,8 +239,8 @@ static void task_populate_titledb_thread(void* arg) {
                                             titledbInfo->cia.exists = true;
 
                                             titledbInfo->cia.id = (u32) json_object_get_integer(cia, "id", 0);
-                                            strncpy(titledbInfo->cia.mtime, mtime, sizeof(titledbInfo->cia.mtime));
-                                            strncpy(titledbInfo->cia.version, json_object_get_string(cia, "version", "Unknown"), sizeof(titledbInfo->cia.version));
+                                            string_copy(titledbInfo->cia.mtime, mtime, sizeof(titledbInfo->cia.mtime));
+                                            string_copy(titledbInfo->cia.version, json_object_get_string(cia, "version", "Unknown"), sizeof(titledbInfo->cia.version));
                                             titledbInfo->cia.size = (u32) json_object_get_integer(cia, "size", 0);
                                             titledbInfo->cia.titleId = strtoull(json_object_get_string(cia, "titleid", "0"), NULL, 16);
                                         }
@@ -259,8 +258,8 @@ static void task_populate_titledb_thread(void* arg) {
                                             titledbInfo->tdsx.exists = true;
 
                                             titledbInfo->tdsx.id = (u32) json_object_get_integer(tdsx, "id", 0);
-                                            strncpy(titledbInfo->tdsx.mtime, mtime, sizeof(titledbInfo->tdsx.mtime));
-                                            strncpy(titledbInfo->tdsx.version, json_object_get_string(tdsx, "version", "Unknown"), sizeof(titledbInfo->tdsx.version));
+                                            string_copy(titledbInfo->tdsx.mtime, mtime, sizeof(titledbInfo->tdsx.mtime));
+                                            string_copy(titledbInfo->tdsx.version, json_object_get_string(tdsx, "version", "Unknown"), sizeof(titledbInfo->tdsx.version));
                                             titledbInfo->tdsx.size = (u32) json_object_get_integer(tdsx, "size", 0);
 
                                             json_t* smdh = json_object_get(tdsx, "smdh");
@@ -287,10 +286,10 @@ static void task_populate_titledb_thread(void* arg) {
                                 latestTime = titledbInfo->tdsx.mtime;
                             }
 
-                            strncpy(titledbInfo->mtime, latestTime, sizeof(titledbInfo->mtime));
+                            string_copy(titledbInfo->mtime, latestTime, sizeof(titledbInfo->mtime));
 
                             if((titledbInfo->cia.exists || titledbInfo->tdsx.exists) && (data->filter == NULL || data->filter(data->userData, titledbInfo))) {
-                                strncpy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
+                                string_copy(item->name, titledbInfo->meta.shortDescription, LIST_ITEM_NAME_MAX);
                                 item->data = titledbInfo;
 
                                 task_populate_titledb_update_status(item);

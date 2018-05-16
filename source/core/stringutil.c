@@ -21,6 +21,11 @@ bool string_is_empty(const char* str) {
     return true;
 }
 
+void string_copy(char* dst, const char* src, size_t size) {
+    strncpy(dst, src, size - 1);
+    dst[size - 1] = '\0';
+}
+
 void string_get_file_name(char* out, const char* file, u32 size) {
     const char* end = file + strlen(file);
     const char* curr = file - 1;
