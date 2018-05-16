@@ -1,3 +1,3 @@
 #pragma once
 
-u64 ticket_get_title_id(u8* ticket);
+Result ticket_get_title_id(u64* titleId, u8* ticket, size_t size);
