@@ -18,7 +18,7 @@ typedef struct {
     bool finishedPrompt;
 
     char tmdVersion[16];
-    u32 contentCount;
+    u16 contentCount;
     u16 contentIndices[CONTENTS_MAX];
     u32 contentIds[CONTENTS_MAX];
 
@@ -71,21 +71,28 @@ static Result action_install_cdn_open_dst(void* data, u32 index, void* initialRe
     install_cdn_data* installData = (install_cdn_data*) data;
 
     if(index == 0) {
-        installData->contentCount = tmd_get_content_count((u8*) initialReadBlock);
-        if(installData->contentCount > CONTENTS_MAX) {
-            return R_APP_OUT_OF_RANGE;
+        Result res = 0;
+
+        if(R_SUCCEEDED(res = tmd_get_content_count(&installData->contentCount, (u8*) initialReadBlock, installData->installInfo.bufferSize))) {
+            if(installData->contentCount <= CONTENTS_MAX) {
+                for(u32 i = 0; i < installData->contentCount; i++) {
+                    if(R_FAILED(res = tmd_get_content_id(&installData->contentIds[i], (u8*) initialReadBlock, installData->installInfo.bufferSize, i))
+                       || R_FAILED(res = tmd_get_content_index(&installData->contentIndices[i], (u8*) initialReadBlock, installData->installInfo.bufferSize, i))) {
+                        break;
+                    }
+                }
+
+                if(R_SUCCEEDED(res)) {
+                    installData->installInfo.total += installData->contentCount;
+
+                    res = AM_InstallTmdBegin(handle);
+                }
+            } else {
+                res = R_APP_OUT_OF_RANGE;
+            }
         }
 
-        for(u32 i = 0; i < installData->contentCount; i++) {
-            u8* contentChunk = tmd_get_content_chunk((u8*) initialReadBlock, i);
-
-            installData->contentIds[i] = __builtin_bswap32(*(u32*) &contentChunk[0x00]);
-            installData->contentIndices[i] = __builtin_bswap16(*(u16*) &contentChunk[0x04]);
-        }
-
-        installData->installInfo.total += installData->contentCount;
-
-        return AM_InstallTmdBegin(handle);
+        return res;
     } else {
         return AM_InstallContentBegin(handle, installData->contentIndices[index - 1]);
     }

@@ -5,14 +5,25 @@
 #include "tmd.h"
 #include "../error.h"
 
-u64 cia_get_title_id(u8* cia) {
+Result cia_get_title_id(u64* titleId, u8* cia, size_t size) {
+    if(cia == NULL) {
+        return R_APP_INVALID_ARGUMENT;
+    }
+
+    if(size < 0x10) {
+        return R_APP_BAD_DATA;
+    }
+
     u32 headerSize = ((*(u32*) &cia[0x00]) + 0x3F) & ~0x3F;
     u32 certSize = ((*(u32*) &cia[0x08]) + 0x3F) & ~0x3F;
     u32 ticketSize = ((*(u32*) &cia[0x0C]) + 0x3F) & ~0x3F;
+    u32 offset = headerSize + certSize + ticketSize;
 
-    u8* tmd = &cia[headerSize + certSize + ticketSize];
+    if(offset >= size) {
+        return R_APP_BAD_DATA;
+    }
 
-    return tmd_get_title_id(tmd);
+    return tmd_get_title_id(titleId, &cia[offset], size - offset);
 }
 
 Result cia_file_get_smdh(SMDH* smdh, Handle handle) {

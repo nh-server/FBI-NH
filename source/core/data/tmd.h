@@ -1,5 +1,6 @@
 #pragma once
 
-u64 tmd_get_title_id(u8* tmd);
-u16 tmd_get_content_count(u8* tmd);
-u8* tmd_get_content_chunk(u8* tmd, u32 index);
+Result tmd_get_title_id(u64* titleId, u8* tmd, size_t size);
+Result tmd_get_content_count(u16* contentCount, u8* tmd, size_t size);
+Result tmd_get_content_id(u32* id, u8* tmd, size_t size, u32 num);
+Result tmd_get_content_index(u16* index, u8* tmd, size_t size, u32 num);
