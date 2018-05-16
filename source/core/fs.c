@@ -155,7 +155,7 @@ Result fs_close_archive(FS_Archive archive) {
     return FSUSER_CloseArchive(archive);
 }
 
-static char path_3dsx[FILE_PATH_MAX] = {'\0'};
+static char path_3dsx[FILE_PATH_MAX] = "";
 
 const char* fs_get_3dsx_path() {
     if(strlen(path_3dsx) == 0) {
@@ -167,9 +167,9 @@ const char* fs_get_3dsx_path() {
 
 void fs_set_3dsx_path(const char* path) {
     if(strlen(path) >= 5 && strncmp(path, "sdmc:", 5) == 0) {
-        strncpy(path_3dsx, path + 5, FILE_PATH_MAX);
+        string_copy(path_3dsx, path + 5, FILE_PATH_MAX);
     } else {
-        strncpy(path_3dsx, path, FILE_PATH_MAX);
+        string_copy(path_3dsx, path, FILE_PATH_MAX);
     }
 }
 

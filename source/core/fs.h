@@ -1,6 +1,6 @@
 #pragma once
 
-#define FILE_NAME_MAX 512
+#define FILE_NAME_MAX 256
 #define FILE_PATH_MAX 512
 
 bool fs_is_dir(FS_Archive archive, const char* path);

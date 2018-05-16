@@ -36,12 +36,12 @@ static void action_update_titledb_finished_url(void* data, u32 index) {
     titledb_cache_entry entry;
     if(updateData->cia[index]) {
         entry.id = info->cia.id;
-        strncpy(entry.mtime, info->cia.mtime, sizeof(entry.mtime));
-        strncpy(entry.version, info->cia.version, sizeof(entry.version));
+        string_copy(entry.mtime, info->cia.mtime, sizeof(entry.mtime));
+        string_copy(entry.version, info->cia.version, sizeof(entry.version));
     } else {
         entry.id = info->tdsx.id;
-        strncpy(entry.mtime, info->tdsx.mtime, sizeof(entry.mtime));
-        strncpy(entry.version, info->tdsx.version, sizeof(entry.version));
+        string_copy(entry.mtime, info->tdsx.mtime, sizeof(entry.mtime));
+        string_copy(entry.version, info->tdsx.version, sizeof(entry.version));
     }
 
     task_populate_titledb_cache_set(info->id, updateData->cia[index], &entry);

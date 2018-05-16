@@ -8,6 +8,7 @@
 #include "prompt.h"
 #include "ui.h"
 #include "../screen.h"
+#include "../stringutil.h"
 #include "../../fbi/resources.h"
 
 typedef struct {
@@ -166,7 +167,7 @@ ui_view* prompt_display_multi_choice(const char* name, const char* text, u32 col
     promptData->color = color;
 
     for(u32 i = 0; i < numOptions && i < PROMPT_OPTIONS_MAX; i++) {
-        strncpy(promptData->options[i], options[i], PROMPT_OPTION_TEXT_MAX);
+        string_copy(promptData->options[i], options[i], PROMPT_OPTION_TEXT_MAX);
         promptData->optionButtons[i] = optionButtons[i];
     }
 

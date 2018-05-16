@@ -350,7 +350,7 @@ void screen_load_texture_file(u32 id, FILE* fd, bool linearFilter) {
     int depth;
     u8* image = stbi_load_from_file(fd, &width, &height, &depth, STBI_rgb_alpha);
 
-    if(image == NULL || depth != STBI_rgb_alpha) {
+    if(image == NULL) {
         error_panic("Failed to load PNG file to texture ID \"%lu\".", id);
         return;
     }

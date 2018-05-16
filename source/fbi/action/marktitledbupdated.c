@@ -13,12 +13,12 @@ void action_mark_titledb_updated(linked_list* items, list_item* selected, bool c
         titledb_cache_entry entry;
         if(cia) {
             entry.id = info->cia.id;
-            strncpy(entry.mtime, info->cia.mtime, sizeof(entry.mtime));
-            strncpy(entry.version, info->cia.version, sizeof(entry.version));
+            string_copy(entry.mtime, info->cia.mtime, sizeof(entry.mtime));
+            string_copy(entry.version, info->cia.version, sizeof(entry.version));
         } else {
             entry.id = info->tdsx.id;
-            strncpy(entry.mtime, info->tdsx.mtime, sizeof(entry.mtime));
-            strncpy(entry.version, info->tdsx.version, sizeof(entry.version));
+            string_copy(entry.mtime, info->tdsx.mtime, sizeof(entry.mtime));
+            string_copy(entry.version, info->tdsx.version, sizeof(entry.version));
         }
 
         task_populate_titledb_cache_set(info->id, cia, &entry);

@@ -367,7 +367,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
 
     loadingData->popData.items = &data->contents;
     loadingData->popData.archive = data->target->archive;
-    strncpy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
+    string_copy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
     loadingData->popData.recursive = false;
     loadingData->popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
     loadingData->popData.meta = true;
