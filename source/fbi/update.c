@@ -39,7 +39,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     if(R_SUCCEEDED(res = http_download_json("https://api.titledb.com/v1/entry?nested=true&only=id"
                                                     "&only=cia.id&only=cia.version&only=cia.updated_at"
                                                     "&only=tdsx.id&only=tdsx.version&only=tdsx.updated_at"
-                                                    "&_filters=%7B%22name%22%3A%20%22FBI%22%7D", &json, 16 * 1024))) {
+                                                    "&_filters=%7B%22name%22%3A%20%22FBI%22%2C%20%22author%22%3A%20%22Steveice10%22%7D", &json, 16 * 1024))) {
         const char* type = fs_get_3dsx_path() != NULL ? "tdsx" : "cia";
 
         json_t* entry = NULL;
