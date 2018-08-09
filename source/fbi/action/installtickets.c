@@ -18,8 +18,6 @@ typedef struct {
     linked_list contents;
 
     bool delete;
-    bool cdn;
-    bool selectCdnVersion;
 
     data_op_data installInfo;
 } install_tickets_data;
@@ -111,20 +109,8 @@ static Result action_install_tickets_open_dst(void* data, u32 index, void* initi
 }
 
 static Result action_install_tickets_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
-    install_tickets_data* installData = (install_tickets_data*) data;
-
     if(succeeded) {
-        Result res = AM_InstallTicketFinish(handle);
-        if(R_SUCCEEDED(res) && installData->cdn) {
-            volatile bool done = false;
-            action_install_cdn_noprompt(&done, &((file_info*) ((list_item*) linked_list_get(&installData->contents, index))->data)->ticketInfo, false, installData->selectCdnVersion);
-
-            while(!done) {
-                svcSleepThread(100000000);
-            }
-        }
-
-        return res;
+        return AM_InstallTicketFinish(handle);
     } else {
         return AM_InstallTicketAbort(handle);
     }
@@ -203,33 +189,20 @@ static void action_install_tickets_update(ui_view* view, void* data, float* prog
              ui_get_display_eta(installData->installInfo.estimatedRemainingSeconds));
 }
 
-#define CDN_PROMPT_DEFAULT_VERSION 0
-#define CDN_PROMPT_SELECT_VERSION 1
-#define CDN_PROMPT_NO 2
-
-static void action_install_tickets_cdn_check_onresponse(ui_view* view, void* data, u32 response) {
+static void action_install_tickets_onresponse(ui_view* view, void* data, u32 response) {
     install_tickets_data* installData = (install_tickets_data*) data;
 
-    installData->cdn = response != CDN_PROMPT_NO;
-    installData->selectCdnVersion = response == CDN_PROMPT_SELECT_VERSION;
-
-    Result res = task_data_op(&installData->installInfo);
-    if(R_SUCCEEDED(res)) {
-        info_display("Installing ticket(s)", "Press B to cancel.", true, data, action_install_tickets_update, action_install_tickets_draw_top);
-    } else {
-        error_display_res(NULL, NULL, res, "Failed to initiate ticket installation.");
-
-        action_install_tickets_free_data(installData);
-    }
-}
-
-static void action_install_tickets_onresponse(ui_view* view, void* data, u32 response) {
     if(response == PROMPT_YES) {
-        static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
-        static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
-        prompt_display_multi_choice("Optional", "Install ticket titles from CDN?", COLOR_TEXT, options, optionButtons, 3, data, action_install_tickets_draw_top, action_install_tickets_cdn_check_onresponse);
+        Result res = task_data_op(&installData->installInfo);
+        if(R_SUCCEEDED(res)) {
+            info_display("Installing ticket(s)", "Press B to cancel.", true, data, action_install_tickets_update, action_install_tickets_draw_top);
+        } else {
+            error_display_res(NULL, NULL, res, "Failed to initiate ticket installation.");
+
+            action_install_tickets_free_data(installData);
+        }
     } else {
-        action_install_tickets_free_data((install_tickets_data*) data);
+        action_install_tickets_free_data(installData);
     }
 }
 

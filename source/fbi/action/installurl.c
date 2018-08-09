@@ -25,10 +25,6 @@ typedef struct {
     void (*finishedAll)(void* data);
     void (*drawTop)(ui_view* view, void* data, float x1, float y1, float x2, float y2, u32 index);
 
-    bool cdn;
-    bool selectCdnVersion;
-    bool cdnDecided;
-
     content_type contentType;
     u64 currTitleId;
     volatile bool n3dsContinue;
@@ -45,18 +41,6 @@ static void action_install_url_free_data(install_url_data* data) {
     }
 
     free(data);
-}
-
-#define CDN_PROMPT_DEFAULT_VERSION 0
-#define CDN_PROMPT_SELECT_VERSION 1
-#define CDN_PROMPT_NO 2
-
-static void action_install_url_cdn_check_onresponse(ui_view* view, void* data, u32 response) {
-    install_url_data* installData = (install_url_data*) data;
-
-    installData->cdn = response != CDN_PROMPT_NO;
-    installData->selectCdnVersion = response == CDN_PROMPT_SELECT_VERSION;
-    installData->cdnDecided = true;
 }
 
 static void action_install_url_n3ds_onresponse(ui_view* view, void* data, u32 response) {
@@ -184,15 +168,6 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
         if(R_SUCCEEDED(res = ticket_get_title_id(&installData->ticketInfo.titleId, (u8*) initialReadBlock, installData->installInfo.bufferSize))) {
             installData->contentType = CONTENT_TICKET;
 
-            if(!installData->cdnDecided) {
-                static const char* options[3] = {"Default\nVersion", "Select\nVersion", "No"};
-                static u32 optionButtons[3] = {KEY_A, KEY_X, KEY_B};
-                ui_view* view = prompt_display_multi_choice("Optional", "Install ticket titles from CDN?", COLOR_TEXT, options, optionButtons, 3, data, action_install_url_draw_top, action_install_url_cdn_check_onresponse);
-                if(view != NULL) {
-                    svcWaitSynchronization(view->active, U64_MAX);
-                }
-            }
-
             installData->ticketInfo.inUse = false;
             installData->ticketInfo.loaded = true;
 
@@ -257,15 +232,6 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
             }
         } else if(installData->contentType == CONTENT_TICKET) {
             res = AM_InstallTicketFinish(handle);
-
-            if(R_SUCCEEDED(res) && installData->cdn) {
-                volatile bool done = false;
-                action_install_cdn_noprompt(&done, &installData->ticketInfo, false, installData->selectCdnVersion);
-
-                while(!done) {
-                    svcSleepThread(100000000);
-                }
-            }
         } else if(installData->contentType == CONTENT_3DSX_SMDH) {
             res = FSFILE_Close(handle);
         }
@@ -449,10 +415,6 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
     data->finishedURL = finishedURL;
     data->finishedAll = finishedAll;
     data->drawTop = drawTop;
-
-    data->cdn = false;
-    data->selectCdnVersion = false;
-    data->cdnDecided = false;
 
     data->contentType = CONTENT_CIA;
     data->currTitleId = 0;

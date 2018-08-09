@@ -9,7 +9,6 @@
 #include "task/uitask.h"
 #include "../core/core.h"
 
-static list_item install_from_cdn = {"Install from CDN", COLOR_TEXT, action_install_cdn};
 static list_item delete_ticket = {"Delete Ticket", COLOR_TEXT, action_delete_ticket};
 static list_item delete_unused_tickets = {"Delete Unused Tickets", COLOR_TEXT, action_delete_tickets_unused};
 
@@ -54,7 +53,6 @@ static void tickets_action_update(ui_view* view, void* data, linked_list* items,
     }
 
     if(linked_list_size(items) == 0) {
-        linked_list_add(items, &install_from_cdn);
         linked_list_add(items, &delete_ticket);
         linked_list_add(items, &delete_unused_tickets);
     }
