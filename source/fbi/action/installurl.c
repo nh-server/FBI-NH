@@ -374,14 +374,14 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
                     len = DOWNLOAD_URL_MAX - 7;
                 }
 
-                string_copy(data->urls[data->installInfo.total], "http://", 7);
-                string_copy(&data->urls[data->installInfo.total][7], currStart, len);
+                strncpy(data->urls[data->installInfo.total], "http://", 8);
+                strncpy(&data->urls[data->installInfo.total][7], currStart, len);
             } else {
                 if(len > DOWNLOAD_URL_MAX) {
                     len = DOWNLOAD_URL_MAX;
                 }
 
-                string_copy(data->urls[data->installInfo.total], currStart, len);
+                strncpy(data->urls[data->installInfo.total], currStart, len);
             }
 
             data->installInfo.total++;
@@ -404,7 +404,7 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
                     len = FILE_PATH_MAX;
                 }
 
-                string_copy(data->paths[i], currStart, len);
+                strncpy(data->paths[i], currStart, len);
 
                 currStart = currEnd + 1;
             }
