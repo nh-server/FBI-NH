@@ -370,18 +370,18 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
             u32 len = currEnd - currStart;
 
             if((len < 7 || strncmp(currStart, "http://", 7) != 0) && (len < 8 || strncmp(currStart, "https://", 8) != 0)) {
-                if(len > DOWNLOAD_URL_MAX - 7) {
-                    len = DOWNLOAD_URL_MAX - 7;
+                if(len > DOWNLOAD_URL_MAX - 8) {
+                    len = DOWNLOAD_URL_MAX - 8;
                 }
 
-                strncpy(data->urls[data->installInfo.total], "http://", 8);
-                strncpy(&data->urls[data->installInfo.total][7], currStart, len);
+                string_copy(data->urls[data->installInfo.total], "http://", 8);
+                string_copy(&data->urls[data->installInfo.total][7], currStart, len + 1);
             } else {
-                if(len > DOWNLOAD_URL_MAX) {
-                    len = DOWNLOAD_URL_MAX;
+                if(len > DOWNLOAD_URL_MAX - 1) {
+                    len = DOWNLOAD_URL_MAX - 1;
                 }
 
-                strncpy(data->urls[data->installInfo.total], currStart, len);
+                string_copy(data->urls[data->installInfo.total], currStart, len + 1);
             }
 
             data->installInfo.total++;
@@ -400,11 +400,11 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
                 }
 
                 u32 len = currEnd - currStart;
-                if(len > FILE_PATH_MAX) {
-                    len = FILE_PATH_MAX;
+                if(len > FILE_PATH_MAX - 1) {
+                    len = FILE_PATH_MAX - 1;
                 }
 
-                strncpy(data->paths[i], currStart, len);
+                string_copy(data->paths[i], currStart, len + 1);
 
                 currStart = currEnd + 1;
             }

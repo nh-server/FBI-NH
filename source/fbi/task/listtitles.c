@@ -92,7 +92,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
     Result res = 0;
 
     u64 realTitleId = 0;
-    char productCode[12] = {'\0'};
+    char productCode[0x10] = {'\0'};
     u16 version = 0;
     u64 installedSize = 0;
 
@@ -107,7 +107,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
         installedSize = entry.size;
     } else if(R_SUCCEEDED(res = headerRes)) {
         memcpy(&realTitleId, &header[0x230], sizeof(realTitleId));
-        memcpy(productCode, header, sizeof(productCode));
+        memcpy(productCode, header, 0xC);
         version = header[0x01E];
 
         u32 size = 0;
@@ -127,7 +127,7 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
             if(titleInfo != NULL) {
                 titleInfo->mediaType = mediaType;
                 titleInfo->titleId = realTitleId;
-                string_copy(titleInfo->productCode, productCode, 12);
+                string_copy(titleInfo->productCode, productCode, sizeof(titleInfo->productCode));
                 titleInfo->version = version;
                 titleInfo->installedSize = installedSize;
                 titleInfo->twl = true;
@@ -142,25 +142,31 @@ static Result task_populate_titles_add_twl(populate_titles_data* data, FS_MediaT
                         utf16_to_utf8((uint8_t*) title, bnr_select_title(bnr), sizeof(title) - 1);
 
                         if(strchr(title, '\n') == NULL) {
-                            size_t len = strlen(title);
-                            string_copy(item->name, title, len);
-                            string_copy(titleInfo->meta.shortDescription, title, len);
+                            string_copy(item->name, title, sizeof(item->name));
+                            string_copy(titleInfo->meta.shortDescription, title, sizeof(titleInfo->meta.shortDescription));
                         } else {
                             char* destinations[] = {titleInfo->meta.shortDescription, titleInfo->meta.longDescription, titleInfo->meta.publisher};
+                            u32 destinationLens[] = {sizeof(titleInfo->meta.shortDescription), sizeof(titleInfo->meta.longDescription), sizeof(titleInfo->meta.publisher)};
                             int currDest = 0;
 
                             char* last = title;
                             char* curr = NULL;
 
                             while(currDest < 3 && (curr = strchr(last, '\n')) != NULL) {
-                                string_copy(destinations[currDest++], last, curr - last);
+                                u32 copyLen = curr - last + 1;
+                                if(copyLen > destinationLens[currDest]) {
+                                    copyLen = destinationLens[currDest];
+                                }
+
+                                string_copy(destinations[currDest++], last, copyLen);
+
                                 last = curr + 1;
                                 *curr = ' ';
                             }
 
                             string_copy(item->name, title, last - title);
                             if(currDest < 3) {
-                                string_copy(destinations[currDest], last, strlen(title) - (last - title));
+                                string_copy(destinations[currDest], last, destinationLens[currDest]);
                             }
                         }
 
