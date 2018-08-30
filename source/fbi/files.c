@@ -62,6 +62,24 @@ typedef struct {
     bool containsTickets;
 } files_action_data;
 
+static bool files_filter(void* data, const char* name, u32 attributes) {
+    files_data* listData = (files_data*) data;
+
+    if((attributes & FS_ATTRIBUTE_HIDDEN) != 0 && !listData->showHidden) {
+        return false;
+    }
+
+    if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
+        return listData->showDirectories;
+    } else {
+        if((fs_filter_cias(NULL, name, attributes) && !listData->showCias) || (fs_filter_tickets(NULL, name, attributes) && !listData->showTickets)) {
+            return false;
+        }
+
+        return listData->showFiles;
+    }
+}
+
 static void files_action_draw_top(ui_view* view, void* data, float x1, float y1, float x2, float y2, list_item* selected) {
     task_draw_file_info(view, ((files_action_data*) data)->selected->data, x1, y1, x2, y2);
 }
@@ -79,7 +97,7 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
     }
 
     if(selected != NULL && (selected->data != NULL || selected == &copy || selected == &copy_all_contents) && (selectedTouched || (hidKeysDown() & KEY_A))) {
-        void(*action)(linked_list*, list_item*) = (void(*)(linked_list*, list_item*)) selected->data;
+        void* action = selected->data;
 
         ui_pop();
         list_destroy(view);
@@ -93,8 +111,14 @@ static void files_action_update(ui_view* view, void* data, linked_list* items, l
             } else {
                 error_display_res(info, task_draw_file_info, res, "Failed to copy to clipboard.");
             }
+        } else if(selected == &install_all_cias || selected == &install_and_delete_all_cias || selected == &install_all_tickets || selected == &install_and_delete_all_tickets) {
+            void (*filteredAction)(linked_list*, list_item*, bool (*)(void*, const char*, u32), void*) = action;
+
+            filteredAction(actionData->items, actionData->selected, files_filter, actionData->parent);
         } else {
-            action(actionData->items, actionData->selected);
+            void (*normalAction)(linked_list*, list_item*) = action;
+
+            normalAction(actionData->items, actionData->selected);
         }
 
         free(data);
@@ -339,24 +363,6 @@ static void files_update(ui_view* view, void* data, linked_list* items, list_ite
         error_display_res(NULL, NULL, listData->populateData.result, "Failed to populate file list.");
 
         listData->populateData.result = 0;
-    }
-}
-
-static bool files_filter(void* data, const char* name, u32 attributes) {
-    files_data* listData = (files_data*) data;
-
-    if((attributes & FS_ATTRIBUTE_HIDDEN) != 0 && !listData->showHidden) {
-        return false;
-    }
-
-    if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
-        return listData->showDirectories;
-    } else {
-        if((fs_filter_cias(NULL, name, attributes) && !listData->showCias) || (fs_filter_tickets(NULL, name, attributes) && !listData->showTickets)) {
-            return false;
-        }
-
-        return listData->showFiles;
     }
 }
 

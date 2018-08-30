@@ -211,6 +211,7 @@ typedef struct {
 
     const char* message;
 
+    fs_filter_data filterData;
     populate_files_data popData;
 } install_tickets_loading_data;
 
@@ -247,7 +248,7 @@ static void action_install_tickets_loading_update(ui_view* view, void* data, flo
     snprintf(text, PROGRESS_TEXT_MAX, "Fetching ticket list...");
 }
 
-static void action_install_tickets_internal(linked_list* items, list_item* selected, const char* message, bool delete) {
+static void action_install_tickets_internal(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData, const char* message, bool delete) {
     install_tickets_data* data = (install_tickets_data*) calloc(1, sizeof(install_tickets_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate install tickets data.");
@@ -312,6 +313,9 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     loadingData->installData = data;
     loadingData->message = message;
 
+    loadingData->filterData.parentFilter = filter;
+    loadingData->filterData.parentFilterData = filterData;
+
     loadingData->popData.items = &data->contents;
     loadingData->popData.archive = data->target->archive;
     string_copy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
@@ -319,7 +323,7 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     loadingData->popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
     loadingData->popData.meta = true;
     loadingData->popData.filter = fs_filter_tickets;
-    loadingData->popData.filterData = NULL;
+    loadingData->popData.filterData = &loadingData->filterData;
 
     Result listRes = task_populate_files(&loadingData->popData);
     if(R_FAILED(listRes)) {
@@ -334,17 +338,17 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
 }
 
 void action_install_ticket(linked_list* items, list_item* selected) {
-    action_install_tickets_internal(items, selected, "Install the selected ticket?", false);
+    action_install_tickets_internal(items, selected, NULL, NULL, "Install the selected ticket?", false);
 }
 
 void action_install_ticket_delete(linked_list* items, list_item* selected) {
-    action_install_tickets_internal(items, selected, "Install and delete the selected ticket?", true);
+    action_install_tickets_internal(items, selected, NULL, NULL, "Install and delete the selected ticket?", true);
 }
 
-void action_install_tickets(linked_list* items, list_item* selected) {
-    action_install_tickets_internal(items, selected, "Install all tickets in the current directory?", false);
+void action_install_tickets(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData) {
+    action_install_tickets_internal(items, selected, filter, filterData, "Install all tickets in the current directory?", false);
 }
 
-void action_install_tickets_delete(linked_list* items, list_item* selected) {
-    action_install_tickets_internal(items, selected, "Install and delete all tickets in the current directory?", true);
+void action_install_tickets_delete(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData) {
+    action_install_tickets_internal(items, selected, filter, filterData, "Install and delete all tickets in the current directory?", true);
 }

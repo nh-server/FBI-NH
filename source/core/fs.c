@@ -197,6 +197,13 @@ FS_MediaType fs_get_title_destination(u64 titleId) {
 }
 
 bool fs_filter_cias(void* data, const char* name, u32 attributes) {
+    if(data != NULL) {
+        fs_filter_data* filterData = (fs_filter_data*) data;
+        if(filterData->parentFilter != NULL && !filterData->parentFilter(filterData->parentFilterData, name, attributes)) {
+            return false;
+        }
+    }
+
     if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
         return false;
     }
@@ -206,6 +213,13 @@ bool fs_filter_cias(void* data, const char* name, u32 attributes) {
 }
 
 bool fs_filter_tickets(void* data, const char* name, u32 attributes) {
+    if(data != NULL) {
+        fs_filter_data* filterData = (fs_filter_data*) data;
+        if(filterData->parentFilter != NULL && !filterData->parentFilter(filterData->parentFilterData, name, attributes)) {
+            return false;
+        }
+    }
+
     if((attributes & FS_ATTRIBUTE_DIRECTORY) != 0) {
         return false;
     }
