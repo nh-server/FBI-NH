@@ -3,6 +3,11 @@
 #define FILE_NAME_MAX 256
 #define FILE_PATH_MAX 512
 
+typedef struct fs_filter_data_s {
+    bool (*parentFilter)(void* data, const char* name, u32 attributes);
+    void* parentFilterData;
+} fs_filter_data;
+
 bool fs_is_dir(FS_Archive archive, const char* path);
 Result fs_ensure_dir(FS_Archive archive, const char* path);
 

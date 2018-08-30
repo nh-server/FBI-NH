@@ -262,6 +262,7 @@ typedef struct {
 
     const char* message;
 
+    fs_filter_data filterData;
     populate_files_data popData;
 } install_cias_loading_data;
 
@@ -298,7 +299,7 @@ static void action_install_cias_loading_update(ui_view* view, void* data, float*
     snprintf(text, PROGRESS_TEXT_MAX, "Fetching CIA list...");
 }
 
-static void action_install_cias_internal(linked_list* items, list_item* selected, const char* message, bool delete) {
+static void action_install_cias_internal(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData, const char* message, bool delete) {
     install_cias_data* data = (install_cias_data*) calloc(1, sizeof(install_cias_data));
     if(data == NULL) {
         error_display(NULL, NULL, "Failed to allocate install CIAs data.");
@@ -365,6 +366,9 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     loadingData->installData = data;
     loadingData->message = message;
 
+    loadingData->filterData.parentFilter = filter;
+    loadingData->filterData.parentFilterData = filterData;
+
     loadingData->popData.items = &data->contents;
     loadingData->popData.archive = data->target->archive;
     string_copy(loadingData->popData.path, data->target->path, FILE_PATH_MAX);
@@ -372,7 +376,7 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     loadingData->popData.includeBase = !(data->target->attributes & FS_ATTRIBUTE_DIRECTORY);
     loadingData->popData.meta = true;
     loadingData->popData.filter = fs_filter_cias;
-    loadingData->popData.filterData = NULL;
+    loadingData->popData.filterData = &loadingData->filterData;
 
     Result listRes = task_populate_files(&loadingData->popData);
     if(R_FAILED(listRes)) {
@@ -387,17 +391,17 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
 }
 
 void action_install_cia(linked_list* items, list_item* selected) {
-    action_install_cias_internal(items, selected, "Install the selected CIA?", false);
+    action_install_cias_internal(items, selected, NULL, NULL, "Install the selected CIA?", false);
 }
 
 void action_install_cia_delete(linked_list* items, list_item* selected) {
-    action_install_cias_internal(items, selected, "Install and delete the selected CIA?", true);
+    action_install_cias_internal(items, selected, NULL, NULL, "Install and delete the selected CIA?", true);
 }
 
-void action_install_cias(linked_list* items, list_item* selected) {
-    action_install_cias_internal(items, selected, "Install all CIAs in the current directory?", false);
+void action_install_cias(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData) {
+    action_install_cias_internal(items, selected, filter, filterData, "Install all CIAs in the current directory?", false);
 }
 
-void action_install_cias_delete(linked_list* items, list_item* selected) {
-    action_install_cias_internal(items, selected, "Install and delete all CIAs in the current directory?", true);
+void action_install_cias_delete(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData) {
+    action_install_cias_internal(items, selected, filter, filterData, "Install and delete all CIAs in the current directory?", true);
 }

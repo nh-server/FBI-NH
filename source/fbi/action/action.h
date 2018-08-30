@@ -16,12 +16,12 @@ void action_delete_system_save_data(linked_list* items, list_item* selected);
 
 void action_install_cia(linked_list* items, list_item* selected);
 void action_install_cia_delete(linked_list* items, list_item* selected);
-void action_install_cias(linked_list* items, list_item* selected);
-void action_install_cias_delete(linked_list* items, list_item* selected);
+void action_install_cias(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData);
+void action_install_cias_delete(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData);
 void action_install_ticket(linked_list* items, list_item* selected);
 void action_install_ticket_delete(linked_list* items, list_item* selected);
-void action_install_tickets(linked_list* items, list_item* selected);
-void action_install_tickets_delete(linked_list* items, list_item* selected);
+void action_install_tickets(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData);
+void action_install_tickets_delete(linked_list* items, list_item* selected, bool (*filter)(void* data, const char* name, u32 attributes), void* filterData);
 void action_delete_file(linked_list* items, list_item* selected);
 void action_delete_dir(linked_list* items, list_item* selected);
 void action_delete_dir_contents(linked_list* items, list_item* selected);
