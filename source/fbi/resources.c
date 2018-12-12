@@ -66,12 +66,6 @@ void resources_load() {
             screen_set_color(COLOR_ENABLED, color);
         } else if(strcasecmp(key, "disabled") == 0) {
             screen_set_color(COLOR_DISABLED, color);
-        } else if(strcasecmp(key, "titledbinstalled") == 0) {
-            screen_set_color(COLOR_TITLEDB_INSTALLED, color);
-        } else if(strcasecmp(key, "titledboutdated") == 0) {
-            screen_set_color(COLOR_TITLEDB_OUTDATED, color);
-        } else if(strcasecmp(key, "titledbnotinstalled") == 0) {
-            screen_set_color(COLOR_TITLEDB_NOT_INSTALLED, color);
         } else if(strcasecmp(key, "ticketinuse") == 0) {
             screen_set_color(COLOR_TICKET_IN_USE, color);
         } else if(strcasecmp(key, "ticketnotinuse") == 0) {
