@@ -17,14 +17,10 @@ void task_draw_pending_title_info(ui_view* view, void* data, float x1, float y1,
 void task_draw_system_save_data_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 void task_draw_ticket_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 void task_draw_title_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
-void task_draw_titledb_info(ui_view* view, void* data, float x1, float y1, float x2, float y2);
-void task_draw_titledb_info_cia(ui_view* view, void* data, float x1, float y1, float x2, float y2);
-void task_draw_titledb_info_tdsx(ui_view* view, void* data, float x1, float y1, float x2, float y2);
 
 #include "listextsavedata.h"
 #include "listpendingtitles.h"
 #include "listsystemsavedata.h"
 #include "listtickets.h"
-#include "listtitledb.h"
 #include "listtitles.h"
 #include "listfiles.h"
