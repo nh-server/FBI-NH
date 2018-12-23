@@ -29,7 +29,6 @@ typedef struct {
     u64 currTitleId;
     volatile bool n3dsContinue;
     ticket_info ticketInfo;
-    http_context currContext;
     char currPath[FILE_PATH_MAX];
 
     data_op_data installInfo;
@@ -77,45 +76,12 @@ static void action_install_url_draw_top(ui_view* view, void* data, float x1, flo
     }
 }
 
-static Result action_install_url_is_src_directory(void* data, u32 index, bool* isDirectory) {
-    *isDirectory = false;
-    return 0;
-}
-
-static Result action_install_url_make_dst_directory(void* data, u32 index) {
-    return 0;
-}
-
-static Result action_install_url_open_src(void* data, u32 index, u32* handle) {
+static Result action_install_url_get_src_url(void* data, u32 index, char* url, size_t maxSize) {
     install_url_data* installData = (install_url_data*) data;
 
-    Result res = 0;
-
-    if(R_SUCCEEDED(res = http_open(&installData->currContext, installData->urls[index], true))) {
-        *handle = (u32) installData->currContext;
-    }
-
-    return res;
+    strncpy(url, installData->urls[index], maxSize);
+    return 0;
 }
-
-static Result action_install_url_close_src(void* data, u32 index, bool succeeded, u32 handle) {
-    ((install_url_data*) data)->currContext = NULL;
-
-    return http_close((http_context) handle);
-}
-
-static Result action_install_url_get_src_size(void* data, u32 handle, u64* size) {
-    u32 downloadSize = 0;
-    Result res = http_get_size((http_context) handle, &downloadSize);
-
-    *size = downloadSize;
-    return res;
-}
-
-static Result action_install_url_read_src(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size) {
-    return http_read((http_context) handle, bytesRead, buffer, size);
-}
-
 
 static Result action_install_url_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     install_url_data* installData = (install_url_data*) data;
@@ -185,9 +151,10 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
                 string_copy(installData->currPath, installData->paths[index], FILE_PATH_MAX);
             } else {
                 char filename[FILE_NAME_MAX];
-                if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
+                // TODO
+                //if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
                     string_get_path_file(filename, installData->urls[index], FILE_NAME_MAX);
-                }
+                //}
 
                 char name[FILE_NAME_MAX];
                 string_get_file_name(name, filename, FILE_NAME_MAX);
@@ -266,14 +233,6 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
 
 static Result action_install_url_write_dst(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size) {
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
-}
-
-static Result action_install_url_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result action_install_url_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
 }
 
 static Result action_install_url_suspend(void* data, u32 index) {
@@ -424,27 +383,17 @@ void action_install_url(const char* confirmMessage, const char* urls, const char
 
     data->installInfo.data = data;
 
-    data->installInfo.op = DATAOP_COPY;
+    data->installInfo.op = DATAOP_DOWNLOAD;
 
     data->installInfo.bufferSize = 128 * 1024;
-    data->installInfo.copyEmpty = false;
 
     data->installInfo.processed = data->installInfo.total;
 
-    data->installInfo.isSrcDirectory = action_install_url_is_src_directory;
-    data->installInfo.makeDstDirectory = action_install_url_make_dst_directory;
-
-    data->installInfo.openSrc = action_install_url_open_src;
-    data->installInfo.closeSrc = action_install_url_close_src;
-    data->installInfo.getSrcSize = action_install_url_get_src_size;
-    data->installInfo.readSrc = action_install_url_read_src;
+    data->installInfo.getSrcUrl = action_install_url_get_src_url;
 
     data->installInfo.openDst = action_install_url_open_dst;
     data->installInfo.closeDst = action_install_url_close_dst;
     data->installInfo.writeDst = action_install_url_write_dst;
-
-    data->installInfo.suspendTransfer = action_install_url_suspend_transfer;
-    data->installInfo.restoreTransfer = action_install_url_restore_transfer;
 
     data->installInfo.suspend = action_install_url_suspend;
     data->installInfo.restore = action_install_url_restore;

@@ -120,14 +120,6 @@ static Result action_install_tickets_write_dst(void* data, u32 handle, u32* byte
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_install_tickets_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result action_install_tickets_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
 static Result action_install_tickets_suspend(void* data, u32 index) {
     return 0;
 }
@@ -289,9 +281,6 @@ static void action_install_tickets_internal(linked_list* items, list_item* selec
     data->installInfo.openDst = action_install_tickets_open_dst;
     data->installInfo.closeDst = action_install_tickets_close_dst;
     data->installInfo.writeDst = action_install_tickets_write_dst;
-
-    data->installInfo.suspendTransfer = action_install_tickets_suspend_transfer;
-    data->installInfo.restoreTransfer = action_install_tickets_restore_transfer;
 
     data->installInfo.suspend = action_install_tickets_suspend;
     data->installInfo.restore = action_install_tickets_restore;

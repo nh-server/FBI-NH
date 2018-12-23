@@ -8,6 +8,7 @@ typedef struct ui_view_s ui_view;
 
 typedef enum data_op_e {
     DATAOP_COPY,
+    DATAOP_DOWNLOAD,
     DATAOP_DELETE
 } data_op;
 
@@ -19,9 +20,7 @@ typedef struct data_op_data_s {
     u32 processed;
     u32 total;
 
-    // Copy
-    bool copyEmpty;
-
+    // Copy/Download
     u64 currProcessed;
     u64 currTotal;
 
@@ -29,6 +28,14 @@ typedef struct data_op_data_s {
     u32 estimatedRemainingSeconds;
 
     u32 bufferSize;
+
+    Result (*openDst)(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle);
+    Result (*closeDst)(void* data, u32 index, bool succeeded, u32 handle);
+
+    Result (*writeDst)(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size);
+
+    // Copy
+    bool copyEmpty;
 
     Result (*isSrcDirectory)(void* data, u32 index, bool* isDirectory);
     Result (*makeDstDirectory)(void* data, u32 index);
@@ -39,13 +46,8 @@ typedef struct data_op_data_s {
     Result (*getSrcSize)(void* data, u32 handle, u64* size);
     Result (*readSrc)(void* data, u32 handle, u32* bytesRead, void* buffer, u64 offset, u32 size);
 
-    Result (*openDst)(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle);
-    Result (*closeDst)(void* data, u32 index, bool succeeded, u32 handle);
-
-    Result (*writeDst)(void* data, u32 handle, u32* bytesWritten, void* buffer, u64 offset, u32 size);
-
-    Result (*suspendTransfer)(void* data, u32 index, u32* srcHandle, u32* dstHandle);
-    Result (*restoreTransfer)(void* data, u32 index, u32* srcHandle, u32* dstHandle);
+    // Download
+    Result (*getSrcUrl)(void* data, u32 index, char* url, size_t maxSize);
 
     // Delete
     Result (*delete)(void* data, u32 index);

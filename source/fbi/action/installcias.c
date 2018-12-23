@@ -171,14 +171,6 @@ static Result action_install_cias_write_dst(void* data, u32 handle, u32* bytesWr
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result action_install_cias_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result action_install_cias_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
 static Result action_install_cias_suspend(void* data, u32 index) {
     return 0;
 }
@@ -342,9 +334,6 @@ static void action_install_cias_internal(linked_list* items, list_item* selected
     data->installInfo.openDst = action_install_cias_open_dst;
     data->installInfo.closeDst = action_install_cias_close_dst;
     data->installInfo.writeDst = action_install_cias_write_dst;
-
-    data->installInfo.suspendTransfer = action_install_cias_suspend_transfer;
-    data->installInfo.restoreTransfer = action_install_cias_restore_transfer;
 
     data->installInfo.suspend = action_install_cias_suspend;
     data->installInfo.restore = action_install_cias_restore;

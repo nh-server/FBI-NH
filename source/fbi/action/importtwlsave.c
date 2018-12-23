@@ -74,14 +74,6 @@ static Result action_import_twl_save_write_dst(void* data, u32 handle, u32* byte
     return spi_write_save(bytesWritten, buffer, (u32) offset, size);
 }
 
-static Result action_import_twl_save_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result action_import_twl_save_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
 static Result action_import_twl_save_suspend(void* data, u32 index) {
     return 0;
 }
@@ -172,9 +164,6 @@ void action_import_twl_save(linked_list* items, list_item* selected) {
     data->importInfo.openDst = action_import_twl_save_open_dst;
     data->importInfo.closeDst = action_import_twl_save_close_dst;
     data->importInfo.writeDst = action_import_twl_save_write_dst;
-
-    data->importInfo.suspendTransfer = action_import_twl_save_suspend_transfer;
-    data->importInfo.restoreTransfer = action_import_twl_save_restore_transfer;
 
     data->importInfo.suspend = action_import_twl_save_suspend;
     data->importInfo.restore = action_import_twl_save_restore;
