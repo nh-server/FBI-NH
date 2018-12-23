@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <3ds.h>
+#include <curl/curl.h>
 
 #include "error.h"
 #include "prompt.h"
@@ -632,6 +633,8 @@ static const char* description_to_string(Result res) {
                             default:
                                 return "HTTP: Unknown Response Code";
                         }
+                    } else if(res >= R_APP_CURL_ERROR_BASE && res < R_APP_CURL_ERROR_END) {
+                        return curl_easy_strerror(res - R_APP_CURL_ERROR_BASE);
                     }
 
                     break;
@@ -750,6 +753,7 @@ ui_view* error_display_res(void* data, void (*drawTop)(ui_view* view, void* data
     int summary = R_SUMMARY(result);
     int module = R_MODULE(result);
     int description = R_DESCRIPTION(result);
+
     snprintf(errorData->fullText, 4096, "%s\nResult code: 0x%08lX\nLevel: %s (%d)\nSummary: %s (%d)\nModule: %s (%d)\nDesc: %s (%d)", textBuf, result, level_to_string(result), level, summary_to_string(result), summary, module_to_string(result), module, description_to_string(result), description);
 
     return prompt_display_notify("Error", errorData->fullText, COLOR_TEXT, errorData, error_draw_top, error_onresponse);

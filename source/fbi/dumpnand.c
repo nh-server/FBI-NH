@@ -71,14 +71,6 @@ static Result dumpnand_write_dst(void* data, u32 handle, u32* bytesWritten, void
     return FSFILE_Write(handle, bytesWritten, offset, buffer, size, 0);
 }
 
-static Result dumpnand_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result dumpnand_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
 static Result dumpnand_suspend(void* data, u32 index) {
     return 0;
 }
@@ -164,9 +156,6 @@ void dumpnand_open() {
     data->openDst = dumpnand_open_dst;
     data->closeDst = dumpnand_close_dst;
     data->writeDst = dumpnand_write_dst;
-
-    data->suspendTransfer = dumpnand_suspend_transfer;
-    data->restoreTransfer = dumpnand_restore_transfer;
 
     data->suspend = dumpnand_suspend;
     data->restore = dumpnand_restore;

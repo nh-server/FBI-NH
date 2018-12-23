@@ -7,7 +7,7 @@
 #include "dataop.h"
 #include "../core.h"
 
-static Result task_data_op_check_running(data_op_data* data, u32 index, u32* srcHandle, u32* dstHandle) {
+static Result task_data_op_check_running(data_op_data* data) {
     Result res = 0;
 
     if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
@@ -15,12 +15,8 @@ static Result task_data_op_check_running(data_op_data* data, u32 index, u32* src
     } else {
         bool suspended = svcWaitSynchronization(task_get_suspend_event(), 0) != 0;
         if(suspended) {
-            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->suspendTransfer != NULL && R_SUCCEEDED(res)) {
-                res = data->suspendTransfer(data->data, index, srcHandle, dstHandle);
-            }
-
             if(data->suspend != NULL && R_SUCCEEDED(res)) {
-                res = data->suspend(data->data, index);
+                res = data->suspend(data->data, data->processed);
             }
         }
 
@@ -28,11 +24,7 @@ static Result task_data_op_check_running(data_op_data* data, u32 index, u32* src
 
         if(suspended) {
             if(data->restore != NULL && R_SUCCEEDED(res)) {
-                res = data->restore(data->data, index);
-            }
-
-            if(data->op == DATAOP_COPY && srcHandle != NULL && dstHandle != NULL && data->restoreTransfer != NULL && R_SUCCEEDED(res)) {
-                res = data->restoreTransfer(data->data, index, srcHandle, dstHandle);
+                res = data->restore(data->data, data->processed);
             }
         }
     }
@@ -76,7 +68,7 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
 
                         bool firstRun = true;
                         while(data->currProcessed < data->currTotal) {
-                            if(R_FAILED(res = task_data_op_check_running(data, data->processed, &srcHandle, &dstHandle))) {
+                            if(R_FAILED(res = task_data_op_check_running(data))) {
                                 break;
                             }
 
@@ -145,6 +137,87 @@ static Result task_data_op_copy(data_op_data* data, u32 index) {
     return res;
 }
 
+typedef struct {
+    data_op_data* data;
+
+    u32 index;
+
+    u32 dstHandle;
+    bool firstRun;
+    u64 ioStartTime;
+    u64 lastBytesPerSecondUpdate;
+    u32 bytesSinceUpdate;
+} data_op_download_data;
+
+static Result task_data_op_download_callback(void* userData, void* buffer, size_t size) {
+    data_op_download_data* downloadData = (data_op_download_data*) userData;
+    data_op_data* data = downloadData->data;
+
+    Result res = 0;
+
+    if(R_SUCCEEDED(res = task_data_op_check_running(data))) {
+        if(downloadData->firstRun) {
+            downloadData->firstRun = false;
+
+            if(R_FAILED(res = data->openDst(data->data, downloadData->index, buffer, data->currTotal, &downloadData->dstHandle))) {
+                return res;
+            }
+        }
+
+        u32 bytesWritten = 0;
+        if(R_SUCCEEDED(res = data->writeDst(data->data, downloadData->dstHandle, &bytesWritten, buffer, data->currProcessed, size))) {
+            data->currProcessed += bytesWritten;
+            downloadData->bytesSinceUpdate += bytesWritten;
+
+            u64 time = osGetTime();
+            u64 elapsed = time - downloadData->lastBytesPerSecondUpdate;
+            if(elapsed >= 1000) {
+                data->bytesPerSecond = (u32) (downloadData->bytesSinceUpdate / (elapsed / 1000.0f));
+
+                if(downloadData->ioStartTime != 0) {
+                    data->estimatedRemainingSeconds = (u32) ((data->currTotal - data->currProcessed) / (data->currProcessed / ((time - downloadData->ioStartTime) / 1000.0f)));
+                } else {
+                    data->estimatedRemainingSeconds = 0;
+                }
+
+                if(downloadData->ioStartTime == 0 && data->currProcessed > 0) {
+                    downloadData->ioStartTime = time;
+                }
+
+                downloadData->bytesSinceUpdate = 0;
+                downloadData->lastBytesPerSecondUpdate = time;
+            }
+        }
+    }
+
+    return res;
+}
+
+static Result task_data_op_download(data_op_data* data, u32 index) {
+    data->currProcessed = 0;
+    data->currTotal = 0;
+
+    data->bytesPerSecond = 0;
+    data->estimatedRemainingSeconds = 0;
+
+    Result res = 0;
+
+    char url[DOWNLOAD_URL_MAX];
+    if(R_SUCCEEDED(res = data->getSrcUrl(data->data, index, url, DOWNLOAD_URL_MAX))) {
+        data_op_download_data downloadData = {data, index, 0, true, 0, osGetTime(), 0};
+        res = http_download_callback(url, data->bufferSize, &data->currTotal, &downloadData, task_data_op_download_callback);
+
+        if(downloadData.dstHandle != 0) {
+            Result closeDstRes = data->closeDst(data->data, index, res == 0, downloadData.dstHandle);
+            if(R_SUCCEEDED(res)) {
+                res = closeDstRes;
+            }
+        }
+    }
+
+    return res;
+}
+
 static Result task_data_op_delete(data_op_data* data, u32 index) {
     return data->delete(data->data, index);
 }
@@ -159,10 +232,13 @@ static void task_data_op_thread(void* arg) {
     for(data->processed = 0; data->processed < data->total; data->processed++) {
         Result res = 0;
 
-        if(R_SUCCEEDED(res = task_data_op_check_running(data, data->processed, NULL, NULL))) {
+        if(R_SUCCEEDED(res = task_data_op_check_running(data))) {
             switch(data->op) {
                 case DATAOP_COPY:
                     res = task_data_op_copy(data, data->processed);
+                    break;
+                case DATAOP_DOWNLOAD:
+                    res = task_data_op_download(data, data->processed);
                     break;
                 case DATAOP_DELETE:
                     res = task_data_op_delete(data, data->processed);

@@ -9,7 +9,7 @@ SOURCE_DIRS := source
 ROMFS_DIR := romfs
 
 LIBRARY_DIRS += $(DEVKITPRO)/libctru $(DEVKITPRO)/portlibs/armv6k $(DEVKITPRO)/portlibs/3ds
-LIBRARIES += jansson z citro3d ctru
+LIBRARIES += curl mbedtls mbedx509 mbedcrypto jansson z citro3d ctru
 
 EXTRA_OUTPUT_FILES := servefiles
 

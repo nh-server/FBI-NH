@@ -66,14 +66,6 @@ static Result action_erase_twl_save_write_dst(void* data, u32 handle, u32* bytes
     return spi_write_save(bytesWritten, buffer, (u32) offset, size);
 }
 
-static Result action_erase_twl_save_suspend_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
-static Result action_erase_twl_save_restore_transfer(void* data, u32 index, u32* srcHandle, u32* dstHandle) {
-    return 0;
-}
-
 static Result action_erase_twl_save_suspend(void* data, u32 index) {
     return 0;
 }
@@ -164,9 +156,6 @@ void action_erase_twl_save(linked_list* items, list_item* selected) {
     data->eraseInfo.openDst = action_erase_twl_save_open_dst;
     data->eraseInfo.closeDst = action_erase_twl_save_close_dst;
     data->eraseInfo.writeDst = action_erase_twl_save_write_dst;
-
-    data->eraseInfo.suspendTransfer = action_erase_twl_save_suspend_transfer;
-    data->eraseInfo.restoreTransfer = action_erase_twl_save_restore_transfer;
 
     data->eraseInfo.suspend = action_erase_twl_save_suspend;
     data->eraseInfo.restore = action_erase_twl_save_restore;
