@@ -287,10 +287,6 @@ typedef struct {
 static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
     http_curl_data* curlData = (http_curl_data*) userdata;
 
-    if(curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData))) {
-        return 0;
-    }
-
     size_t srcPos = 0;
     size_t available = size * nmemb;
     while(available > 0) {
@@ -315,8 +311,12 @@ static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, voi
 int http_curl_xfer_info_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
     http_curl_data* curlData = (http_curl_data*) clientp;
 
+    if(curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData))) {
+        return 0;
+    }
+
     if(curlData->progress != NULL) {
-        curlData->progress(curlData->userData, dltotal, dlnow);
+        curlData->progress(curlData->userData, (u64) dltotal, (u64) dlnow);
     }
 
     return 0;
