@@ -368,10 +368,13 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
+                curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
                 curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, bufferSize);
                 curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_TIMEOUT_SEC);
                 curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+                curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+                curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, http_curl_write_callback);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &curlData);
                 curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, http_curl_header_callback);
@@ -391,6 +394,11 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
                 if(ret != CURLE_OK) {
                     if(ret == CURLE_WRITE_ERROR) {
                         res = curlData.res;
+                    } else if(ret == CURLE_HTTP_RETURNED_ERROR) {
+                        long responseCode = 0;
+                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
+
+                        res = R_APP_HTTP_ERROR_BASE + responseCode;
                     } else {
                         res = R_APP_CURL_ERROR_BASE + ret;
                     }

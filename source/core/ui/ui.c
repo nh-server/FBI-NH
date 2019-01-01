@@ -383,15 +383,15 @@ const char* ui_get_display_eta(u32 seconds) {
 
 double ui_get_display_size(u64 size) {
     double s = size;
-    if(s > 1024) {
+    if(s >= 1024) {
         s /= 1024;
     }
 
-    if(s > 1024) {
+    if(s >= 1024) {
         s /= 1024;
     }
 
-    if(s > 1024) {
+    if(s >= 1024) {
         s /= 1024;
     }
 
@@ -399,15 +399,15 @@ double ui_get_display_size(u64 size) {
 }
 
 const char* ui_get_display_size_units(u64 size) {
-    if(size > 1024 * 1024 * 1024) {
+    if(size >= 1024 * 1024 * 1024) {
         return "GiB";
     }
 
-    if(size > 1024 * 1024) {
+    if(size >= 1024 * 1024) {
         return "MiB";
     }
 
-    if(size > 1024) {
+    if(size >= 1024) {
         return "KiB";
     }
 
