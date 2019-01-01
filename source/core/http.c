@@ -278,6 +278,7 @@ typedef struct {
     u64* contentLength;
     void* userData;
     Result (*callback)(void* userData, void* buffer, size_t size);
+    Result (*checkRunning)(void* userData);
 
     void* buf;
     u32 pos;
@@ -312,6 +313,10 @@ static size_t http_curl_header_callback(char* buffer, size_t size, size_t nitems
 static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
     http_curl_data* curlData = (http_curl_data*) userdata;
 
+    if(curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData))) {
+        return 0;
+    }
+
     size_t srcPos = 0;
     size_t available = size * nmemb;
     while(available > 0) {
@@ -333,7 +338,8 @@ static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, voi
     return R_SUCCEEDED(curlData->res) ? size * nmemb : 0;
 }
 
-Result http_download_callback(const char* url, u32 bufferSize, u64* contentLength, void* userData, Result (*callback)(void* userData, void* buffer, size_t size)) {
+Result http_download_callback(const char* url, u32 bufferSize, u64* contentLength, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
+                                                                                                   Result (*checkRunning)(void* userData)) {
     Result res = 0;
 
     void* buf = malloc(bufferSize);
@@ -349,6 +355,7 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
                 u32 total = 0;
                 u32 currSize = 0;
                 while(total < dlSize
+                      && (checkRunning == NULL || R_SUCCEEDED(res = checkRunning(userData)))
                       && R_SUCCEEDED(res = http_read(context, &currSize, buf, bufferSize))
                       && R_SUCCEEDED(res = callback(userData, buf, currSize))) {
                     total += currSize;
@@ -364,7 +371,7 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
 
             CURL* curl = curl_easy_init();
             if(curl != NULL) {
-                http_curl_data curlData = {bufferSize, contentLength, userData, callback, buf, 0, 0};
+                http_curl_data curlData = {bufferSize, contentLength, userData, callback, checkRunning, buf, 0, 0};
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
@@ -445,7 +452,7 @@ static Result http_download_buffer_callback(void* userData, void* buffer, size_t
 
 Result http_download_buffer(const char* url, u32* downloadedSize, void* buf, size_t size) {
     http_buffer_data data = {buf, size, 0};
-    Result res = http_download_callback(url, size, NULL, &data, http_download_buffer_callback);
+    Result res = http_download_callback(url, size, NULL, &data, http_download_buffer_callback, NULL);
 
     if(R_SUCCEEDED(res)) {
         *downloadedSize = data.pos;
