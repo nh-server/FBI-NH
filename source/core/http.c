@@ -368,6 +368,7 @@ Result http_download_callback(const char* url, u32 bufferSize, void* userData, R
                 curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, bufferSize);
                 curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_TIMEOUT_SEC);
                 curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
+                curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50);
                 curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
                 curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
