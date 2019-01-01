@@ -312,13 +312,16 @@ static size_t http_curl_header_callback(char* buffer, size_t size, size_t nitems
 static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
     http_curl_data* curlData = (http_curl_data*) userdata;
 
+    size_t srcPos = 0;
     size_t available = size * nmemb;
     while(available > 0) {
         size_t remaining = curlData->bufferSize - curlData->pos;
         size_t copySize = available < remaining ? available : remaining;
 
-        memcpy((u8*) curlData->buf + curlData->pos, ptr, copySize);
+        memcpy((u8*) curlData->buf + curlData->pos, ptr + srcPos, copySize);
         curlData->pos += copySize;
+
+        srcPos += copySize;
         available -= copySize;
 
         if(curlData->pos == curlData->bufferSize) {
