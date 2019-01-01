@@ -147,46 +147,26 @@ typedef struct {
     u64 ioStartTime;
     u64 lastBytesPerSecondUpdate;
     u32 bytesSinceUpdate;
+
+    u64 writeOffset;
 } data_op_download_data;
 
 static Result task_data_op_download_callback(void* userData, void* buffer, size_t size) {
     data_op_download_data* downloadData = (data_op_download_data*) userData;
     data_op_data* data = downloadData->data;
 
-    Result res = 0;
-
     if(downloadData->firstRun) {
         downloadData->firstRun = false;
 
-        if(R_FAILED(res = data->openDst(data->data, downloadData->index, buffer, data->currTotal, &downloadData->dstHandle))) {
+        Result res = data->openDst(data->data, downloadData->index, buffer, data->currTotal, &downloadData->dstHandle);
+        if(R_FAILED(res)) {
             return res;
         }
     }
 
     u32 bytesWritten = 0;
-    if(R_SUCCEEDED(res = data->writeDst(data->data, downloadData->dstHandle, &bytesWritten, buffer, data->currProcessed, size))) {
-        data->currProcessed += bytesWritten;
-        downloadData->bytesSinceUpdate += bytesWritten;
-
-        u64 time = osGetTime();
-        u64 elapsed = time - downloadData->lastBytesPerSecondUpdate;
-        if(elapsed >= 1000) {
-            data->bytesPerSecond = (u32) (downloadData->bytesSinceUpdate / (elapsed / 1000.0f));
-
-            if(downloadData->ioStartTime != 0) {
-                data->estimatedRemainingSeconds = (u32) ((data->currTotal - data->currProcessed) / (data->currProcessed / ((time - downloadData->ioStartTime) / 1000.0f)));
-            } else {
-                data->estimatedRemainingSeconds = 0;
-            }
-
-            if(downloadData->ioStartTime == 0 && data->currProcessed > 0) {
-                downloadData->ioStartTime = time;
-            }
-
-            downloadData->bytesSinceUpdate = 0;
-            downloadData->lastBytesPerSecondUpdate = time;
-        }
-    }
+    Result res = data->writeDst(data->data, downloadData->dstHandle, &bytesWritten, buffer, downloadData->writeOffset, size);
+    downloadData->writeOffset += bytesWritten;
 
     return res;
 }
@@ -195,6 +175,37 @@ static Result task_data_op_download_check_running(void* userData) {
     data_op_download_data* downloadData = (data_op_download_data*) userData;
 
     return task_data_op_check_running(downloadData->data);
+}
+
+static Result task_data_op_download_progress(void* userData, u64 total, u64 curr) {
+    data_op_download_data* downloadData = (data_op_download_data*) userData;
+    data_op_data* data = downloadData->data;
+
+    downloadData->bytesSinceUpdate += curr - data->currProcessed;
+
+    data->currTotal = total;
+    data->currProcessed = curr;
+
+    u64 time = osGetTime();
+    u64 elapsed = time - downloadData->lastBytesPerSecondUpdate;
+    if(elapsed >= 1000) {
+        data->bytesPerSecond = (u32) (downloadData->bytesSinceUpdate / (elapsed / 1000.0f));
+
+        if(downloadData->ioStartTime != 0) {
+            data->estimatedRemainingSeconds = (u32) ((data->currTotal - data->currProcessed) / (data->currProcessed / ((time - downloadData->ioStartTime) / 1000.0f)));
+        } else {
+            data->estimatedRemainingSeconds = 0;
+        }
+
+        if(downloadData->ioStartTime == 0 && data->currProcessed > 0) {
+            downloadData->ioStartTime = time;
+        }
+
+        downloadData->bytesSinceUpdate = 0;
+        downloadData->lastBytesPerSecondUpdate = time;
+    }
+
+    return 0;
 }
 
 static Result task_data_op_download(data_op_data* data, u32 index) {
@@ -208,8 +219,8 @@ static Result task_data_op_download(data_op_data* data, u32 index) {
 
     char url[DOWNLOAD_URL_MAX];
     if(R_SUCCEEDED(res = data->getSrcUrl(data->data, index, url, DOWNLOAD_URL_MAX))) {
-        data_op_download_data downloadData = {data, index, 0, true, 0, osGetTime(), 0};
-        res = http_download_callback(url, data->bufferSize, &data->currTotal, &downloadData, task_data_op_download_callback, task_data_op_download_check_running);
+        data_op_download_data downloadData = {data, index, 0, true, 0, osGetTime(), 0, 0};
+        res = http_download_callback(url, data->bufferSize, &downloadData, task_data_op_download_callback, task_data_op_download_check_running, task_data_op_download_progress);
 
         if(downloadData.dstHandle != 0) {
             Result closeDstRes = data->closeDst(data->data, index, res == 0, downloadData.dstHandle);

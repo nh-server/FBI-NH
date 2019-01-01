@@ -271,44 +271,18 @@ Result http_read(http_context context, u32* bytesRead, void* buffer, u32 size) {
 
 #define R_HTTP_TLS_VERIFY_FAILED 0xD8A0A03C
 
-#define HTTP_CONTENT_LENGTH_HEADER "Content-Length"
-
 typedef struct {
     u32 bufferSize;
-    u64* contentLength;
     void* userData;
     Result (*callback)(void* userData, void* buffer, size_t size);
     Result (*checkRunning)(void* userData);
+    Result (*progress)(void* userData, u64 total, u64 curr);
 
     void* buf;
     u32 pos;
 
     Result res;
 } http_curl_data;
-
-static size_t http_curl_header_callback(char* buffer, size_t size, size_t nitems, void* userdata) {
-    http_curl_data* curlData = (http_curl_data*) userdata;
-
-    size_t bytes = size * nitems;
-    size_t headerNameLen = strlen(HTTP_CONTENT_LENGTH_HEADER);
-
-    if(bytes >= headerNameLen && strncmp(buffer, HTTP_CONTENT_LENGTH_HEADER, headerNameLen) == 0) {
-        char* separator = strstr(buffer, ": ");
-        if(separator != NULL) {
-            char* valueStart = separator + 2;
-
-            char value[32];
-            memset(value, '\0', sizeof(value));
-            strncpy(value, valueStart, bytes - (valueStart - buffer));
-
-            if(curlData->contentLength != NULL) {
-                *(curlData->contentLength) = (u64) atoll(value);
-            }
-        }
-    }
-
-    return size * nitems;
-}
 
 static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, void* userdata) {
     http_curl_data* curlData = (http_curl_data*) userdata;
@@ -338,8 +312,19 @@ static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, voi
     return R_SUCCEEDED(curlData->res) ? size * nmemb : 0;
 }
 
-Result http_download_callback(const char* url, u32 bufferSize, u64* contentLength, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
-                                                                                                   Result (*checkRunning)(void* userData)) {
+int http_curl_xfer_info_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+    http_curl_data* curlData = (http_curl_data*) clientp;
+
+    if(curlData->progress != NULL) {
+        curlData->progress(curlData->userData, dltotal, dlnow);
+    }
+
+    return 0;
+}
+
+Result http_download_callback(const char* url, u32 bufferSize, void* userData, Result (*callback)(void* userData, void* buffer, size_t size),
+                                                                               Result (*checkRunning)(void* userData),
+                                                                               Result (*progress)(void* userData, u64 total, u64 curr)) {
     Result res = 0;
 
     void* buf = malloc(bufferSize);
@@ -348,8 +333,8 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
         if(R_SUCCEEDED(res = http_open(&context, url, true))) {
             u32 dlSize = 0;
             if(R_SUCCEEDED(res = http_get_size(context, &dlSize))) {
-                if(contentLength != NULL) {
-                    *contentLength = dlSize;
+                if(progress != NULL) {
+                    progress(userData, dlSize, 0);
                 }
 
                 u32 total = 0;
@@ -358,6 +343,10 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
                       && (checkRunning == NULL || R_SUCCEEDED(res = checkRunning(userData)))
                       && R_SUCCEEDED(res = http_read(context, &currSize, buf, bufferSize))
                       && R_SUCCEEDED(res = callback(userData, buf, currSize))) {
+                    if(progress != NULL) {
+                        progress(userData, dlSize, total);
+                    }
+
                     total += currSize;
                 }
 
@@ -371,7 +360,7 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
 
             CURL* curl = curl_easy_init();
             if(curl != NULL) {
-                http_curl_data curlData = {bufferSize, contentLength, userData, callback, checkRunning, buf, 0, 0};
+                http_curl_data curlData = {bufferSize, userData, callback, checkRunning, progress, buf, 0, 0};
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
                 curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
@@ -384,8 +373,9 @@ Result http_download_callback(const char* url, u32 bufferSize, u64* contentLengt
                 curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, http_curl_write_callback);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &curlData);
-                curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, http_curl_header_callback);
-                curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void*) &curlData);
+                curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+                curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, http_curl_xfer_info_callback);
+                curl_easy_setopt(curl, CURLOPT_XFERINFODATA, (void*) &curlData);
 
                 CURLcode ret = curl_easy_perform(curl);
 
@@ -452,7 +442,7 @@ static Result http_download_buffer_callback(void* userData, void* buffer, size_t
 
 Result http_download_buffer(const char* url, u32* downloadedSize, void* buf, size_t size) {
     http_buffer_data data = {buf, size, 0};
-    Result res = http_download_callback(url, size, NULL, &data, http_download_buffer_callback, NULL);
+    Result res = http_download_callback(url, size, &data, http_download_buffer_callback, NULL, NULL);
 
     if(R_SUCCEEDED(res)) {
         *downloadedSize = data.pos;
