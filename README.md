@@ -4,7 +4,7 @@ FBI is an open source title manager for the 3DS.
 
 Download: https://github.com/Steveice10/FBI/releases
 
-Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/), along with 3ds-zlib and 3ds-jansson from the devkitPro pacman repository, to build.
+Requires [devkitARM](http://sourceforge.net/projects/devkitpro/files/devkitARM/), along with 3ds-curl, 3ds-zlib, and 3ds-jansson from the devkitPro pacman repository, to build.
 
 # Credit
 
