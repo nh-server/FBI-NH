@@ -151,16 +151,13 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
                 string_copy(installData->currPath, installData->paths[index], FILE_PATH_MAX);
             } else {
                 char filename[FILE_NAME_MAX];
-                // TODO
-                //if(R_FAILED(http_get_file_name(installData->currContext, filename, FILE_NAME_MAX))) {
-                    string_get_path_file(filename, installData->urls[index], FILE_NAME_MAX);
-                //}
+                string_get_path_file(filename, installData->urls[index], FILE_NAME_MAX);
 
                 char name[FILE_NAME_MAX];
                 string_get_file_name(name, filename, FILE_NAME_MAX);
 
                 snprintf(dir, FILE_PATH_MAX, "/3ds/%s/", name);
-                snprintf(installData->currPath, FILE_PATH_MAX, "/3ds/%s/%s", name, filename);
+                snprintf(installData->currPath, FILE_PATH_MAX, "/3ds/%s/%s.3dsx", name, name);
             }
 
             if(R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, "/3ds/")) && R_SUCCEEDED(res = fs_ensure_dir(sdmcArchive, dir))) {

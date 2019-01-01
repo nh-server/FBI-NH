@@ -16,10 +16,11 @@
 #define MAKE_HTTP_USER_AGENT(major, minor, micro) MAKE_HTTP_USER_AGENT_(major, minor, micro)
 #define HTTP_USER_AGENT MAKE_HTTP_USER_AGENT(VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO)
 
+#define HTTP_MAX_REDIRECTS 50
 #define HTTP_TIMEOUT_SEC 15
 #define HTTP_TIMEOUT_NS ((u64) HTTP_TIMEOUT_SEC * 1000000000)
 
-struct http_context_s {
+struct httpc_context_s {
     httpcContext httpc;
 
     bool compressed;
@@ -28,7 +29,9 @@ struct http_context_s {
     u32 bufferSize;
 };
 
-void http_resolve_redirect(char* oldUrl, const char* redirectTo, size_t size) {
+typedef struct httpc_context_s* httpc_context;
+
+static void httpc_resolve_redirect(char* oldUrl, const char* redirectTo, size_t size) {
     if(size > 0) {
         if(redirectTo[0] == '/') {
             char* baseEnd = oldUrl;
@@ -57,37 +60,25 @@ void http_resolve_redirect(char* oldUrl, const char* redirectTo, size_t size) {
     }
 }
 
-Result http_open(http_context* context, const char* url, bool userAgent) {
-    return http_open_ranged(context, url, userAgent, 0, 0);
-}
-
-Result http_open_ranged(http_context* context, const char* url, bool userAgent, u32 rangeStart, u32 rangeEnd) {
+static Result httpc_open(httpc_context* context, const char* url, bool userAgent) {
     if(url == NULL) {
         return R_APP_INVALID_ARGUMENT;
     }
 
     Result res = 0;
 
-    http_context ctx = (http_context) calloc(1, sizeof(struct http_context_s));
+    httpc_context ctx = (httpc_context) calloc(1, sizeof(struct httpc_context_s));
     if(ctx != NULL) {
         char currUrl[1024];
         string_copy(currUrl, url, sizeof(currUrl));
 
-        char range[64];
-        if(rangeEnd > rangeStart) {
-            snprintf(range, sizeof(range), "%lu-%lu", rangeStart, rangeEnd);
-        } else {
-            snprintf(range, sizeof(range), "%lu-", rangeStart);
-        }
-
         bool resolved = false;
         u32 redirectCount = 0;
-        while(R_SUCCEEDED(res) && !resolved && redirectCount < 32) {
+        while(R_SUCCEEDED(res) && !resolved && redirectCount < HTTP_MAX_REDIRECTS) {
             if(R_SUCCEEDED(res = httpcOpenContext(&ctx->httpc, HTTPC_METHOD_GET, currUrl, 1))) {
                 u32 response = 0;
                 if(R_SUCCEEDED(res = httpcSetSSLOpt(&ctx->httpc, SSLCOPT_DisableVerify))
                    && (!userAgent || R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "User-Agent", HTTP_USER_AGENT)))
-                   && (rangeStart == 0 || R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "Range", range)))
                    && R_SUCCEEDED(res = httpcAddRequestHeaderField(&ctx->httpc, "Accept-Encoding", "gzip, deflate"))
                    && R_SUCCEEDED(res = httpcSetKeepAlive(&ctx->httpc, HTTPC_KEEPALIVE_ENABLED))
                    && R_SUCCEEDED(res = httpcBeginRequest(&ctx->httpc))
@@ -100,7 +91,7 @@ Result http_open_ranged(http_context* context, const char* url, bool userAgent, 
                         if(R_SUCCEEDED(res = httpcGetResponseHeader(&ctx->httpc, "Location", redirectTo, sizeof(redirectTo)))) {
                             httpcCloseContext(&ctx->httpc);
 
-                            http_resolve_redirect(currUrl, redirectTo, sizeof(currUrl));
+                            httpc_resolve_redirect(currUrl, redirectTo, sizeof(currUrl));
                         }
                     } else {
                         resolved = true;
@@ -152,7 +143,7 @@ Result http_open_ranged(http_context* context, const char* url, bool userAgent, 
     return res;
 }
 
-Result http_close(http_context context) {
+static Result httpc_close(httpc_context context) {
     if(context == NULL) {
         return R_APP_INVALID_ARGUMENT;
     }
@@ -166,7 +157,7 @@ Result http_close(http_context context) {
     return res;
 }
 
-Result http_get_size(http_context context, u32* size) {
+static Result httpc_get_size(httpc_context context, u32* size) {
     if(context == NULL || size == NULL) {
         return R_APP_INVALID_ARGUMENT;
     }
@@ -174,37 +165,7 @@ Result http_get_size(http_context context, u32* size) {
     return httpcGetDownloadSizeState(&context->httpc, NULL, size);
 }
 
-Result http_get_file_name(http_context context, char* out, u32 size) {
-    if(context == NULL || out == NULL) {
-        return R_APP_INVALID_ARGUMENT;
-    }
-
-    Result res = 0;
-
-    char* header = (char*) calloc(1, size + 64);
-    if(header != NULL) {
-        if(R_SUCCEEDED(res = httpcGetResponseHeader(&context->httpc, "Content-Disposition", header, size + 64))) {
-            char* start = strstr(header, "filename=");
-            if(start != NULL) {
-                char format[32];
-                snprintf(format, sizeof(format), "filename=\"%%%lu[^\"]\"", size);
-                if(sscanf(start, format, out) != 1) {
-                    res = R_APP_BAD_DATA;
-                }
-            } else {
-                res = R_APP_BAD_DATA;
-            }
-        }
-
-        free(header);
-    } else {
-        res = R_APP_OUT_OF_MEMORY;
-    }
-
-    return res;
-}
-
-Result http_read(http_context context, u32* bytesRead, void* buffer, u32 size) {
+static Result httpc_read(httpc_context context, u32* bytesRead, void* buffer, u32 size) {
     if(context == NULL || buffer == NULL) {
         return R_APP_INVALID_ARGUMENT;
     }
@@ -312,7 +273,7 @@ int http_curl_xfer_info_callback(void* clientp, curl_off_t dltotal, curl_off_t d
     http_curl_data* curlData = (http_curl_data*) clientp;
 
     if(curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData))) {
-        return 0;
+        return 1;
     }
 
     if(curlData->progress != NULL) {
@@ -329,10 +290,10 @@ Result http_download_callback(const char* url, u32 bufferSize, void* userData, R
 
     void* buf = malloc(bufferSize);
     if(buf != NULL) {
-        http_context context = NULL;
-        if(R_SUCCEEDED(res = http_open(&context, url, true))) {
+        httpc_context context = NULL;
+        if(R_SUCCEEDED(res = httpc_open(&context, url, true))) {
             u32 dlSize = 0;
-            if(R_SUCCEEDED(res = http_get_size(context, &dlSize))) {
+            if(R_SUCCEEDED(res = httpc_get_size(context, &dlSize))) {
                 if(progress != NULL) {
                     progress(userData, dlSize, 0);
                 }
@@ -341,7 +302,7 @@ Result http_download_callback(const char* url, u32 bufferSize, void* userData, R
                 u32 currSize = 0;
                 while(total < dlSize
                       && (checkRunning == NULL || R_SUCCEEDED(res = checkRunning(userData)))
-                      && R_SUCCEEDED(res = http_read(context, &currSize, buf, bufferSize))
+                      && R_SUCCEEDED(res = httpc_read(context, &currSize, buf, bufferSize))
                       && R_SUCCEEDED(res = callback(userData, buf, currSize))) {
                     if(progress != NULL) {
                         progress(userData, dlSize, total);
@@ -350,7 +311,7 @@ Result http_download_callback(const char* url, u32 bufferSize, void* userData, R
                     total += currSize;
                 }
 
-                Result closeRes = http_close(context);
+                Result closeRes = httpc_close(context);
                 if(R_SUCCEEDED(res)) {
                     res = closeRes;
                 }
@@ -363,18 +324,18 @@ Result http_download_callback(const char* url, u32 bufferSize, void* userData, R
                 http_curl_data curlData = {bufferSize, userData, callback, checkRunning, progress, buf, 0, 0};
 
                 curl_easy_setopt(curl, CURLOPT_URL, url);
-                curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
-                curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "gzip");
                 curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, bufferSize);
-                curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, HTTP_TIMEOUT_SEC);
-                curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-                curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 50);
-                curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2TLS);
+                curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+                curl_easy_setopt(curl, CURLOPT_USERAGENT, HTTP_USER_AGENT);
+                curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, (long) HTTP_TIMEOUT_SEC);
+                curl_easy_setopt(curl, CURLOPT_MAXREDIRS, (long) HTTP_MAX_REDIRECTS);
+                curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+                curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+                curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, (long) CURL_HTTP_VERSION_2TLS);
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, http_curl_write_callback);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &curlData);
-                curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
+                curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
                 curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, http_curl_xfer_info_callback);
                 curl_easy_setopt(curl, CURLOPT_XFERINFODATA, (void*) &curlData);
 
@@ -390,7 +351,7 @@ Result http_download_callback(const char* url, u32 bufferSize, void* userData, R
                 }
 
                 if(ret != CURLE_OK) {
-                    if(ret == CURLE_WRITE_ERROR) {
+                    if(ret == CURLE_WRITE_ERROR || ret == CURLE_ABORTED_BY_CALLBACK) {
                         res = curlData.res;
                     } else if(ret == CURLE_HTTP_RETURNED_ERROR) {
                         long responseCode = 0;
