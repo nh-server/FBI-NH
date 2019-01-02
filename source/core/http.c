@@ -250,7 +250,7 @@ static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, voi
 
     size_t srcPos = 0;
     size_t available = size * nmemb;
-    while(available > 0) {
+    while(R_SUCCEEDED(curlData->res) && available > 0) {
         size_t remaining = curlData->bufferSize - curlData->pos;
         size_t copySize = available < remaining ? available : remaining;
 
@@ -272,7 +272,7 @@ static size_t http_curl_write_callback(char* ptr, size_t size, size_t nmemb, voi
 int http_curl_xfer_info_callback(void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
     http_curl_data* curlData = (http_curl_data*) clientp;
 
-    if(curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData))) {
+    if(R_FAILED(curlData->res) || (curlData->checkRunning != NULL && R_FAILED(curlData->res = curlData->checkRunning(curlData->userData)))) {
         return 1;
     }
 
@@ -344,16 +344,12 @@ Result http_download_callback(const char* url, u32 bufferSize, void* userData, R
                 if(ret == CURLE_OK && curlData.pos != 0) {
                     curlData.res = curlData.callback(curlData.userData, curlData.buf, curlData.pos);
                     curlData.pos = 0;
-
-                    if(R_FAILED(curlData.res)) {
-                        ret = CURLE_WRITE_ERROR;
-                    }
                 }
 
-                if(ret != CURLE_OK) {
-                    if(ret == CURLE_WRITE_ERROR || ret == CURLE_ABORTED_BY_CALLBACK) {
-                        res = curlData.res;
-                    } else if(ret == CURLE_HTTP_RETURNED_ERROR) {
+                res = curlData.res;
+
+                if(R_SUCCEEDED(res) && ret != CURLE_OK) {
+                    if(ret == CURLE_HTTP_RETURNED_ERROR) {
                         long responseCode = 0;
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &responseCode);
 
