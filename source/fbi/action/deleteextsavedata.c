@@ -57,5 +57,5 @@ void action_delete_ext_save_data(linked_list* items, list_item* selected) {
     data->items = items;
     data->selected = selected;
 
-    prompt_display_notify("Confirmation", "Delete the selected ext save data?", COLOR_TEXT, data, action_delete_ext_save_data_draw_top, action_delete_ext_save_data_onresponse);
+    prompt_display_yes_no("Confirmation", "Delete the selected ext save data?", COLOR_TEXT, data, action_delete_ext_save_data_draw_top, action_delete_ext_save_data_onresponse);
 }
