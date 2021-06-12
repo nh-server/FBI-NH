@@ -384,6 +384,8 @@ static const char* description_to_string(Result res) {
                     return "Database does not exist";
                 case 44:
                     return "Attempted to delete system title";
+                case 53:
+                    return "Insufficient space left on TWLNAND";
                 case 101:
                     return "Error type -1";
                 case 102:
