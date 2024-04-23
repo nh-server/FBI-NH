@@ -6,7 +6,7 @@
 #include <3ds.h>
 #include <curl/curl.h>
 
-#include "error.h"
+#include "error_display.h"
 #include "prompt.h"
 #include "../error.h"
 #include "../screen.h"

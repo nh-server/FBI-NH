@@ -2,7 +2,7 @@
 
 #include <3ds.h>
 
-#include "error.h"
+#include "error_display.h"
 #include "kbd.h"
 #include "ui.h"
 

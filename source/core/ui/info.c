@@ -3,7 +3,7 @@
 
 #include <3ds.h>
 
-#include "error.h"
+#include "error_display.h"
 #include "info.h"
 #include "ui.h"
 #include "../screen.h"

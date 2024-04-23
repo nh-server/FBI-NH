@@ -2,7 +2,7 @@
 
 #include <3ds.h>
 
-#include "error.h"
+#include "error_display.h"
 #include "list.h"
 #include "ui.h"
 #include "../screen.h"

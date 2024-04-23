@@ -26,7 +26,7 @@ const char* ui_get_display_eta(u32 seconds);
 double ui_get_display_size(u64 size);
 const char* ui_get_display_size_units(u64 size);
 
-#include "error.h"
+#include "error_display.h"
 #include "info.h"
 #include "kbd.h"
 #include "list.h"
