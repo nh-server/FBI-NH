@@ -4,3 +4,8 @@ CMakeLists.txt
 
 build
 output
+
+*.elf
+*.3dsx
+*.smdh
+*.cia
