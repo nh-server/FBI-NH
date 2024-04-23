@@ -95,7 +95,7 @@ void screen_init() {
     Mtx_OrthoTilt(&projection_top, 0.0, TOP_SCREEN_WIDTH, TOP_SCREEN_HEIGHT, 0.0, 0.0, 1.0, true);
     Mtx_OrthoTilt(&projection_bottom, 0.0, BOTTOM_SCREEN_WIDTH, BOTTOM_SCREEN_HEIGHT, 0.0, 0.0, 1.0, true);
 
-    dvlb = DVLB_ParseFile((u32*) default_shbin, default_shbin_len);
+    dvlb = DVLB_ParseFile((u32*) default_shbin, default_shbin_size);
     if(dvlb == NULL) {
         error_panic("Failed to parse shader.");
         return;
