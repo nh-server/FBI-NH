@@ -18,7 +18,7 @@ static void update_check_update(ui_view* view, void* data, float* progress, char
     Result res = 0;
 
     json_t* json = NULL;
-    if(R_SUCCEEDED(res = http_download_json("https://api.github.com/repos/Steveice10/FBI/releases/latest", &json, 16 * 1024))) {
+    if(R_SUCCEEDED(res = http_download_json("https://api.github.com/repos/nh-server/FBI-NH/releases/latest", &json, 16 * 1024))) {
         if(json_is_object(json)) {
             json_t* name = json_object_get(json, "name");
             json_t* assets = json_object_get(json, "assets");
