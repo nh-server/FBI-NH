@@ -267,7 +267,7 @@ void extsavedata_open() {
     data->populateData.finished = true;
 
     data->showSD = true;
-    data->showNAND = true;
+    data->showNAND = false;
     data->sortById = false;
     data->sortByName = true;
 

@@ -325,7 +325,7 @@ void titles_open() {
 
     data->showGameCard = true;
     data->showSD = true;
-    data->showNAND = true;
+    data->showNAND = false;
     data->sortById = false;
     data->sortByName = true;
     data->sortBySize = false;
