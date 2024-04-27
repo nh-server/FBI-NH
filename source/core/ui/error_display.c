@@ -321,7 +321,7 @@ static const char* description_to_string(Result res) {
                 case 190:
                     return "Already exists / Failed to create";
                 case 210:
-                    return "Partition full";
+                    return "Insufficient storage";
                 case 230:
                     return "Illegal operation / File in use";
                 case 231:
