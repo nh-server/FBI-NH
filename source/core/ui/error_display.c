@@ -331,7 +331,7 @@ static const char* description_to_string(Result res) {
                 case 265:
                     return "Bus: Timeout";
                 case 331:
-                    return "Bus error / TWL partition invalid";
+                    return "Unacceptable or write protected";
                 case 332:
                     return "Bus: Stop bit error";
                 case 391:
