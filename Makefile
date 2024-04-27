@@ -49,9 +49,9 @@ GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
 #GFXBUILD	:=	$(ROMFS)/gfx
 
-APP_TITLE	:=	FBI
+APP_TITLE	:=	FBI-NH
 APP_DESCRIPTION	:=	Open source title manager.
-APP_AUTHOR	:=	Steveice10
+APP_AUTHOR	:=	Steveice10 & Nintendo Homebrew
 ICON := meta/icon_3ds.png
 
 PRODUCT_CODE := CTR-P-CFBI

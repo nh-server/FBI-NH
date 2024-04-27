@@ -1,6 +1,6 @@
-# FBI
+# FBI-NH
 
-FBI is an open source title manager for the 3DS.
+FBI-NH is an open source title manager for the 3DS. FBI was originally authored by Steveice10.
 
 Requires [devkitARM](https://devkitpro.org/wiki/Getting_Started), along with 3ds-curl, 3ds-zlib, and 3ds-jansson from the devkitPro pacman repository, to build.
 
@@ -20,6 +20,8 @@ Requires [devkitARM](https://devkitpro.org/wiki/Getting_Started), along with 3ds
   * Launch titles installed to the system.
 
 # Credit
+
+Original author: Steveice10
 
 Banner: Originally created by [OctopusRift](https://gbatemp.net/members/octopusrift.356526/), touched up by [Apache Thunder](https://gbatemp.net/members/apache-thunder.105648/), updated for new logo by [PabloMK7](https://gbatemp.net/members/pablomk7.345712/).
 

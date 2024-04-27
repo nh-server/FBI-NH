@@ -71,7 +71,7 @@ void error_panic(const char* s, ...) {
 
     PrintConsole* console = consoleInit(GFX_TOP, NULL);
 
-    const char* header = "FBI has encountered a fatal error!";
+    const char* header = "FBI-NH has encountered a fatal error!";
     const char* footer = "Press any button to exit.";
 
     printf("\x1b[0;0H");
