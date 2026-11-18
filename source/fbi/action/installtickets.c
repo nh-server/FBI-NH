@@ -105,14 +105,14 @@ static Result action_install_tickets_read_src(void* data, u32 index, u32 handle,
 
 static Result action_install_tickets_open_dst(void* data, u32 index, void* initialReadBlock, u64 size, u32* handle) {
     AM_DeleteTicket(((file_info*) ((list_item*) linked_list_get(&((install_tickets_data*) data)->contents, index))->data)->ticketInfo.titleId);
-    return AM_InstallTicketBegin(handle);
+    return AMNET_InstallTicketBegin(handle);
 }
 
 static Result action_install_tickets_close_dst(void* data, u32 index, bool succeeded, u32 handle) {
     if(succeeded) {
-        return AM_InstallTicketFinish(handle);
+        return AMNET_InstallTicketFinish(handle);
     } else {
-        return AM_InstallTicketAbort(handle);
+        return AMNET_InstallTicketAbort(handle);
     }
 }
 

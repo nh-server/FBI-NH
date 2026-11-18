@@ -18,17 +18,17 @@ static int task_populate_pending_titles_compare_ids(const void* e1, const void* 
 static Result task_populate_pending_titles_from(populate_pending_titles_data* data, FS_MediaType mediaType) {
     Result res = 0;
 
-    u32 pendingTitleCount = 0;
-    if(R_SUCCEEDED(res = AM_GetPendingTitleCount(&pendingTitleCount, mediaType, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION))) {
-        u64* pendingTitleIds = (u64*) calloc(pendingTitleCount, sizeof(u64));
+    u32 importTitleContextCount = 0;
+    if(R_SUCCEEDED(res = AM_GetNumImportTitleContexts(&importTitleContextCount, mediaType, AM_PENDING_NON_SYSTEM | AM_PENDING_SYSTEM))) {
+        u64* pendingTitleIds = (u64*) calloc(importTitleContextCount, sizeof(u64));
         if(pendingTitleIds != NULL) {
-            if(R_SUCCEEDED(res = AM_GetPendingTitleList(&pendingTitleCount, pendingTitleCount, mediaType, AM_STATUS_MASK_INSTALLING | AM_STATUS_MASK_AWAITING_FINALIZATION, pendingTitleIds))) {
-                qsort(pendingTitleIds, pendingTitleCount, sizeof(u64), task_populate_pending_titles_compare_ids);
+            if(R_SUCCEEDED(res = AM_GetImportTitleContextList(&importTitleContextCount, importTitleContextCount, mediaType, AM_PENDING_NON_SYSTEM | AM_PENDING_SYSTEM, pendingTitleIds))) {
+                qsort(pendingTitleIds, importTitleContextCount, sizeof(u64), task_populate_pending_titles_compare_ids);
 
-                AM_PendingTitleEntry* pendingTitleInfos = (AM_PendingTitleEntry*) calloc(pendingTitleCount, sizeof(AM_PendingTitleEntry));
+                AM_PendingTitleInfo* pendingTitleInfos = (AM_PendingTitleInfo*) calloc(importTitleContextCount, sizeof(AM_PendingTitleInfo));
                 if(pendingTitleInfos != NULL) {
-                    if(R_SUCCEEDED(res = AM_GetPendingTitleInfo(pendingTitleCount, mediaType, pendingTitleIds, pendingTitleInfos))) {
-                        for(u32 i = 0; i < pendingTitleCount && R_SUCCEEDED(res); i++) {
+                    if(R_SUCCEEDED(res = AM_GetPendingTitleInfo(importTitleContextCount, mediaType, pendingTitleIds, pendingTitleInfos))) {
+                        for(u32 i = 0; i < importTitleContextCount && R_SUCCEEDED(res); i++) {
                             svcWaitSynchronization(task_get_pause_event(), U64_MAX);
                             if(task_is_quit_all() || svcWaitSynchronization(data->cancelEvent, 0) == 0) {
                                 break;

@@ -138,7 +138,7 @@ static Result action_install_url_open_dst(void* data, u32 index, void* initialRe
             installData->ticketInfo.loaded = true;
 
             AM_DeleteTicket(installData->ticketInfo.titleId);
-            res = AM_InstallTicketBegin(handle);
+            res = AMNET_InstallTicketBegin(handle);
         }
     } else if(*(u32*) initialReadBlock == 0x58534433 /* 3DSX */ || *(u32*) initialReadBlock == 0x48444D53 /* SMDH */) {
         installData->contentType = CONTENT_3DSX_SMDH;
@@ -195,7 +195,7 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
                 }
             }
         } else if(installData->contentType == CONTENT_TICKET) {
-            res = AM_InstallTicketFinish(handle);
+            res = AMNET_InstallTicketFinish(handle);
         } else if(installData->contentType == CONTENT_3DSX_SMDH) {
             res = FSFILE_Close(handle);
         }
@@ -203,7 +203,7 @@ static Result action_install_url_close_dst(void* data, u32 index, bool succeeded
         if(installData->contentType == CONTENT_CIA) {
             res = AM_CancelCIAInstall(handle);
         } else if(installData->contentType == CONTENT_TICKET) {
-            res = AM_InstallTicketAbort(handle);
+            res = AMNET_InstallTicketAbort(handle);
         } else if(installData->contentType == CONTENT_3DSX_SMDH) {
             res = FSFILE_Close(handle);
 
